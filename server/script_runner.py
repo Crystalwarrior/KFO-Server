@@ -24,7 +24,8 @@ Instruction tuples:
   (`char` is a char id or quoted folder; the value may be a live path).
 
 Lines use space-separated tokens; `#` is reserved for AO packet lines. A stray
-trailing `#` on any non-packet line is tolerated (the old `#%` habit).
+trailing `#` on any non-packet line is tolerated (the old `#%` habit), and a
+`//` comment to the end of a command or instruction line is dropped.
 
 See `docs/demo_scripting.md` for the full language specification.
 """
@@ -89,18 +90,16 @@ def parse_demo_description(desc):
     space-separated tokens. A stray trailing `#` is stripped from every
     non-packet line so the old `#%` habit still works. The legacy
     `wait#<ms>` form is also accepted alongside `wait <ms>`.
+
+    A `//` comment (not inside quotes, and only when it starts a token) runs
+    to the end of a command or instruction line and is dropped; packet text
+    is content and is never touched.
     """
     desc = desc.replace("<num>", "#").replace("<and>", "&").replace("<percent>", "%").replace("<dollar>", "$")
     instructions = []
     for line in _iter_lines(desc):
         stripped = line.strip().rstrip("#").strip()
         if not stripped:
-            continue
-        if stripped.startswith("/"):
-            parts = stripped.split(" ")
-            cmd = parts.pop(0).lstrip("/").lower()
-            arg = " ".join(parts)[:1024] if parts else ""
-            instructions.append(("command", cmd, arg))
             continue
         header = stripped.split("#", 1)[0].strip()
         if header in PACKET_HEADERS:
@@ -111,6 +110,15 @@ def parse_demo_description(desc):
                 # trailing field.
                 fields = fields[:-1]
             instructions.append(("packet", header, tuple(fields[1:])))
+            continue
+        stripped = _strip_comment(stripped).strip()
+        if not stripped:
+            continue
+        if stripped.startswith("/"):
+            parts = stripped.split(" ")
+            cmd = parts.pop(0).lstrip("/").lower()
+            arg = " ".join(parts)[:1024] if parts else ""
+            instructions.append(("command", cmd, arg))
         elif header == "wait":
             # Legacy `wait#<ms>` form (`wait <ms>` is handled below).
             fields = stripped.split("#")
@@ -128,10 +136,33 @@ def parse_demo_description(desc):
     return instructions
 
 
+def _strip_comment(text):
+    """
+    Drop a trailing `//` comment from a command or instruction line.
+
+    `//` starts a comment only when it begins a token (at the start of the
+    line or after whitespace), so URLs like `http://x` survive, and only when
+    it is outside quotes, so a quoted value containing `//` is preserved.
+    """
+    quote = None
+    for i, ch in enumerate(text):
+        if quote is not None:
+            if ch == quote:
+                quote = None
+            continue
+        if ch in "\"'":
+            quote = ch
+        elif ch == "/" and i + 1 < len(text) and text[i + 1] == "/" and (i == 0 or text[i - 1].isspace()):
+            return text[:i].rstrip()
+    return text
+
+
 def _is_packet_or_command(content):
     """True if a chunk starts a packet or slash command (ends at `%` only)."""
     stripped = content.strip()
-    return stripped.startswith("/") or stripped.split("#", 1)[0].strip() in PACKET_HEADERS
+    return (stripped.startswith("/") and not stripped.startswith("//")) or stripped.split("#", 1)[
+        0
+    ].strip() in PACKET_HEADERS
 
 
 def _iter_lines(desc):

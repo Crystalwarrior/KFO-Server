@@ -121,6 +121,9 @@ Variables are user-defined names - `count`, `showname`, `score`, etc. - that hol
 value. They live on the area, so they're shared by every demo and trigger
 running within that area.
 
+A `//` marks the rest of a line as a comment - the script skips it, so the
+examples use it to explain what each line does:
+
 ```
 set count 5
 set count count+1   // adds 1, so count is now 6
@@ -148,7 +151,7 @@ another, and `if` can compare strings directly:
 ```
 set name "Alice"                  // The name we're gonna use here
 if name == "Alice" greet          // if name equals to Alice, go to the greet label
-if name != "Bob" nogreet          // if name equals to Alice, go to the nogreet label
+if name != "Bob" nogreet          // if name isn't Bob, go to the nogreet label
 label greet
 CT#narrator#Hello, <!name>!%      // Hello, Alice!
 goto finish                       // Skip ahead so we don't say Goodbye by accident
@@ -169,6 +172,7 @@ script with an error.
 ```
 set count 5
 CT#narrator#Only <!count> more minutes!%
+set score 10
 /say The score is <!score>%
 ```
 
@@ -276,9 +280,11 @@ The flags below come back as `1` (yes) or `0` (no):
 | `frozen`     | They're frozen                |
 
 ```
+set i 0
 if client[i].hidden == 1 skip
 get showname client[i].showname
 concat list showname ", "
+label skip
 ```
 
 For safety, mod-only details such as IP/HDID hashes and `is_mod` are never
@@ -522,6 +528,7 @@ number (or expression), a quoted string, a variable, or a live path:
 ```
 save "Phoenix" title "Attorney"
 save 0 points 5
+set gold 10
 save 0 gold gold+10
 save 0 lastarea area.name
 ```
@@ -533,12 +540,12 @@ you save here is there next time the server restarts.
 
 **GMs** can inspect and edit the same data from OOC without a demo:
 
-```
-/get_char_data Phoenix            lists every key for the character
-/get_char_data Phoenix title      shows just that key
-/set_char_data Phoenix title Attorney   sets a key
-/set_char_data Phoenix title            removes the key (no value)
-```
+| Command | What it does |
+| --- | --- |
+| `/get_char_data Phoenix` | lists every key for the character |
+| `/get_char_data Phoenix title` | shows just that key |
+| `/set_char_data Phoenix title Attorney` | sets a key |
+| `/set_char_data Phoenix title` | removes the key (no value) |
 
 Character data is one of the few places a demo writes persistent state, so it
 doubles as a shared "blackboard": a trigger's demo can `save` a flag that a
@@ -553,7 +560,7 @@ names:
 ```
 set list ""
 concat list "Miles"
-concat list "Apollo" ", "     # list is now "Miles, Apollo"
+concat list "Apollo" ", "     // list is now "Miles, Apollo"
 CT#narrator#Players here: <!list>%
 ```
 
@@ -578,9 +585,12 @@ The bounds can be numbers, expressions, or variables. If `min` is bigger than
 `if` jumps to a label when a comparison is true:
 
 ```
+get total players
 if total >= 5 full
-CT#narrator#Plenty of area!%
+CT#narrator#Room's not full yet!%
+return
 label full
+CT#narrator#Room's full!%
 ```
 
 The comparisons use the usual symbols: `==` equal, `!=` not equal, `<` less
@@ -588,9 +598,17 @@ than, `>` greater than, `<=` less or equal, `>=` greater or equal. (The words
 `eq`, `ne`, `lt`, `gt`, `le`, `ge` mean the same thing and also work.)
 
 ```
-if count == 0 done
-if count > 0 keepgoing
-if name != "Alice" alert
+set count 3
+set name "Miles"
+if count == 3 three
+if name != "Alice" stranger
+CT#narrator#Checking done!%
+return
+label three
+CT#narrator#Count is three!%
+return
+label stranger
+CT#narrator#A stranger!%
 ```
 
 Both sides can be numbers, strings, variables, or live paths - anything a value
@@ -618,13 +636,16 @@ turns into: 5! 4! 3! 2! 1! Blastoff!
 ```
 goto roll_for_damage
 goto roll_for_damage
-label done
-...
+return
 label roll_for_damage
 rand dmg 1 8
 CT#narrator#You dealt <!dmg> damage!%
 return
 ```
+
+The two `goto`s run the same block twice - you see two damage rolls - then the
+`return` at the end of the main script finishes it (there's nothing left to
+return to).
 
 If `return` has nowhere to return to, the script just ends - no error. So you
 can use a bare `return` at the end of a script to stop it early. Labels are
@@ -637,19 +658,18 @@ Every area has 21 countdown timers: `0` is hub-wide, `1` through `20` belong to
 the area. Anyone can check a timer with `/timer <id>`; setting and changing
 them takes CM/GM rights (and timer `0` needs GM):
 
-```
-/timer 1 5m          set timer 1 to 5 minutes
-/timer 1 start       start the countdown
-/timer 1 pause       pause it (or `stop`)
-/timer 1 +30s        add 30 seconds to whatever it's at now
-/timer 1 unset       hide it and forget its time (or `hide`)
-```
+| Command | What it does |
+| --- | --- |
+| `/timer 1 5m` | set timer 1 to 5 minutes |
+| `/timer 1 start` | start the countdown |
+| `/timer 1 pause` | pause it (or `stop`) |
+| `/timer 1 +30s` | add 30 seconds to whatever it's at now |
+| `/timer 1 unset` | hide it and forget its time (or `hide`) |
 
 Your script reads timers through the live paths from the table above:
 
 ```
 get left timer[3].remaining_ms
-if left == 0 timeout
 CT#narrator#<!left> ms left on the deliberation timer!%
 ```
 
@@ -658,13 +678,13 @@ CT#narrator#<!left> ms left on the deliberation timer!%
 A timer holds a stack of commands that run the moment it hits zero. Queue them
 in OOC with `/timer <id> /<command>`:
 
-```
-/timer 1 /demo 3               run demo 3 when timer 1 expires
-/timer 1 /h Time's up!         announce it in hub chat
-/timer 1 /timer 1 hide         also hide the timer when it expires
-/timer 1 /clear                wipe all queued commands
-/timer 1 /                     list what's queued
-```
+| Command | What it does |
+| --- | --- |
+| `/timer 1 /demo 3` | run demo 3 when timer 1 expires |
+| `/timer 1 /h Time's up!` | announce it in hub chat |
+| `/timer 1 /timer 1 hide` | also hide the timer when it expires |
+| `/timer 1 /clear` | wipe all queued commands |
+| `/timer 1 /` | list what's queued |
 
 These lines are ordinary OOC commands, so a demo can arm a timer too - put
 `/timer 1 5m start%` in your script and it sets and starts the timer, and a
@@ -681,11 +701,11 @@ does. Area triggers are `join` and `leave`; an evidence item can also have a
 `present` trigger. Only normal players set them off - hidden clients, CMs,
 GMs and mods are ignored.
 
-```
-/trigger join /demo 2
-/trigger leave /h <showname> left
-/trigger present 1 /demo 4
-```
+| Command | Runs when |
+| --- | --- |
+| `/trigger join /demo 2` | someone joins |
+| `/trigger leave /h <showname> left` | someone leaves (announces in hub chat) |
+| `/trigger present 1 /demo 4` | evidence item 1 is presented |
 
 The command runs through the area's system executor, so it works even if no
 CM or GM is around. You can type these in OOC or also use them as script lines!
@@ -730,6 +750,10 @@ When the timer later runs its /demo 1 command, that script can check the note:
 
 ```
 if door_open == 1 open_the_door
+CT#narrator#The door stays shut.%
+return
+label open_the_door
+CT#narrator#The door is open!%
 ```
 
 The note is still there even though the demo that wrote it has finished.

@@ -321,6 +321,46 @@ def test_parse_demo_description_save():
     ]
 
 
+def test_parse_demo_description_strips_trailing_comments():
+    desc = "set count 5   // adds 1\nif count > 0 loop  // keep going\nlabel loop"
+    assert parse_demo_description(desc) == [
+        ("set", "count", "5"),
+        ("if", "count", ">", "0", "loop"),
+        ("label", "loop"),
+    ]
+
+
+def test_parse_demo_description_strips_full_line_comments():
+    desc = "// just a note\nset count 5%// another note\nset count 6"
+    assert parse_demo_description(desc) == [
+        ("set", "count", "5"),
+        ("set", "count", "6"),
+    ]
+
+
+def test_parse_demo_description_comment_on_command_line():
+    assert parse_demo_description("/demo 3 // chained demo%\nset z 1") == [
+        ("command", "demo", "3"),
+        ("set", "z", "1"),
+    ]
+
+
+def test_parse_demo_description_comment_preserved_in_packet_text():
+    """Packet `#` fields are content; a `//` inside them must survive."""
+    assert parse_demo_description("CT#narrator#Hello // world%") == [("packet", "CT", ("narrator", "Hello // world"))]
+
+
+def test_parse_demo_description_comment_preserved_in_quotes():
+    """A `//` inside a quoted value is not a comment."""
+    assert parse_demo_description('set url "http://example.com"  // a site') == [("set", "url", '"http://example.com"')]
+    assert parse_demo_description('concat path "a//b"') == [("concat", "path", '"a//b"', "")]
+
+
+def test_parse_demo_description_url_not_stripped():
+    """URLs keep their `//` when the line ends without a comment."""
+    assert parse_demo_description("set site http://example.com") == [("set", "site", "http://example.com")]
+
+
 def test_parse_demo_description_ignores_unknown_headers():
     desc = "FOO#bar%MS#x#y%"
     assert parse_demo_description(desc) == [("packet", "MS", ("x", "y"))]
