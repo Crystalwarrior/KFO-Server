@@ -10,6 +10,7 @@ from heapq import heappop, heappush
 from server import database
 from server.constants import TargetType, encode_ao_packet, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ServerError
+from server.constants import _SYSTEM_IPID
 
 import oyaml as yaml  # ordered yaml
 import json
@@ -1072,7 +1073,6 @@ class ClientManager:
                 count = 0
                 for c in hub.clients:
                     if not c.area.hide_clients and not c.hidden:
-                        from server.remote_client import _SYSTEM_IPID
                         if c.ipid != _SYSTEM_IPID:
                             count = count + 1
                 hub.count = count
@@ -1613,14 +1613,12 @@ class ClientManager:
                     users = ''
                 else:
                     # We exclude hidden players and system/mock clients here
-                    from server.remote_client import _SYSTEM_IPID
                     player_list = [c for c in area.clients if not c.hidden and c.ipid != _SYSTEM_IPID]
                     users = f' (users: {len(player_list)}) '
                 if area.hidden:
                     return ""
             else:
                 # Mods see everyone; GMs and CMs don't see system/mock clients
-                from server.remote_client import _SYSTEM_IPID
                 if self.is_mod:
                     users = f' (users: {len(area.clients)}) '
                 else:
@@ -1643,7 +1641,6 @@ class ClientManager:
 
             # Filter out system/mock clients for non-mods
             if not self.is_mod:
-                from server.remote_client import _SYSTEM_IPID
                 player_list = [c for c in player_list if c.ipid != _SYSTEM_IPID]
 
             if not self.is_mod and self not in area.owners:
@@ -1826,11 +1823,11 @@ class ClientManager:
                         hub_count = 0
                         for area in hub.areas:
                             if not area.hide_clients and not area.dark:
-                                player_list = [c for c in area.clients if not c.hidden]
+                                player_list = [c for c in area.clients if not c.hidden and c.ipid != _SYSTEM_IPID]
                                 hub_count += len(player_list)
                         info += f"\n⛩[{hub.id}]{hub.name} (users: {hub_count})⛩:\n{hub_info}\n"
                     else:
-                        info += f"\n⛩[{hub.id}]{hub.name} (users: {len(hub.clients)})⛩:\n{hub_info}\n"
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {len([c for c in hub.clients if c.ipid != _SYSTEM_IPID])})⛩:\n{hub_info}\n"
             if afk_check:
                 info += f"Current AFK-ers: {cnt}"
             else:
@@ -1860,14 +1857,14 @@ class ClientManager:
             msg = "🌐 Hubs 🌐"
             for hub in self.server.hub_manager.hubs:
                 owner = "FREE"
-                if len(hub.owners) > 0:
+                if len(hub.real_owners()) > 0:
                     owner = hub.get_gms()
                 msg += "\r\n"
                 if self.area.area_manager == hub:
                     msg += " ◽ "
                 else:
                     msg += " ◾ "
-                msg += f"[{hub.id}] {hub.name} (users: {len([c for c in hub.clients if not c.hidden])}) GM(s): {owner}"
+                msg += f"[{hub.id}] {hub.name} (users: {len([c for c in hub.clients if not c.hidden and c.ipid != _SYSTEM_IPID])}) GM(s): {owner}"
             self.send_ooc(msg)
 
         def send_done(self):
@@ -2421,7 +2418,7 @@ class ClientManager:
         for hub in self.server.hub_manager.hubs:
             count = 0
             for c in hub.clients:
-                if not c.area.hide_clients and not c.hidden:
+                if not c.area.hide_clients and not c.hidden and c.ipid != _SYSTEM_IPID:
                     count = count + 1
             hub.count = count
         for c in self.server.client_manager.clients:

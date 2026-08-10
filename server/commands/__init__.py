@@ -1,17 +1,28 @@
-def call(client, cmd, arg):
+def resolve_command(server, cmd):
+    """
+    Resolve a command name to its `ooc_cmd_<name>` function, following the
+    server's command aliases. Returns `None` if the command doesn't exist.
+    """
     import sys
 
     me = sys.modules[__name__]
     called_function = f"ooc_cmd_{cmd}"
-    if len(client.server.command_aliases) > 0 and not hasattr(me, called_function):
-        if cmd in client.server.command_aliases:
-            called_function = f"ooc_cmd_{client.server.command_aliases[cmd]}"
+    if len(server.command_aliases) > 0 and not hasattr(me, called_function):
+        if cmd in server.command_aliases:
+            called_function = f"ooc_cmd_{server.command_aliases[cmd]}"
     if not hasattr(me, called_function):
+        return None
+    return getattr(me, called_function)
+
+
+def call(client, cmd, arg):
+    func = resolve_command(client.server, cmd)
+    if func is None:
         client.send_ooc(
             f"Invalid command: {cmd}. Use /help to find up-to-date commands."
         )
         return
-    getattr(me, called_function)(client, arg)
+    func(client, arg)
 
 
 def submodules():
@@ -97,10 +108,13 @@ def mod_only(area_owners=False, hub_owners=False):
     def decorator(func):
         @functools.wraps(func)
         def wrapper_mod_only(client, arg, *args, **kwargs):
+            # System executors (e.g. RemoteClient with is_gm=True) act as a
+            # GM: they pass area-owner and hub-owner gates but never mod-only.
+            is_gm = getattr(client, "is_gm", False)
             if (
                 not client.is_mod
-                and (not area_owners or client not in client.area.owners)
-                and (not hub_owners or client not in client.area.area_manager.owners)
+                and (not area_owners or not (client in client.area.owners or is_gm))
+                and (not hub_owners or not (client in client.area.area_manager.owners or is_gm))
             ):
                 raise ClientError("You must be authorized to do that.")
             func(client, arg, *args, **kwargs)

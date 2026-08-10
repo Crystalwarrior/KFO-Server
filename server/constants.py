@@ -3,6 +3,11 @@ from enum import Enum
 from enum import IntFlag
 
 
+# Reserved ipid for remote/system clients. Ensures FK constraints are satisfied
+# without polluting the database with fake connection records.
+_SYSTEM_IPID = 0
+
+
 class TargetType(Enum):
     # possible keys: ip, OOC, id, cname, ipid, hdid, afk
     IP = 0
