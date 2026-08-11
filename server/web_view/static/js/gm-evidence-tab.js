@@ -122,6 +122,12 @@ class EvidenceTab extends TabBase {
         this._iconOverrideBtn = root.querySelector('#evidenceIconOverrideBtn');
         this._editor = root.querySelector('#evidenceScriptEditor');
         this._warningsEl = root.querySelector('#evidenceParseWarnings');
+        this._posInput = root.querySelector('#evidencePosInput');
+        this._showInDarkSelect = root.querySelector('#evidenceShowInDarkSelect');
+        this._canHideInCheck = root.querySelector('#evidenceCanHideInCheck');
+        this._canTakeCheck = root.querySelector('#evidenceCanTakeCheck');
+        this._editableCheck = root.querySelector('#evidenceEditableCheck');
+        this._triggersInput = root.querySelector('#evidenceTriggersInput');
         this._statusBox = root.querySelector('#evidenceStatusBox');
         this._evalInput = root.querySelector('#evidenceEvalInput');
         this._evalResult = root.querySelector('#evidenceEvalResult');
@@ -304,6 +310,7 @@ class EvidenceTab extends TabBase {
             this._editor.value = d.desc || '';
             this._editor.readOnly = !d.editable;
             this._renderWarnings(d.parse_warnings || []);
+            this._populateProps(d);
             this._renderList();
             this._updateRunStopState();
             this._loadDetailIcon();
@@ -357,6 +364,55 @@ class EvidenceTab extends TabBase {
         this._editor.readOnly = false;
         this._warningsEl.innerHTML = '';
         this._iconPreview.innerHTML = '<span class="gm-icon-fallback">?</span>';
+        this._posInput.value = 'all';
+        this._showInDarkSelect.value = '0';
+        this._canHideInCheck.checked = false;
+        this._canTakeCheck.checked = true;
+        this._editableCheck.checked = true;
+        this._triggersInput.value = '';
+    }
+
+    /** Reflect an evidence item's property fields into the editor. */
+    _populateProps(d) {
+        this._posInput.value = (d.pos !== undefined && d.pos !== null) ? String(d.pos) : 'all';
+        this._showInDarkSelect.value = String(d.show_in_dark !== undefined && d.show_in_dark !== null ? d.show_in_dark : 0);
+        this._canHideInCheck.checked = !!d.can_hide_in;
+        this._canTakeCheck.checked = d.can_take !== false;
+        this._editableCheck.checked = d.editable !== false;
+        this._triggersInput.value = this._triggersToText(d.triggers);
+    }
+
+    /** `{present: "demo 3"}` -> `present demo 3`, one trigger per line. */
+    _triggersToText(triggers) {
+        return Object.entries(triggers || {})
+            .filter(([, v]) => v !== '' && v !== null && v !== undefined)
+            .map(([k, v]) => `${k} ${v}`)
+            .join('\n');
+    }
+
+    /** `present demo 3` per line -> `{present: "demo 3"}` (key is the first
+     * token, everything after it is the trigger's command+args). */
+    _textToTriggers(text) {
+        const out = {};
+        for (const rawLine of text.split('\n')) {
+            const line = rawLine.trim();
+            if (!line) continue;
+            const idx = line.indexOf(' ');
+            if (idx <= 0) { out[line] = ''; continue; }
+            out[line.slice(0, idx)] = line.slice(idx + 1).trim();
+        }
+        return out;
+    }
+
+    _collectProps() {
+        return {
+            pos: this._posInput.value.trim() || 'all',
+            can_hide_in: this._canHideInCheck.checked,
+            show_in_dark: parseInt(this._showInDarkSelect.value, 10),
+            can_take: this._canTakeCheck.checked,
+            editable: this._editableCheck.checked,
+            triggers: this._textToTriggers(this._triggersInput.value),
+        };
     }
 
     _renderWarnings(warnings) {
@@ -378,14 +434,15 @@ class EvidenceTab extends TabBase {
         const name = this._nameInput.value.trim() || 'Untitled';
         const image = this._imageInput.value;
         const desc = this._editor.value;
+        const props = this._collectProps();
         try {
             if (this._selectedEvidenceId === null) {
-                const created = await this.api.newEvidenceItem(this._areaId, { name, desc, image });
+                const created = await this.api.newEvidenceItem(this._areaId, { name, desc, image, props });
                 this.shell.toast('Evidence created.', 'success');
                 await this.reload();
                 if (created && created.id !== undefined) await this._openEvidence(created.id);
             } else {
-                await this.api.putEvidenceItem(this._areaId, this._selectedEvidenceId, { name, desc, image });
+                await this.api.putEvidenceItem(this._areaId, this._selectedEvidenceId, { name, desc, image, props });
                 this.shell.toast('Evidence saved.', 'success');
                 const savedId = this._selectedEvidenceId;
                 await this.reload();

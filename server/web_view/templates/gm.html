@@ -184,6 +184,34 @@
                 <textarea id="evidenceScriptEditor" class="gm-script-editor" spellcheck="false"
                     placeholder="wait 500&#10;CT#narrator#Hello everyone!%"></textarea>
                 <div id="evidenceParseWarnings"></div>
+                <div class="gm-evidence-props">
+                    <label class="gm-evidence-prop gm-evidence-prop-pos" title="The &lt;owner=...&gt; positions where this evidence shows: 'all', 'hidden', or comma-separated pos names">
+                        <span>Pos (owner positions):</span>
+                        <input type="text" id="evidencePosInput" placeholder="all, hidden, or pos1, pos2">
+                    </label>
+                    <label class="gm-evidence-prop">
+                        <span>Show in dark:</span>
+                        <select id="evidenceShowInDarkSelect">
+                            <option value="0">Never</option>
+                            <option value="1">Always</option>
+                            <option value="2">Only in dark</option>
+                        </select>
+                    </label>
+                    <label class="gm-evidence-prop">
+                        <input type="checkbox" id="evidenceCanHideInCheck"> Can hide in
+                    </label>
+                    <label class="gm-evidence-prop">
+                        <input type="checkbox" id="evidenceCanTakeCheck"> Can take
+                    </label>
+                    <label class="gm-evidence-prop">
+                        <input type="checkbox" id="evidenceEditableCheck"> Editable by others
+                    </label>
+                    <label class="gm-evidence-prop gm-evidence-prop-triggers">
+                        <span>Triggers (one per line: <code>trig cmd args</code>)</span>
+                        <textarea id="evidenceTriggersInput" rows="2" spellcheck="false"
+                            placeholder="present demo 3"></textarea>
+                    </label>
+                </div>
                 <div class="gm-toolbar">
                     <button class="btn-sm" id="evidenceSaveBtn">Save</button>
                     <button class="btn-sm" id="evidenceRunBtn">Run</button>
@@ -214,7 +242,6 @@
         <div class="gm-subtabs" role="tablist" aria-label="Hub Data sections">
             <button type="button" class="gm-subtab active" data-subtab="hub" role="tab">Hub Saves</button>
             <button type="button" class="gm-subtab" data-subtab="files" role="tab">Files</button>
-            <button type="button" class="gm-subtab" data-subtab="editors" role="tab">Live Editors</button>
         </div>
         <div class="gm-data-subtabs">
 
@@ -304,36 +331,6 @@
                         <div class="gm-inline-form">
                             <input type="file" class="gm-data-upload-file" accept=".yaml,.yml">
                             <button class="btn-sm gm-data-upload-btn">Upload</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gm-data-body gm-data-subtab hidden" data-subtab="editors">
-                <div class="gm-data-grid">
-                    <div class="gm-panel-box gm-data-music-editor-box">
-                        <h3>Music List Editor (live hub musiclist)</h3>
-                        <div class="dim" id="musicRefLabel">Loading…</div>
-                        <textarea id="musicEditorTextarea" class="gm-script-editor" spellcheck="false"
-                            placeholder="- title: Track Name&#10;  length: 0"></textarea>
-                        <div class="gm-inline-form">
-                            <input type="text" id="musicNameInput" placeholder="music list name">
-                            <button class="btn-sm" id="musicSaveAsBtn">Save as…</button>
-                            <button class="btn-sm" id="musicApplyBtn">Apply to Hub</button>
-                        </div>
-                    </div>
-
-                    <div class="gm-panel-box gm-data-charlist-editor">
-                        <h3>Character List Editor (live hub roster)</h3>
-                        <p class="dim">One character folder name per line, in slot order.</p>
-                        <textarea id="charlistEditorTextarea" class="gm-script-editor" spellcheck="false"
-                            placeholder="Spam_HD&#10;Judge_HD"></textarea>
-                        <div class="gm-inline-form">
-                            <input type="text" id="charlistSaveAsInput" placeholder="also save as… (optional)">
-                        </div>
-                        <div class="gm-toolbar">
-                            <button class="btn-sm" id="charlistSubmitBtn">Submit</button>
-                            <button class="btn-sm" id="charlistRevertBtn">Revert</button>
                         </div>
                     </div>
                 </div>

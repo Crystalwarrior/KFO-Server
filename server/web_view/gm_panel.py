@@ -399,6 +399,9 @@ class EvidenceSerializer:
             "pos": evidence.pos,
             "editable": evidence.editable,
             "can_take": evidence.can_take,
+            "can_hide_in": bool(evidence.can_hide_in),
+            "show_in_dark": int(evidence.show_in_dark),
+            "triggers": dict(evidence.triggers or {}),
             "instruction_count": len(instructions),
             "parse_warnings": EvidenceSerializer._out_of_range_warnings(area, instructions),
             "is_running": is_running,
@@ -414,6 +417,10 @@ class EvidenceSerializer:
             "image": evidence.image,
             "pos": evidence.pos,
             "editable": evidence.editable,
+            "can_take": evidence.can_take,
+            "can_hide_in": bool(evidence.can_hide_in),
+            "show_in_dark": int(evidence.show_in_dark),
+            "triggers": dict(evidence.triggers or {}),
             "instructions": [list(instr) for instr in instructions],
             "parse_warnings": EvidenceSerializer._out_of_range_warnings(area, instructions),
         }
@@ -774,6 +781,54 @@ class GMSession:
         if not self.is_valid() or not self._area_in_scope(area):
             raise SessionInvalid()
         ok = self._call_on_target_area(area, lambda c: area.evi_list.del_evidence(c, demo_id))
+        if ok:
+            area.broadcast_evidence_list()
+        return bool(ok)
+
+    def set_evidence_props_direct(self, area, demo_id, props):
+        """
+        Apply property overrides (pos, can_hide_in, show_in_dark, can_take,
+        editable, triggers) directly to an evidence item.
+
+        AO only exposes these through HiddenCM `<...>` desc metadata, so
+        there is no OOC command behind them -- mirroring
+        `edit_evidence_direct`, this mutates the live `Evidence` object
+        while still gating through `EvidenceList.login()` against the real
+        bound client evaluated in the target area.
+        """
+        if not self.is_valid() or not self._area_in_scope(area):
+            raise SessionInvalid()
+        if demo_id < 0 or demo_id >= len(area.evi_list.evidences):
+            return False
+
+        def apply(client):
+            if not area.evi_list.login(client):
+                return False
+            evi = area.evi_list.evidences[demo_id]
+            if "pos" in props:
+                # The `<owner=...>` value clients see (parse_desc in
+                # evidence.py). Empty/None -> "all" so clearing the field
+                # makes the evidence visible everywhere rather than nowhere.
+                evi.pos = str(props["pos"] or "all")
+            if "can_hide_in" in props:
+                evi.can_hide_in = bool(props["can_hide_in"])
+            if "show_in_dark" in props:
+                try:
+                    evi.show_in_dark = max(0, min(2, int(props["show_in_dark"])))
+                except (TypeError, ValueError):
+                    return False
+            if "can_take" in props:
+                evi.can_take = bool(props["can_take"])
+            if "editable" in props:
+                evi.editable = bool(props["editable"])
+            if "triggers" in props:
+                trigs = props["triggers"]
+                if not isinstance(trigs, dict):
+                    return False
+                evi.triggers = {str(k): str(v) for k, v in trigs.items()}
+            return True
+
+        ok = self._call_on_target_area(area, apply)
         if ok:
             area.broadcast_evidence_list()
         return bool(ok)
@@ -2819,10 +2874,7 @@ class EvidenceRoutes:
         else:
             area = session.current_area()
 
-        evidence = [
-            EvidenceSerializer.to_list_item(i, evi, area)
-            for i, evi in enumerate(area.evi_list.evidences)
-        ]
+        evidence = [EvidenceSerializer.to_list_item(i, evi, area) for i, evi in enumerate(area.evi_list.evidences)]
         return web.json_response({"area_id": area.id, "area_name": area.name, "evidence": evidence})
 
     async def handle_get_evidence(self, request):
@@ -2847,12 +2899,20 @@ class EvidenceRoutes:
         name = str(data.get("name", "*"))
         desc = str(data.get("desc", "*"))
         image = str(data.get("image", "*"))
+        props = data.get("props")
         try:
             ok = session.edit_evidence_direct(area, evidence_id, name, desc, image)
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         if not ok:
             return web.json_response({"ok": False, "error": "not_authorized_or_invalid"}, status=403)
+        if props is not None:
+            try:
+                props_ok = session.set_evidence_props_direct(area, evidence_id, props)
+            except SessionInvalid:
+                return web.json_response({"error": "session_invalid"}, status=401)
+            if not props_ok:
+                return web.json_response({"ok": False, "error": "invalid_props"}, status=400)
         return web.json_response({"ok": True})
 
     async def handle_new_evidence(self, request):
@@ -2871,6 +2931,7 @@ class EvidenceRoutes:
         name = str(data.get("name", ""))
         desc = str(data.get("desc", ""))
         image = str(data.get("image", ""))
+        props = data.get("props")
         try:
             ok = session.add_evidence_direct(area, name, desc, image)
         except SessionInvalid:
@@ -2881,6 +2942,13 @@ class EvidenceRoutes:
         # index. The frontend Evidence tab uses this to immediately open
         # the evidence item it just created.
         new_id = len(area.evi_list.evidences) - 1
+        if props is not None:
+            try:
+                props_ok = session.set_evidence_props_direct(area, new_id, props)
+            except SessionInvalid:
+                return web.json_response({"error": "session_invalid"}, status=401)
+            if not props_ok:
+                return web.json_response({"ok": False, "error": "invalid_props"}, status=400)
         return web.json_response({"ok": True, "id": new_id})
 
     async def handle_delete_evidence(self, request):

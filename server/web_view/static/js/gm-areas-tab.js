@@ -553,7 +553,11 @@ class AreasGraphTab extends TabBase {
             : '<span class="dim">No position lock (all positions available).</span>';
 
         this._popover.innerHTML = `
-            <div class="area-popover-title">Area ${esc(area.id)}: ${esc(area.name || '')}</div>
+            <div class="gm-inspector-head">
+                <div class="area-popover-title">Area ${esc(area.id)}: ${esc(area.name || '')}</div>
+                <button type="button" class="gm-inspector-close" id="inspectorCloseBtn"
+                    title="Close inspector" aria-label="Close inspector">✕</button>
+            </div>
             <div class="area-popover-sub">${area.locked ? 'LOCKED · ' : ''}${area.dark ? 'DARK · ' : ''}${esc(area.status || '')}</div>
             <ul class="area-popover-roster">${roster}</ul>
 
@@ -609,8 +613,6 @@ class AreasGraphTab extends TabBase {
                 </div>
                 <button class="btn-sm danger" id="inspectorRemoveBtn" style="width:100%;margin-top:0.35rem">Remove This Area</button>
             </div>
-
-            <button class="btn-sm area-popover-close" id="inspectorCloseBtn">Close</button>
         `;
 
         this._wireInspector(area);

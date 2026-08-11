@@ -2,9 +2,7 @@
  * gm-data-tab.js
  * GMDataTab ("Hub Data" in the nav): import/export for every GM-facing
  * yaml file the panel touches -- hub layouts (save_hub/load_hub), evidence
- * packs, character data, music lists and character lists -- plus two
- * "live" editors that push straight into the running hub: the current
- * music list and the current character list.
+ * packs, character data, music lists and character lists.
  *
  * Talks only to the typed ApiClient methods added for this tab (§D2);
  * every dynamic string goes through esc() before landing in innerHTML.
@@ -82,7 +80,7 @@ class GMDataTab extends TabBase {
         this._hubLabel = root.querySelector('#dataHubLabel');
         this._outputEl = root.querySelector('#dataOutput');
 
-        // --- Subtab navigation (Hub Saves / Files / Live Editors) ---
+        // --- Subtab navigation (Hub Saves / Files) ---
         this._subtabButtons = Array.from(root.querySelectorAll('.gm-subtab[data-subtab]'));
         this._subtabBodies = Array.from(root.querySelectorAll('.gm-data-subtab[data-subtab]'));
         this._subtabButtons.forEach((btn) => {
@@ -115,29 +113,14 @@ class GMDataTab extends TabBase {
             this._kindBoxes[kind] = entry;
         });
 
-        // --- Music list editor (live hub musiclist) ---
-        this._musicRefLabel = root.querySelector('#musicRefLabel');
-        this._musicEditor = root.querySelector('#musicEditorTextarea');
-        this._musicNameInput = root.querySelector('#musicNameInput');
-        this._musicSaveAsBtn = root.querySelector('#musicSaveAsBtn');
-        this._musicApplyBtn = root.querySelector('#musicApplyBtn');
-
-        // --- Character list editor (live hub roster) ---
-        this._charlistEditor = root.querySelector('#charlistEditorTextarea');
-        this._charlistSaveAsInput = root.querySelector('#charlistSaveAsInput');
-        this._charlistSubmitBtn = root.querySelector('#charlistSubmitBtn');
-        this._charlistRevertBtn = root.querySelector('#charlistRevertBtn');
-        this._charlistOriginal = [];
+        // --- Music / character list file kinds live with the generic
+        // `[data-kind]` boxes above; there is no separate live-editor UI.
 
         root.querySelector('#dataRefreshBtn').addEventListener('click', () => this.reloadAll());
         this._hubSaveBtn.addEventListener('click', () => this._hubSave());
         this._hubSaveDownloadBtn.addEventListener('click', () => this._hubSaveAndDownload());
         this._hubImportBtn.addEventListener('click', () => this._hubImport());
         this._hubSavesTbody.addEventListener('click', (e) => this._onHubTableClick(e));
-        this._musicSaveAsBtn.addEventListener('click', () => this._musicSaveAs());
-        this._musicApplyBtn.addEventListener('click', () => this._musicApply());
-        this._charlistSubmitBtn.addEventListener('click', () => this._charlistSubmit());
-        this._charlistRevertBtn.addEventListener('click', () => this._charlistRevert());
 
         // File lists can now contain subpath entries ("events/mystery");
         // uploads default their name from the picked file's basename at the
@@ -238,9 +221,6 @@ class GMDataTab extends TabBase {
             this._loadHubSaves();
         } else if (name === 'files') {
             ['evidence', 'character_data', 'charlists', 'musiclists'].forEach((k) => this._loadDataFiles(k));
-        } else if (name === 'editors') {
-            this._loadMusicEditor();
-            this._loadCharlistEditor();
         }
     }
 
@@ -251,8 +231,6 @@ class GMDataTab extends TabBase {
             this._loadDataFiles('character_data'),
             this._loadDataFiles('charlists'),
             this._loadDataFiles('musiclists'),
-            this._loadMusicEditor(),
-            this._loadCharlistEditor(),
         ]);
     }
 
@@ -450,10 +428,6 @@ class GMDataTab extends TabBase {
             const result = await this.api.loadDataFile(kind, name);
             this._printOutput(result.output, result.ok);
             this.shell.toast(result.ok === false ? 'Load failed.' : `"${name}" loaded.`, result.ok === false ? 'error' : 'success');
-            // Applying a charlist/musiclist changes the live hub -- refresh
-            // the live editors so they mirror what was just loaded.
-            if (kind === 'charlists') this._loadCharlistEditor();
-            if (kind === 'musiclists') this._loadMusicEditor();
         } catch (e) {
             this.shell.toast(`Failed to load ${label.toLowerCase()}: ` + e.message, 'error');
         }
@@ -480,95 +454,6 @@ class GMDataTab extends TabBase {
             await this._loadDataFiles(kind);
         } catch (e) {
             this.shell.toast(`Failed to upload ${label.toLowerCase()}: ` + e.message, 'error');
-        }
-    }
-
-    // --- Music list editor (live hub musiclist) -------------------------
-
-    async _loadMusicEditor() {
-        try {
-            const data = await this.api.getMusic();
-            this._musicRefLabel.textContent = data.music_ref
-                ? `Current hub musiclist file: ${data.music_ref}`
-                : 'Current hub musiclist: (unsaved / live list)';
-            this._musicEditor.value = data.content || '';
-        } catch (e) {
-            this._musicRefLabel.textContent = 'Failed to load current musiclist: ' + e.message;
-        }
-    }
-
-    async _musicSaveAs() {
-        const check = validateDataName(this._musicNameInput.value);
-        if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
-        const name = check.name;
-        const box = this._kindBoxes.musiclists;
-        const exists = box && box.files.some((f) => f.name === name);
-        if (exists && !confirm(`Overwrite existing music list "${name}"?`)) return;
-        try {
-            await this.api.putDataFile('musiclists', name, this._musicEditor.value);
-            this.shell.toast(`Music list saved as "${name}".`, 'success');
-            await this._loadDataFiles('musiclists');
-        } catch (e) {
-            this.shell.toast('Failed to save music list: ' + e.message, 'error');
-        }
-    }
-
-    async _musicApply() {
-        const check = validateDataName(this._musicNameInput.value);
-        if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
-        const name = check.name;
-        if (!confirm(`Apply music list "${name}" to the current hub now?`)) return;
-        try {
-            const result = await this.api.applyMusic(name);
-            this._printOutput(result.output, result.ok);
-            this.shell.toast(`Music list "${name}" applied.`, result.ok === false ? 'error' : 'success');
-            await this._loadMusicEditor();
-        } catch (e) {
-            this.shell.toast('Failed to apply music list: ' + e.message, 'error');
-        }
-    }
-
-    // --- Character list editor (live hub roster) -------------------------
-
-    async _loadCharlistEditor() {
-        try {
-            const data = await this.api.getCharlist();
-            this._charlistOriginal = data.characters || [];
-            this._charlistEditor.value = this._charlistOriginal.join('\n');
-        } catch (e) {
-            this.shell.toast('Failed to load character list: ' + e.message, 'error');
-        }
-    }
-
-    _charlistRevert() {
-        this._charlistEditor.value = this._charlistOriginal.join('\n');
-        this._charlistSaveAsInput.value = '';
-        this.shell.toast('Character list edits reverted.', 'info');
-    }
-
-    async _charlistSubmit() {
-        const characters = this._charlistEditor.value
-            .split('\n')
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0);
-        if (!characters.length) { this.shell.toast('Character list cannot be empty.', 'error'); return; }
-        if (!confirm('Apply this character list to the hub now? This changes what everyone can select as a character.')) return;
-        const rawSaveAs = this._charlistSaveAsInput.value.trim();
-        let saveAs = '';
-        if (rawSaveAs) {
-            const check = validateDataName(rawSaveAs);
-            if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
-            saveAs = check.name;
-        }
-        try {
-            const result = await this.api.submitCharlist(characters, saveAs || undefined);
-            this._printOutput(result.output, result.ok);
-            this.shell.toast('Character list applied to the hub.', result.ok === false ? 'error' : 'success');
-            this._charlistSaveAsInput.value = '';
-            await this._loadCharlistEditor();
-            if (saveAs) await this._loadDataFiles('charlists');
-        } catch (e) {
-            this.shell.toast('Failed to submit character list: ' + e.message, 'error');
         }
     }
 }

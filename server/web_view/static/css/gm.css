@@ -248,7 +248,23 @@ body {
 .area-popover-sub { font-size: 0.74rem; color: var(--gm-warn); margin-bottom: 0.5rem; }
 .area-popover-roster { list-style: none; display: flex; flex-direction: column; gap: 0.2rem; margin-bottom: 0.6rem; font-size: 0.8rem; }
 .area-popover-bg label { font-size: 0.74rem; color: var(--gm-text-dim); display: block; margin-bottom: 0.25rem; }
-.area-popover-close { margin-top: 0.6rem; width: 100%; }
+/* Sticky header row: the title + X close button pin to the top of the
+ * frame while the popover body scrolls beneath them. Negative offsets
+ * pull the head flush against the popover's padding/border so the X sits
+ * in the top-right corner of the frame itself. */
+.gm-inspector-head {
+    position: sticky; top: -0.7rem; z-index: 2;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 0.4rem;
+    margin: -0.7rem -0.8rem 0.2rem; padding: 0.7rem 0.8rem 0.15rem;
+    background: var(--gm-panel);
+}
+.gm-inspector-head .area-popover-title { margin-bottom: 0; }
+.gm-inspector-close {
+    flex: none; background: transparent; border: none; cursor: pointer;
+    color: var(--gm-text-dim); font-size: 1.05rem; line-height: 1;
+    padding: 0.15rem 0.25rem; border-radius: 4px;
+}
+.gm-inspector-close:hover { color: var(--gm-danger); background: rgba(239,75,95,0.12); }
 
 /* --- Demos --- */
 .gm-script-editor {
@@ -260,6 +276,32 @@ body {
 .gm-script-editor:focus { border-color: var(--gm-accent); }
 .gm-script-editor[readonly] { opacity: 0.7; }
 .gm-warnings-box { font-size: 0.76rem; color: var(--gm-warn); background: rgba(224,197,64,0.08); padding: 0.4rem 0.5rem; border-radius: 4px; }
+.gm-evidence-props {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 0.8rem;
+    background: var(--gm-panel-alt); border: 1px solid var(--gm-border); border-radius: 6px;
+    padding: 0.5rem 0.6rem;
+}
+.gm-evidence-prop {
+    display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--gm-text-dim);
+}
+.gm-evidence-prop code { color: var(--gm-accent2); font-size: 0.72rem; }
+.gm-evidence-prop select {
+    background: var(--gm-panel); color: var(--gm-text); border: 1px solid var(--gm-border);
+    padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.78rem;
+}
+.gm-evidence-prop input[type="checkbox"] { accent-color: var(--gm-accent); }
+.gm-evidence-prop-pos { grid-column: 1 / -1; }
+.gm-evidence-prop-pos input[type="text"] {
+    flex: 1; min-width: 120px; background: var(--gm-panel); color: var(--gm-text);
+    border: 1px solid var(--gm-border); border-radius: 4px;
+    padding: 0.28rem 0.5rem; font-size: 0.78rem;
+}
+.gm-evidence-prop-triggers { grid-column: 1 / -1; flex-direction: column; align-items: stretch; gap: 0.3rem; }
+.gm-evidence-prop-triggers textarea {
+    width: 100%; background: var(--gm-panel); color: var(--gm-text);
+    border: 1px solid var(--gm-border); border-radius: 4px;
+    padding: 0.35rem 0.5rem; font-family: monospace; font-size: 0.78rem; resize: vertical; min-height: 44px;
+}
 .gm-warn-dot {
     display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--gm-warn);
     color: #1a1206; text-align: center; line-height: 14px; font-size: 0.68rem; font-weight: 900; cursor: help;
