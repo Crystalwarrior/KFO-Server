@@ -18,6 +18,15 @@ const GM_DATA_KIND_LABELS = {
     musiclists: 'Music list',
 };
 
+/** kind -> tooltip for the row "Load" button (see GMDataTab._loadDataFile
+ * for the per-kind command each one dispatches). */
+const GM_DATA_KIND_LOAD_HINTS = {
+    evidence: 'Load this evidence pack into your current area',
+    character_data: 'Load this character data into the hub',
+    charlists: 'Apply this character list to the hub',
+    musiclists: 'Apply this music list to the hub',
+};
+
 /** Matches the backend's single-segment name regex exactly (gm_panel.py's
  * HubDataRoutes) -- 1-64 letters/digits/spaces/underscore/hyphen. */
 const GM_DATA_SEGMENT_RE = /^[A-Za-z0-9 _-]{1,64}$/;
@@ -72,6 +81,13 @@ class GMDataTab extends TabBase {
 
         this._hubLabel = root.querySelector('#dataHubLabel');
         this._outputEl = root.querySelector('#dataOutput');
+
+        // --- Subtab navigation (Hub Saves / Files / Live Editors) ---
+        this._subtabButtons = Array.from(root.querySelectorAll('.gm-subtab[data-subtab]'));
+        this._subtabBodies = Array.from(root.querySelectorAll('.gm-data-subtab[data-subtab]'));
+        this._subtabButtons.forEach((btn) => {
+            btn.addEventListener('click', () => this._setSubtab(btn.dataset.subtab));
+        });
 
         // --- Hub layout (save_hub / load_hub) ---
         this._hubSaveNameInput = root.querySelector('#hubSaveNameInput');
@@ -176,6 +192,10 @@ class GMDataTab extends TabBase {
     async activate() {
         super.activate();
         this._renderHubHeading();
+        // Restore the previously-active subtab (defaults to "hub"); the
+        // per-subtab data is refreshed by reloadAll() right after, so skip
+        // the extra reload here.
+        this._setSubtab(this._storedSubtab(), { skipReload: true });
         await this.reloadAll();
     }
 
@@ -192,6 +212,36 @@ class GMDataTab extends TabBase {
     _renderHubHeading() {
         const gm = this.shell.gmIdentity;
         this._hubLabel.textContent = gm ? `Hub ${gm.hub_id}: ${gm.hub_name}` : 'Hub Data';
+    }
+
+    /** Last-selected subtab name, persisted so a GM's choice survives a
+     * reload; anything unexpected falls back to the default "hub". */
+    _storedSubtab() {
+        try {
+            return localStorage.getItem('gmDataTab.subtab') || 'hub';
+        } catch (e) {
+            return 'hub';
+        }
+    }
+
+    /** Switches the active Hub Data subtab (see the nav bar in gm.html) and
+     * refreshes just that subtab's data -- the Output console sits below
+     * the subtab bodies and is shared across all of them. */
+    _setSubtab(name, opts) {
+        opts = opts || {};
+        if (!this._subtabBodies.some((el) => el.dataset.subtab === name)) name = 'hub';
+        this._subtabButtons.forEach((b) => b.classList.toggle('active', b.dataset.subtab === name));
+        this._subtabBodies.forEach((el) => el.classList.toggle('hidden', el.dataset.subtab !== name));
+        try { localStorage.setItem('gmDataTab.subtab', name); } catch (e) { /* best effort */ }
+        if (opts.skipReload) return;
+        if (name === 'hub') {
+            this._loadHubSaves();
+        } else if (name === 'files') {
+            ['evidence', 'character_data', 'charlists', 'musiclists'].forEach((k) => this._loadDataFiles(k));
+        } else if (name === 'editors') {
+            this._loadMusicEditor();
+            this._loadCharlistEditor();
+        }
     }
 
     async reloadAll() {
@@ -356,14 +406,19 @@ class GMDataTab extends TabBase {
         box.tbody.innerHTML = box.files.map((f) => `
             <tr>
                 <td>${esc(f.name)}${f.read_only ? ' <span class="badge readonly">read-only</span>' : ''}</td>
-                <td><button class="btn-sm" data-action="download" data-name="${esc(f.name)}">Download</button></td>
+                <td class="gm-data-file-actions">
+                    <button class="btn-sm" data-action="load" data-name="${esc(f.name)}" title="${esc(GM_DATA_KIND_LOAD_HINTS[kind] || 'Apply this file to the hub')}">Load</button>
+                    <button class="btn-sm" data-action="download" data-name="${esc(f.name)}">Download</button>
+                </td>
             </tr>`).join('');
     }
 
     _onFileTableClick(e, kind) {
-        const btn = e.target.closest('button[data-action="download"]');
+        const btn = e.target.closest('button[data-action]');
         if (!btn) return;
-        this._downloadDataFile(kind, btn.dataset.name);
+        const name = btn.dataset.name;
+        if (btn.dataset.action === 'load') this._loadDataFile(kind, name);
+        else if (btn.dataset.action === 'download') this._downloadDataFile(kind, name);
     }
 
     async _downloadDataFile(kind, name) {
@@ -372,6 +427,35 @@ class GMDataTab extends TabBase {
             this.api.downloadText(`${name.replace(/\//g, '_')}.yaml`, file.content || '');
         } catch (e) {
             this.shell.toast('Failed to download: ' + e.message, 'error');
+        }
+    }
+
+    /** "Load" in the Files subtab: apply a saved yaml file to the live hub.
+     * Backed by POST /api/gm/data/{kind}/load, which routes through the
+     * real command layer (`/charlist`, `/hub_musiclist`,
+     * `/load_character_data`, `/evidence_load`) with its own gates -- see
+     * the backend handler's docstring. Charlists are applied under their
+     * lowercased name to match `load_characters`'s own case rule. */
+    async _loadDataFile(kind, name) {
+        const label = GM_DATA_KIND_LABELS[kind] || 'File';
+        const hints = {
+            evidence: 'into your current area',
+            character_data: 'into the hub',
+            charlists: 'to the hub',
+            musiclists: 'to the hub',
+        };
+        const where = hints[kind] || '';
+        if (!confirm(`Load ${label.toLowerCase()} "${name}" ${where} now?`)) return;
+        try {
+            const result = await this.api.loadDataFile(kind, name);
+            this._printOutput(result.output, result.ok);
+            this.shell.toast(result.ok === false ? 'Load failed.' : `"${name}" loaded.`, result.ok === false ? 'error' : 'success');
+            // Applying a charlist/musiclist changes the live hub -- refresh
+            // the live editors so they mirror what was just loaded.
+            if (kind === 'charlists') this._loadCharlistEditor();
+            if (kind === 'musiclists') this._loadMusicEditor();
+        } catch (e) {
+            this.shell.toast(`Failed to load ${label.toLowerCase()}: ` + e.message, 'error');
         }
     }
 

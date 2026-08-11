@@ -1378,7 +1378,8 @@ class GraphRenderer {
             else if (isCm) chipClasses.push('gr-chip-cm');
             const chipG = grEl('g', { class: chipClasses.join(' ') });
 
-            const color = (this._localContent && typeof this._localContent.getClientColor === 'function')
+            const hasLocalContent = !!(this._localContent && typeof this._localContent.getClientColor === 'function');
+            const color = hasLocalContent
                 ? (this._localContent.getClientColor(colorKey) || '#5a6280')
                 : '#5a6280';
             // Fallback colored dot -- always drawn first so it shows
@@ -1394,7 +1395,15 @@ class GraphRenderer {
 
             if (isGm || isCm) {
                 const ring = grEl('circle', { r: r + 1.5, cx, cy, class: 'gr-chip-ring', fill: 'none' });
-                ring.style.stroke = isGm ? 'var(--gm-accent)' : 'var(--gm-accent2)';
+                // The ring is the chip's "border": it follows the
+                // per-character color (same GMLocalContent store the Clients
+                // tab's color picker writes to, keyed by character folder),
+                // so a color a GM sets on one tab shows as the marker's
+                // border here too. The accent colors remain only as the
+                // no-localContent fallback (keeping the GM/CM signal there);
+                // with GMLocalContent present, staff is still marked by the
+                // ring itself being present at all.
+                ring.style.stroke = hasLocalContent ? color : (isGm ? 'var(--gm-accent)' : 'var(--gm-accent2)');
                 ring.style.strokeWidth = '1.2';
                 chipG.appendChild(ring);
             }

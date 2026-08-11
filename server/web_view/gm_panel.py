@@ -1976,7 +1976,17 @@ class AreaRoutes:
 
 
 class ClientRoutes:
-    """Clients tab: roster + GM promote/demote."""
+    """
+    Clients tab: roster, GM promote/demote, and per-player management
+    actions (private message, teleport).
+
+    Every management action below dispatches through the real command
+    layer via `execute_command` -- `/pm` (messaging.py) and `/area_kick`
+    (areas.py, `@mod_only(area_owners=True)`, which a hub-owner passes via
+    `Area.owners = area_manager.owners | _owners` and a mod passes via
+    `is_mod`) -- so the exact same permission checks and side effects run
+    as if the GM had typed the command in their AO client.
+    """
 
     def __init__(self, session_manager, server):
         self._session_manager = session_manager
@@ -2007,6 +2017,67 @@ class ClientRoutes:
         client_id = request.match_info["client_id"]
         try:
             output = session.execute_command("ungm", client_id)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        return _command_response(output)
+
+    async def handle_pm(self, request):
+        session = request["gm_session"]
+        client_id = request.match_info["client_id"]
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        message = str(data.get("message", ""))
+        if not message.strip():
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Message must not be empty."]}, status=400
+            )
+        # `/pm <id> <message>` -- the id is scoped to the GM's current hub
+        # by `get_targets`'s default (non-`all_hub`) search, matching the
+        # roster this tab displays.
+        try:
+            output = session.execute_command("pm", f"{client_id} {message}")
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        return _command_response(output)
+
+    async def handle_teleport_to_area(self, request):
+        session = request["gm_session"]
+        client_id = request.match_info["client_id"]
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        try:
+            area_id = int(data.get("area_id"))
+        except (TypeError, ValueError):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] 'area_id' must be an area id."]}, status=400
+            )
+        # `/area_kick <id> <destination> [target_pos]` -- the command's own
+        # gate (`@mod_only(area_owners=True)`) and its "can't kick to an
+        # area you don't own as a CM" check both apply as if the GM had
+        # typed it, and the destination id resolves against the GM's hub.
+        pos = str(data.get("pos", "") or "")
+        arg = f"{client_id} {area_id} {pos}".rstrip()
+        try:
+            output = session.execute_command("area_kick", arg)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        return _command_response(output)
+
+    async def handle_teleport_here(self, request):
+        session = request["gm_session"]
+        client_id = request.match_info["client_id"]
+        try:
+            # `/area_kick <id>` with no destination defaults the target to
+            # the GM's own current area -- i.e. "teleport to me"/arrive.
+            output = session.execute_command("area_kick", str(client_id))
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         return _command_response(output)
@@ -2478,6 +2549,73 @@ class HubDataRoutes:
         except OSError as ex:
             return web.json_response({"ok": False, "error": f"write_failed: {ex}"}, status=500)
         return web.json_response({"ok": True, "kind": kind, "name": name})
+
+    # -- A4: generic per-kind "load into the hub" --------------------------
+
+    async def handle_data_file_load(self, request):
+        """
+        POST /api/gm/data/{kind}/load -- apply a saved yaml file to the
+        live hub, per kind (the "Load" button beside every "Download" in
+        the Files subtab):
+
+        - `charlists` -> `/charlist <name>` (`AreaManager.load_characters`
+          LOWERCASES its argument, so the name is lowercased here first --
+          otherwise a mixed-case name this browser lists could never be
+          found again on a case-sensitive filesystem).
+        - `musiclists` -> `/hub_musiclist <name>` (sets the HUB's music
+          list, unlike `/musiclist` which only touches the client's).
+        - `character_data` -> `/load_character_data <name>`.
+        - `evidence` -> `/evidence_load <name>` into the GM's current area
+          (same semantics as the Evidence tab's Load-pack button;
+          `/evidence_overlay` when `overlay` is true).
+
+        Existence is re-checked via `_resolve_existing_data_path` (after
+        any lowercasing) so a GM gets a clear message instead of a bare
+        command error. Every command body still runs through the real
+        command layer with its own `@mod_only(...)` gate, and this route
+        re-checks `_hub_data_gate_ok` on top of that.
+        """
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        kind = request.match_info.get("kind", "")
+        if kind not in ("evidence", "character_data", "charlists", "musiclists"):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] This yaml kind cannot be loaded."]}, status=400
+            )
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        name = str(data.get("name", "")).strip()
+        if kind == "charlists":
+            # `load_characters` resolves against the lowercased name.
+            name = name.lower()
+        if _split_data_name(name) is None:
+            return web.json_response({"ok": False, "output": ["[ERROR] Invalid file name."]}, status=400)
+        if _resolve_existing_data_path(kind, name) is None:
+            return web.json_response(
+                {
+                    "ok": False,
+                    "output": [f"[ERROR] No file named '{name}' exists for yaml kind '{kind}'."],
+                },
+                status=404,
+            )
+        try:
+            if kind == "charlists":
+                output = session.execute_command("charlist", name)
+            elif kind == "musiclists":
+                output = session.execute_command("hub_musiclist", name)
+            elif kind == "character_data":
+                output = session.execute_command("load_character_data", name)
+            else:  # evidence
+                cmd = "evidence_overlay" if bool(data.get("overlay", False)) else "evidence_load"
+                output = session.execute_command(cmd, derelative(name))
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        return _command_response(output)
 
     # -- A5: charlist editor -------------------------------------------------
 
@@ -3091,6 +3229,16 @@ class GMPanelApp:
         app.router.add_post(
             "/api/gm/clients/{client_id}/ungm", require(client_routes.handle_demote)
         )
+        app.router.add_post(
+            "/api/gm/clients/{client_id}/pm", require(client_routes.handle_pm)
+        )
+        app.router.add_post(
+            "/api/gm/clients/{client_id}/area", require(client_routes.handle_teleport_to_area)
+        )
+        app.router.add_post(
+            "/api/gm/clients/{client_id}/teleport_here",
+            require(client_routes.handle_teleport_here),
+        )
 
         # Commands tab
         app.router.add_get("/api/gm/commands", require(command_routes.handle_list_commands))
@@ -3145,12 +3293,9 @@ class GMPanelApp:
         app.router.add_get(
             "/api/gm/data/{kind}/files", require(hub_data_routes.handle_data_files)
         )
-        app.router.add_get(
-            "/api/gm/data/{kind}/file", require(hub_data_routes.handle_data_file_get)
-        )
-        app.router.add_put(
-            "/api/gm/data/{kind}/file", require(hub_data_routes.handle_data_file_put)
-        )
+        app.router.add_get("/api/gm/data/{kind}/file", require(hub_data_routes.handle_data_file_get))
+        app.router.add_put("/api/gm/data/{kind}/file", require(hub_data_routes.handle_data_file_put))
+        app.router.add_post("/api/gm/data/{kind}/load", require(hub_data_routes.handle_data_file_load))
 
         app.router.add_get("/api/gm/charlist", require(hub_data_routes.handle_charlist_get))
         app.router.add_post(

@@ -104,6 +104,11 @@ class ApiClient {
     getClients() { return this.get('/api/gm/clients'); }
     promoteClient(clientId) { return this.post(`/api/gm/clients/${clientId}/gm`); }
     demoteClient(clientId) { return this.post(`/api/gm/clients/${clientId}/ungm`); }
+    pmClient(clientId, message) { return this.post(`/api/gm/clients/${clientId}/pm`, { message }); }
+    teleportClientToArea(clientId, areaId, pos) {
+        return this.post(`/api/gm/clients/${clientId}/area`, { area_id: areaId, pos: pos || '' });
+    }
+    teleportClientHere(clientId) { return this.post(`/api/gm/clients/${clientId}/teleport_here`); }
 
     // --- Commands tab (§3.4) ----------------------------------------------
     // GET /api/gm/commands returns { ok, docs_url, groups: [{ module,
@@ -184,6 +189,9 @@ class ApiClient {
     }
     putDataFile(kind, name, content) {
         return this.put(`/api/gm/data/${encodeURIComponent(kind)}/file`, { name, content });
+    }
+    loadDataFile(kind, name) {
+        return this.post(`/api/gm/data/${encodeURIComponent(kind)}/load`, { name });
     }
 
     // Live hub character list (distinct from the saved-file browser above,

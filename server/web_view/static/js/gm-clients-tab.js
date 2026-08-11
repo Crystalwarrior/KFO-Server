@@ -27,6 +27,9 @@ class ClientsTab extends TabBase {
         // (pos_lock has exactly 1 entry => everyone present is necessarily
         // there) -- see _loadPosLockCounts()/_rowHtml() below.
         this._posLockCountByArea = {};
+        // The full areas payload (fetched alongside the pos_lock counts) so
+        // the "Send to…" action can offer a live area picker.
+        this._areas = [];
         this._hubLabel = root.querySelector('#clientsHubLabel');
         this._countEl = root.querySelector('#clientsCount');
         this._tbody = root.querySelector('#clientsTbody');
@@ -34,6 +37,8 @@ class ClientsTab extends TabBase {
         root.querySelector('#clientsRefreshBtn').addEventListener('click', () => this.reload());
         this._tbody.addEventListener('click', (e) => this._onTableClick(e));
         this._tbody.addEventListener('change', (e) => this._onTableChange(e));
+
+        this._buildMoveModal();
     }
 
     /** Late-inject local content resolution (mirrors AreasGraphTab). */
@@ -84,12 +89,14 @@ class ClientsTab extends TabBase {
     async _loadPosLockCounts() {
         try {
             const areasData = await this.api.getAreas();
+            this._areas = areasData.areas || [];
             const map = {};
-            (areasData.areas || []).forEach((a) => {
+            this._areas.forEach((a) => {
                 map[a.id] = Array.isArray(a.pos_lock) ? a.pos_lock.length : 0;
             });
             this._posLockCountByArea = map;
         } catch (e) {
+            this._areas = [];
             this._posLockCountByArea = {};
         }
     }
@@ -127,9 +134,16 @@ class ClientsTab extends TabBase {
             c.hidden ? '<span class="badge hidden">HIDDEN</span>' : '',
         ].filter(Boolean).join(' ');
 
-        const actionBtn = c.is_hub_gm
-            ? `<button class="btn-sm danger" data-action="ungm" data-id="${c.id}">Demote</button>`
-            : `<button class="btn-sm" data-action="gm" data-id="${c.id}" ${c.is_mod ? 'disabled title="Already staff"' : ''}>Promote to GM</button>`;
+        const actionBtns = [];
+        if (c.is_hub_gm) {
+            actionBtns.push(`<button class="btn-sm danger" data-action="ungm" data-id="${c.id}" title="Remove from hub GM roster">Demote</button>`);
+        } else {
+            actionBtns.push(`<button class="btn-sm" data-action="gm" data-id="${c.id}" ${c.is_mod ? 'disabled title="Already staff"' : ''} title="Add to hub GM roster">Promote to GM</button>`);
+        }
+        actionBtns.push(`<button class="btn-sm" data-action="pm" data-id="${c.id}" title="Private message this player">PM</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="teleport-here" data-id="${c.id}" title="Move this player to your current area">Bring here</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="teleport-area" data-id="${c.id}" title="Move this player to a chosen area">Send to…</button>`);
+        const actionBtn = `<span class="gm-client-actions">${actionBtns.join('')}</span>`;
 
         const folder = this._folderKey(c);
         const color = this._localContent ? this._localContent.getClientColor(folder) : null;
@@ -189,6 +203,11 @@ class ClientsTab extends TabBase {
         if (iconBtn) { this._promptIconOverride(iconBtn.dataset.id); return; }
         const btn = e.target.closest('button[data-action]');
         if (!btn || btn.disabled) return;
+        if (btn.dataset.action === 'teleport-area') {
+            const client = this._clients.find((c) => String(c.id) === String(btn.dataset.id));
+            if (client) this._openMoveModal(client);
+            return;
+        }
         this._runAction(btn.dataset.action, btn.dataset.id);
     }
 
@@ -224,14 +243,104 @@ class ClientsTab extends TabBase {
         input.click();
     }
 
-    async _runAction(action, id) {
+    async _runAction(action, id, opts) {
+        opts = opts || {};
+        const client = this._clients.find((c) => String(c.id) === String(id));
+        const label = client ? (client.showname || client.name || `#${client.id}`) : `#${id}`;
         try {
-            const result = action === 'gm' ? await this.api.promoteClient(id) : await this.api.demoteClient(id);
+            let result;
+            if (action === 'pm') {
+                const message = window.prompt(`Private message to ${label} (sent as you via /pm):`, '');
+                if (message === null || !message.trim()) return;
+                result = await this.api.pmClient(id, message.trim());
+            } else if (action === 'teleport-here') {
+                if (!window.confirm(`Move ${label} to your current area?`)) return;
+                result = await this.api.teleportClientHere(id);
+            } else if (action === 'teleport-area') {
+                result = await this.api.teleportClientToArea(id, opts.area_id, opts.pos || '');
+            } else if (action === 'ungm') {
+                if (!window.confirm(`Demote ${label} from GM?`)) return;
+                result = await this.api.demoteClient(id);
+            } else { // 'gm'
+                result = await this.api.promoteClient(id);
+            }
             const text = (result.output || []).join(' ') || (result.ok ? 'Done.' : 'Command failed.');
             this.shell.toast(text, result.ok ? 'success' : 'error');
             await this.reload();
         } catch (e) {
             this.shell.toast('Failed: ' + e.message, 'error');
         }
+    }
+
+    // --- "Send to…" (teleport to area) modal -------------------------------
+
+    _buildMoveModal() {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'gm-modal-backdrop hidden';
+        backdrop.id = 'clientsMoveModal';
+        backdrop.innerHTML = `
+            <div class="gm-modal">
+                <div class="gm-modal-header">
+                    <h3>Teleport Player</h3>
+                    <button type="button" class="btn-sm" data-action="close">Close</button>
+                </div>
+                <div class="gm-modal-body">
+                    <p class="dim" id="clientsMoveTargetLabel"></p>
+                    <div class="gm-inline-form">
+                        <span class="dim">To area:</span>
+                        <select id="clientsMoveAreaSelect"></select>
+                    </div>
+                    <div class="gm-inline-form">
+                        <span class="dim">Position (optional):</span>
+                        <input type="text" id="clientsMovePosInput" placeholder="e.g. wit / def / pro">
+                    </div>
+                    <div class="gm-toolbar">
+                        <button class="btn-sm" id="clientsMoveConfirmBtn">Teleport</button>
+                        <button class="btn-sm" data-action="close">Cancel</button>
+                    </div>
+                </div>
+            </div>`;
+        this.root.appendChild(backdrop);
+
+        this._moveModal = backdrop;
+        this._moveTarget = null;
+        this._moveTargetLabel = backdrop.querySelector('#clientsMoveTargetLabel');
+        this._moveAreaSelect = backdrop.querySelector('#clientsMoveAreaSelect');
+        this._movePosInput = backdrop.querySelector('#clientsMovePosInput');
+
+        backdrop.querySelectorAll('[data-action="close"]').forEach((b) =>
+            b.addEventListener('click', () => this._closeMoveModal()));
+        backdrop.querySelector('#clientsMoveConfirmBtn').addEventListener('click', () => this._confirmMove());
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) this._closeMoveModal(); });
+    }
+
+    _openMoveModal(client) {
+        if (!this._areas.length) {
+            this.shell.toast('Area list is not loaded yet; try again in a moment.', 'error');
+            return;
+        }
+        this._moveTarget = client;
+        this._moveTargetLabel.textContent =
+            `Move ${client.showname || client.name || ('#' + client.id)} (#${client.id}) to another area.`;
+        this._moveAreaSelect.innerHTML = this._areas
+            .map((a) => `<option value="${a.id}">A${a.id}: ${esc(a.name)}</option>`)
+            .join('');
+        this._movePosInput.value = '';
+        this._moveModal.classList.remove('hidden');
+    }
+
+    _closeMoveModal() {
+        this._moveModal.classList.add('hidden');
+        this._moveTarget = null;
+    }
+
+    async _confirmMove() {
+        const client = this._moveTarget;
+        if (!client) return;
+        const areaId = this._moveAreaSelect.value;
+        const pos = this._movePosInput.value.trim();
+        this._closeMoveModal();
+        if (areaId === '') return;
+        await this._runAction('teleport-area', client.id, { area_id: areaId, pos });
     }
 }

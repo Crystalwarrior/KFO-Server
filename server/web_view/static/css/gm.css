@@ -1,6 +1,6 @@
 /* ============================================================
    GM Control Panel styles.
-   Visually distinct from admin.css (amber/teal vs. admin's red)
+   Visually distinct from admin.css (neutral white/teal vs. admin's red)
    but follows the same layout conventions: fixed-height flex
    shell, dark UI, sticky table headers, small pill buttons.
    ============================================================ */
@@ -12,8 +12,8 @@
     --gm-border: #2a2f42;
     --gm-text: #e7e8f2;
     --gm-text-dim: #8d92ab;
-    --gm-accent: #f2a93b;
-    --gm-accent-dark: #c8860e;
+    --gm-accent: #eef0f8;
+    --gm-accent-dark: #c6cbe0;
     --gm-accent2: #4fd1c5;
     --gm-danger: #ef4b5f;
     --gm-success: #35c17a;
@@ -113,12 +113,23 @@ body {
     padding: 0.4rem 0.6rem; border-bottom: 1px solid #1e2233; vertical-align: middle;
     max-width: 360px; word-break: break-word;
 }
-.gm-table tr:hover td { background: rgba(242,169,59,0.05); }
-.gm-table tr.selected td, .gm-table tr[class~="selected"] td { background: rgba(242,169,59,0.1); }
+.gm-table tr:hover td { background: rgba(238,240,248,0.05); }
+.gm-table tr.selected td, .gm-table tr[class~="selected"] td { background: rgba(238,240,248,0.1); }
 .gm-table tr[data-id] { cursor: pointer; }
 .gm-empty { text-align: center; padding: 1.4rem; color: #565b73; }
 .dim { color: var(--gm-text-dim); }
 .mono { font-family: 'Consolas', 'Fira Code', 'Courier New', monospace; }
+
+/* --- Clients tab row actions --- */
+.gm-client-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.gm-client-actions .btn-sm { padding: 0.22rem 0.5rem; font-size: 0.72rem; white-space: nowrap; }
+
+/* --- Clients tab "Send to…" modal --- */
+#clientsMoveModal .gm-modal { width: min(440px, 100%); }
+#clientsMoveAreaSelect {
+    background: var(--gm-panel-alt); color: var(--gm-text); border: 1px solid var(--gm-border);
+    padding: 0.32rem 0.5rem; border-radius: 4px; font-size: 0.82rem; flex: 1; min-width: 160px;
+}
 
 .gm-var-table { margin-top: 0.4rem; }
 
@@ -222,7 +233,7 @@ body {
 @keyframes gr-flash-join { 0% { stroke: var(--gm-success); stroke-width: 3; } 100% { stroke: var(--gm-border); stroke-width: 1.4; } }
 @keyframes gr-flash-leave { 0% { stroke: var(--gm-danger); stroke-width: 3; } 100% { stroke: var(--gm-border); stroke-width: 1.4; } }
 
-.gr-token-dot { fill: var(--gm-accent); stroke: #1a1206; stroke-width: 1.5; filter: drop-shadow(0 0 4px rgba(242,169,59,0.9)); }
+.gr-token-dot { fill: var(--gm-accent); stroke: #1a1206; stroke-width: 1.5; filter: drop-shadow(0 0 4px rgba(238,240,248,0.9)); }
 .gr-token-label { fill: var(--gm-text); font-size: 9px; font-weight: 700; }
 .gr-token { transition: opacity 0.25s ease; }
 .gr-token.gr-token-arrived { opacity: 0; }
@@ -329,14 +340,38 @@ body {
 .gm-lc-override-row span:nth-child(2) { flex: 1; word-break: break-word; }
 
 /* --- Hub Data tab --- */
-.gm-data-body { flex: 1; overflow-y: auto; padding-right: 0.2rem; }
+.gm-data-body {
+    flex: 1; min-height: 0; overflow-y: auto; padding-right: 0.2rem;
+    display: flex; flex-direction: column;
+}
+.gm-subtabs {
+    display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+    background: var(--gm-panel); border: 1px solid var(--gm-border); border-radius: 6px;
+    padding: 0.35rem 0.6rem;
+}
+.gm-subtab {
+    background: transparent; color: var(--gm-text-dim); border: 1px solid transparent;
+    padding: 0.32rem 0.85rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+}
+.gm-subtab:hover { color: var(--gm-text); background: var(--gm-panel-alt); }
+.gm-subtab.active { color: var(--gm-accent); border-color: var(--gm-border); background: var(--gm-panel-alt); }
+.gm-data-subtabs {
+    flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 0.6rem; min-height: 0;
+}
+.gm-data-output-box { flex: none; }
 .gm-data-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 0.7rem; align-items: start;
+    grid-auto-rows: 1fr;
+    gap: 0.7rem; align-items: stretch; flex: 1; min-height: 0;
 }
-.gm-data-grid > .gm-panel-box { overflow: visible; }
-.gm-data-hub-box, .gm-data-music-box, .gm-data-charlist-editor, .gm-data-output-box { grid-column: 1 / -1; }
-.gm-data-filelist { max-height: 200px; flex: none; }
+/* The Files subtab stays a strict 2x2 that fills the available height
+ * (auto-fit alone would fan the four boxes out into a single wide row). */
+.gm-data-body[data-subtab="files"] .gm-data-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gm-data-grid > .gm-panel-box { overflow: visible; min-height: 0; }
+.gm-data-hub-box { grid-column: 1 / -1; }
+.gm-data-filelist { flex: 1; min-height: 0; }
+.gm-data-file-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.gm-data-file-actions .btn-sm { padding: 0.22rem 0.5rem; font-size: 0.72rem; white-space: nowrap; }
 .gm-data-output-box .gm-output { min-height: 90px; max-height: 220px; }
 .badge.readonly { background: #333; color: var(--gm-warn); border: 1px solid #4a4a1f; }
 
@@ -344,7 +379,8 @@ body {
 @media (max-width: 900px) {
     .gm-split { flex-direction: column; overflow: auto; }
     .gm-split > .gm-panel-box { overflow: visible; }
-    .gm-data-grid { grid-template-columns: 1fr; }
+    .gm-data-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
+    .gm-data-body[data-subtab="files"] .gm-data-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
     .gm-header { padding: 0.5rem 0.7rem; }

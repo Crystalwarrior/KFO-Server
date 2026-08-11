@@ -27,6 +27,7 @@ class AreasGraphTab extends TabBase {
         this._hubData = null;
         this._thumbBaseUrl = '';
         this._selectedAreaId = null;
+        this._inspectorRefreshPending = false;
         // ITEM 2 (v6 brief): id -> full ClientSerializer record, refreshed
         // every reload() alongside the graph's folder map (see
         // _loadClientsData below) -- the inspector's occupant list needs
@@ -39,6 +40,20 @@ class AreasGraphTab extends TabBase {
 
         this._svg = root.querySelector('#areaGraph');
         this._popover = root.querySelector('#areaPopover');
+        // The inspector's poll-driven reload()/_refreshInspector() replaces
+        // the popover's innerHTML; if that fires while a GM is mid-typing in
+        // a link pos / evidence / field editor, the rebuild yanks the
+        // focused input out from under them and their in-progress edit
+        // vanishes. Defer the rebuild while an editor inside the popover
+        // has focus, and re-sync once focus leaves.
+        this._popover.addEventListener('focusout', () => {
+            if (!this._inspectorRefreshPending) return;
+            // Tab'ing between two editors inside the popover keeps the
+            // editing session alive -- only refresh once focus truly leaves.
+            if (this._editingPopover()) return;
+            this._inspectorRefreshPending = false;
+            if (this._selectedAreaId !== null) this._refreshInspector();
+        });
         this._hubLabel = root.querySelector('#areasHubLabel');
 
         this._injectStyles();
@@ -324,13 +339,31 @@ class AreasGraphTab extends TabBase {
 
     _closeInspector() {
         this._selectedAreaId = null;
+        this._inspectorRefreshPending = false;
         this._popover.classList.add('hidden');
         this._popover.classList.remove('gm-area-inspector');
         this._popover.innerHTML = '';
     }
 
+    /** Is the popover currently editing text? The 4s poll must not rebuild
+     * the inspector's DOM (wiping the focused input's value) while a GM is
+     * typing in it. Selects/checkboxes are committed on interaction and are
+     * *not* "editing" -- a rebuild after their `change` is expected. */
+    _editingPopover() {
+        const active = document.activeElement;
+        if (!active || !this._popover.contains(active)) return false;
+        if (active.tagName === 'TEXTAREA') return true;
+        if (active.tagName !== 'INPUT') return false;
+        const t = (active.type || 'text').toLowerCase();
+        return !['checkbox', 'radio', 'button', 'submit', 'range', 'color', 'hidden', 'file'].includes(t);
+    }
+
     async _refreshInspector() {
         if (this._selectedAreaId === null) return;
+        if (this._editingPopover()) {
+            this._inspectorRefreshPending = true;
+            return;
+        }
         let detail;
         try {
             const resp = await this.api.get(`/api/gm/areas/${this._selectedAreaId}/detail`);
@@ -454,7 +487,12 @@ class AreasGraphTab extends TabBase {
             const target = ((this._hubData && this._hubData.areas) || []).find((a) => a.id === l.target_id);
             const label = target ? `${esc(target.id)}: ${esc(target.name)}` : `#${esc(l.target_id)}`;
             const peekable = this._linkBool(l, 'peekable', 'can_peek');
-            const posVal = (l.pos !== undefined && l.pos !== null) ? l.pos : '';
+            // Backend link serialization exposes the pos as `target_pos`
+            // (see AreaSerializer.links_to_list in gm_panel.py) -- reading
+            // `l.pos` here would make the field always look empty, and the
+            // inspector's post-commit refresh would "forget" the value.
+            const posVal = (l.target_pos !== undefined && l.target_pos !== null) ? l.target_pos
+                : ((l.pos !== undefined && l.pos !== null) ? l.pos : '');
             // Evidence-restriction is a *list* of evidence ids on the wire
             // (POST .../links/set { prop: 'evidence', value: [...] }), not a
             // boolean -- a plain checkbox can't represent "restricted to
@@ -476,7 +514,7 @@ class AreasGraphTab extends TabBase {
                         <label><input type="checkbox" data-prop="peekable" ${peekable ? 'checked' : ''}> Peekable</label>
                     </div>
                     <div class="gm-link-pos-row">
-                        <label>Pos <input type="text" class="gm-link-pos-input" value="${esc(posVal)}" placeholder="(none)"></label>
+                        <label>Pos <input type="text" class="gm-link-pos-input" value="${esc(posVal)}" placeholder="(none)" title="Enter to apply; blank clears the pos"></label>
                     </div>
                     <div class="gm-link-pos-row gm-link-unlink-row">
                         <button class="btn-sm danger gm-link-remove-one" title="Remove only this area's link to the target (leaves the target's link back, if any, untouched)">Unlink one-way</button>
@@ -650,11 +688,24 @@ class AreasGraphTab extends TabBase {
             });
             const posInput = row.querySelector('.gm-link-pos-input');
             if (posInput) {
-                posInput.addEventListener('change', () => this._setLinkProp(area.id, targetId, 'pos', posInput.value));
+                // Commit only on Enter: the inspector is rebuilt by the 4s
+                // poll and WS events, and a `change` listener fires on blur
+                // (including when that rebuild yanks a focused input out of
+                // the DOM), silently committing half-typed text. Enter is
+                // the deliberate, visible commit point.
+                posInput.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    posInput.blur();
+                    this._setLinkProp(area.id, targetId, 'pos', posInput.value);
+                });
             }
             const evidenceInput = row.querySelector('.gm-link-evidence-input');
             if (evidenceInput) {
-                evidenceInput.addEventListener('change', () => {
+                evidenceInput.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    evidenceInput.blur();
                     const ids = evidenceInput.value.split(/[,\s]+/)
                         .map((s) => s.trim())
                         .filter((s) => s !== '')
