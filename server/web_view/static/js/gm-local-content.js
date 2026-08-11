@@ -104,8 +104,38 @@ class GMLocalContent {
         this._serverConfigPromise = null;
 
         this._resolveCache = new Map(); // "kind:name" -> Promise<string|null>
+        this._urlCheckCache = new Map(); // url -> Promise<boolean>, reachability of URL-sourced candidates
         this._colors = this._loadColors();
         this._initPromise = null;
+
+        // Other components (the area graph's per-character-folder icon
+        // cache, in particular -- see gm-graph.js) may keep their own
+        // resolved-URL cache on top of ours for render-loop performance.
+        // Without a change notification those caches would keep serving
+        // stale results after a per-item override is set/cleared here, so
+        // notify any subscriber whenever a resolution for `kind:name` (or,
+        // for base-source changes, everything) may have changed.
+        this._changeListeners = new Set();
+    }
+
+    /**
+     * Subscribe to resolution-invalidating changes (per-item override
+     * set/cleared, or a base-source change that invalidates everything).
+     * @param {(kind: ?string, name: ?string) => void} fn - called with
+     *   (kind, name) for a targeted invalidation, or (null, null) when
+     *   every cached resolution may have changed.
+     * @returns {() => void} unsubscribe function.
+     */
+    subscribe(fn) {
+        if (typeof fn !== 'function') return () => {};
+        this._changeListeners.add(fn);
+        return () => this._changeListeners.delete(fn);
+    }
+
+    _notifyChange(kind, name) {
+        for (const fn of this._changeListeners) {
+            try { fn(kind || null, name || null); } catch (e) { /* listener errors must not break resolution */ }
+        }
     }
 
     // --- lifecycle ------------------------------------------------------
@@ -161,6 +191,7 @@ class GMLocalContent {
         await this._store.set(GM_LC_HANDLE_STORE, 'baseDir', handle);
         localStorage.setItem('gmLocalContent.mode', 'folder');
         this._resolveCache.clear();
+        this._notifyChange(null, null);
         return this.getBaseInfo();
     }
 
@@ -171,6 +202,7 @@ class GMLocalContent {
         if (!this._dirHandle) throw new Error('No folder has been picked yet.');
         this._dirPermission = await this._dirHandle.requestPermission({ mode: 'read' });
         this._resolveCache.clear();
+        this._notifyChange(null, null);
         return this.getBaseInfo();
     }
 
@@ -181,6 +213,8 @@ class GMLocalContent {
         localStorage.setItem('gmLocalContent.baseUrl', trimmed);
         localStorage.setItem('gmLocalContent.mode', this._mode);
         this._resolveCache.clear();
+        this._urlCheckCache.clear();
+        this._notifyChange(null, null);
     }
 
     async clearBase() {
@@ -192,6 +226,8 @@ class GMLocalContent {
         localStorage.setItem('gmLocalContent.mode', 'none');
         try { await this._store.delete(GM_LC_HANDLE_STORE, 'baseDir'); } catch (e) { /* best effort */ }
         this._resolveCache.clear();
+        this._urlCheckCache.clear();
+        this._notifyChange(null, null);
     }
 
     /** Snapshot of the active base source, for the settings dialog and any
@@ -231,7 +267,7 @@ class GMLocalContent {
             const local = await this._resolveFromFolder(kind, name);
             if (local) return local;
         } else if (this._mode === 'url') {
-            const local = this._resolveFromUrl(this._baseUrl, kind, name);
+            const local = await this._resolveFromUrl(this._baseUrl, kind, name);
             if (local) return local;
         }
         return this._resolveFromServer(kind, name);
@@ -258,8 +294,17 @@ class GMLocalContent {
         }
         try {
             if (kind === 'background') {
+                // AO asset layout: a folder per background, one image per
+                // courtroom position -- witnessempty.png is the canonical
+                // preview frame. Try it (and its common alt extensions)
+                // first, then fall back to whatever image sorts first.
                 const dir = await this._walkDir(this._dirHandle, ['background', name]);
-                return dir ? await this._firstImageInDir(dir) : null;
+                if (!dir) return null;
+                for (const ext of ['png', 'webp', 'jpg']) {
+                    const direct = await this._fileUrl(dir, `witnessempty.${ext}`);
+                    if (direct) return direct;
+                }
+                return this._firstImageInDir(dir);
             }
             if (kind === 'char_icon') {
                 const dir = await this._walkDir(this._dirHandle, ['characters', name]);
@@ -324,15 +369,43 @@ class GMLocalContent {
         return this._fileUrl(dir, preferred || names[0]);
     }
 
-    _resolveFromUrl(base, kind, name) {
+    /** Builds the candidate URL for a (base, kind, name) triple. AO asset
+     * layout for backgrounds is a folder per background holding one image
+     * per courtroom position -- witnessempty.png is the canonical preview
+     * frame (background/<name>.png does not exist on a real AO base). */
+    _buildUrlCandidate(base, kind, name) {
         if (!base) return null;
-        if (kind === 'background') return `${base}/background/${encodeURIComponent(name)}.png`;
+        if (kind === 'background') return `${base}/background/${encodeURIComponent(name)}/witnessempty.png`;
         if (kind === 'char_icon') return `${base}/characters/${encodeURIComponent(name)}/char_icon.png`;
         if (kind === 'evidence') {
             const hasExt = /\.[a-z0-9]{2,5}$/i.test(name);
             return `${base}/evidence/${encodeURIComponent(name)}${hasExt ? '' : '.png'}`;
         }
         return null;
+    }
+
+    /** URL-sourced candidates (a base URL, or the server's asset_url) are
+     * only usable once confirmed reachable -- otherwise the graph/roster
+     * just shows a broken image. Verified via an Image() load; both
+     * successes and failures are cached in-memory for the session so we
+     * never re-probe the same URL. */
+    _verifyImageUrl(url) {
+        if (this._urlCheckCache.has(url)) return this._urlCheckCache.get(url);
+        const promise = new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+            img.src = url;
+        });
+        this._urlCheckCache.set(url, promise);
+        return promise;
+    }
+
+    async _resolveFromUrl(base, kind, name) {
+        const url = this._buildUrlCandidate(base, kind, name);
+        if (!url) return null;
+        const reachable = await this._verifyImageUrl(url);
+        return reachable ? url : null;
     }
 
     async _loadServerAssetUrl() {
@@ -364,12 +437,14 @@ class GMLocalContent {
             dataUrl, name: file.name || '', storedAt: Date.now(),
         });
         this._resolveCache.delete(`${kind}:${name}`);
+        this._notifyChange(kind, name);
         return dataUrl;
     }
 
     async clearOverride(kind, name) {
         await this._store.delete(GM_LC_OVERRIDE_STORE, `${kind}:${name}`);
         this._resolveCache.delete(`${kind}:${name}`);
+        this._notifyChange(kind, name);
     }
 
     async hasOverride(kind, name) {
@@ -423,10 +498,21 @@ class GMLocalContent {
         localStorage.setItem('gmLocalContent.colors', JSON.stringify(this._colors));
     }
 
-    /** @returns {?string} a CSS color, or null if none is set for `key`. */
+    /**
+     * @returns {?string} a CSS hex color, or null only when `key` itself is
+     *   falsy (nothing to key a color on). Once a key has any color -- user
+     *   set or derived -- this always returns the same value: a stable
+     *   pseudo-random color is derived from the key on first lookup and
+     *   persisted immediately, so every character has a color and it
+     *   survives reloads. A user-set color always wins over the derived one.
+     */
     getClientColor(key) {
         if (!key) return null;
-        return this._colors[key] || null;
+        if (this._colors[key]) return this._colors[key];
+        const derived = this._deriveColor(key);
+        this._colors[key] = derived;
+        this._saveColors();
+        return derived;
     }
 
     setClientColor(key, cssColor) {
@@ -434,6 +520,27 @@ class GMLocalContent {
         if (!cssColor) delete this._colors[key];
         else this._colors[key] = cssColor;
         this._saveColors();
+    }
+
+    /** Stable hash of `key` -> a pleasant hex color (fixed saturation/
+     * lightness, hue spread across the full wheel by the hash). Same key
+     * always derives the same color, independent of storage order. */
+    _deriveColor(key) {
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) {
+            hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+        }
+        const hue = hash % 360;
+        return this._hslToHex(hue, 65, 55);
+    }
+
+    _hslToHex(h, s, l) {
+        s /= 100; l /= 100;
+        const k = (n) => (n + h / 30) % 12;
+        const a = s * Math.min(l, 1 - l);
+        const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+        const toHex = (n) => Math.round(f(n) * 255).toString(16).padStart(2, '0');
+        return `#${toHex(0)}${toHex(8)}${toHex(4)}`;
     }
 }
 

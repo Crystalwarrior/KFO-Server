@@ -163,6 +163,51 @@ class ApiClient {
         return this.post('/api/gm/evidence_packs/save', { area_id: areaId, name });
     }
 
+    // --- Hub Data tab: hub save/load + generic yaml file API ------------
+    // Backs the "Hub Data" tab's import/export of every GM-facing yaml
+    // kind: hub layouts, evidence packs, character data, music lists and
+    // character lists. `kind` is one of the five literals the backend
+    // accepts: 'hubs' | 'evidence' | 'character_data' | 'musiclists' | 'charlists'.
+
+    getHubSaves() { return this.get('/api/gm/hub/saves'); }
+    saveHub(name) { return this.post('/api/gm/hub/save', { name }); }
+    loadHub(name) { return this.post('/api/gm/hub/load', { name }); }
+
+    getDataFiles(kind) { return this.get(`/api/gm/data/${encodeURIComponent(kind)}/files`); }
+    getDataFile(kind, name) {
+        return this.get(`/api/gm/data/${encodeURIComponent(kind)}/file?name=${encodeURIComponent(name)}`);
+    }
+    putDataFile(kind, name, content) {
+        return this.put(`/api/gm/data/${encodeURIComponent(kind)}/file`, { name, content });
+    }
+
+    // Live hub character list (distinct from the saved-file browser above,
+    // which is /api/gm/charlists -- this is the editable current roster).
+    getCharlist() { return this.get('/api/gm/charlist'); }
+    submitCharlist(characters, saveAs) {
+        const body = { characters };
+        if (saveAs) body.save_as = saveAs;
+        return this.post('/api/gm/charlist/submit', body);
+    }
+
+    // Live hub musiclist (yaml text of the current music_ref, editable).
+    getMusic() { return this.get('/api/gm/music'); }
+    applyMusic(name) { return this.post('/api/gm/music/apply', { name }); }
+
+    /** Trigger a browser download of `text` as `filename` -- no server
+     * round-trip beyond the GET that already fetched the content. */
+    downloadText(filename, text) {
+        const blob = new Blob([text], { type: 'text/yaml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     // --- Local content fallback (§A6) ---------------------------------------
 
     /** Server-side asset resolution config, used by GMLocalContent as a

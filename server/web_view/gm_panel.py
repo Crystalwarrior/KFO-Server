@@ -23,7 +23,8 @@ module-global style of `admin_panel.py`:
     GMSession         -- one GM's bound web session
     *Serializer       -- field-level whitelisting, one per object type
     CommandOutputScrubber -- last-resort ipid/hdid/IP redaction
-    GMCommandCatalog  -- curated allowlist for the Commands tab
+    GMCommandCatalog  -- curated cookbook (UX aid, not a gate) for the
+                         Commands tab
     *Routes           -- one handler class per tab
 
 ipid/hdid/IP are never exposed to a GM: `ClientSerializer` is the only code
@@ -38,11 +39,13 @@ import logging
 import os
 import re
 import secrets
+import shlex
 import ssl
 import time
 import uuid
 
 import aiohttp
+import oyaml as yaml
 from aiohttp import web
 
 from server import commands
@@ -443,14 +446,21 @@ class CommandDescriptor:
 
 class GMCommandCatalog:
     """
-    Static, curated allowlist of OOC commands the Commands tab may run via
-    `POST /api/gm/commands/run`.
+    Static, curated cookbook of OOC commands shown on the Commands tab as
+    clickable examples (name/usage/description/args), linked to
+    `docs/commands.md` for the full reference.
 
-    This is a UX curation aid, not a security boundary -- real authorization
-    always happens live inside `commands.call()` via the bound client. It
-    exists so the panel never even offers a command that could surface
-    ipid/hdid/IP (`kick`, `ban`, `whois`, ...); those are permanently
-    excluded regardless of their decorator.
+    This is a UX aid ONLY -- `POST /api/gm/commands/run` (`CommandRoutes`)
+    does not consult it and will run *any* command name, cataloged or not.
+    Authorization always happens live inside `commands.call()` via the
+    bound client: a command's own `mod_only(...)` decorator (or lack
+    thereof) is the only thing deciding whether a given GM may run it, same
+    as if they had typed it in their AO client. `CommandOutputScrubber`
+    (still applied to every captured output line) is the defense-in-depth
+    backstop against a command incidentally printing ipid/hdid/IP -- not
+    this catalog. `is_allowed` is kept as a cheap "is this one of the
+    curated examples" hint for the frontend; it is no longer used to gate
+    anything.
     """
 
     _COMMANDS = [
@@ -1074,6 +1084,223 @@ def _command_response(output):
     return web.json_response({"ok": _command_ok(output), "output": output})
 
 
+# -- A4: generic GM-facing yaml file storage ---------------------------------
+#
+# kind -> directory map, verified against the command bodies that actually
+# read/write each of these (see `HubDataRoutes` docstring for the file:line
+# citations). This is the ONLY place in the panel that knows these five
+# directories; every data-file endpoint goes through the helpers below
+# instead of hand-building a path.
+DATA_KIND_DIRS = {
+    "hubs": "storage/hubs",
+    "musiclists": "storage/musiclists",
+    "charlists": "storage/charlists",
+    "character_data": "storage/character_data",
+    "evidence": "storage/evidence",
+}
+
+# Kinds that have a `read_only/` subdirectory of non-editable files (verified:
+# `storage/hubs/read_only/`, `storage/musiclists/read_only/` both exist and
+# are handled by `/save_hub`/`/load_hub` and `/musiclist_save`/hub-musiclist
+# loading respectively; `storage/charlists`, `storage/character_data`,
+# `storage/evidence` have no such subdirectory -- confirmed against
+# `ooc_cmd_charlist(s)`, `ooc_cmd_{save,load}_character_data`, and
+# `ooc_cmd_evidence_{save,load,overlay}`, none of which ever reference a
+# `read_only` path).
+DATA_KIND_READONLY_SUBDIR = frozenset(["hubs", "musiclists"])
+
+# Deliberately NOT `derelative()` (which only strips `../`/`..\\` substrings
+# and is easy to reason past) -- a strict allowlist of the characters a
+# panel-submitted file name may contain. Every `/api/gm/data/...` and
+# `/api/gm/hub/...` file name is validated against this before it ever
+# touches the filesystem.
+_DATA_NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,64}$")
+
+_MAX_DATA_FILE_BYTES = 256 * 1024
+
+# `GMPanelApp` runs on the same single asyncio event loop as the entire game
+# server (it is built inside `tsuserver.py`, no separate thread/process), so
+# a synchronous `yaml.safe_load()` of arbitrary client-submitted text must
+# never be allowed to take unbounded time/memory. None of the five kinds
+# this API writes (hub/musiclist/charlist/character_data/evidence yaml) has
+# any legitimate use for YAML anchors (`&name`) or aliases (`*name`), so
+# `_BoundedSafeLoader` rejects them outright rather than trying to bound
+# "how much" aliasing is acceptable -- the safest fix for a construct this
+# endpoint never needs. It also caps the total number of nodes composed and
+# the nesting depth, as a second line of defense against a document that is
+# merely huge or absurdly deeply nested (independent of aliasing) getting
+# past the 256 KB byte cap's rough per-node budget, or overflowing the
+# recursive composer's call stack. With aliasing banned outright, a
+# composed node's cost is inherently linear in the source bytes that
+# produced it (no aliasing left to multiply it), so these are set well
+# above what any legitimate 256 KB document of this API's yaml kinds would
+# ever need -- they exist to catch pathological input, not ordinary large
+# files.
+_MAX_YAML_NODES = 200000
+# Composing one YAML nesting level costs a handful of Python stack frames
+# (this loader's own `compose_node` override, `Composer.compose_node`, and
+# `compose_sequence_node`/`compose_mapping_node`), so this must stay well
+# under `sys.getrecursionlimit()` (1000 by default) for the depth check
+# itself to ever fire instead of a raw `RecursionError` -- which
+# `_bounded_safe_load()`'s caller also guards against separately, but
+# failing cleanly here is preferable.
+_MAX_YAML_DEPTH = 100
+
+
+class _YamlTooComplex(yaml.YAMLError):
+    """Raised by `_BoundedSafeLoader` when a document is rejected as too complex."""
+
+
+class _BoundedSafeLoader(yaml.SafeLoader):
+    """
+    `yaml.SafeLoader` variant hardened for parsing arbitrary, untrusted,
+    client-submitted YAML on the server's single event loop:
+
+    - Anchors and aliases are rejected outright (`&name` / `*name`) -- none
+      of this API's yaml kinds ever need them, so there is no reason to
+      accept the risk of alias-driven amplification at all.
+    - Composition aborts once more than `_MAX_YAML_NODES` nodes have been
+      visited, or more than `_MAX_YAML_DEPTH` levels of nesting are seen,
+      bounding total parse work/stack depth independent of the 256 KB byte
+      cap enforced separately by the caller.
+    """
+
+    def compose_node(self, parent, index):
+        if self.check_event(yaml.events.AliasEvent):
+            raise _YamlTooComplex("YAML aliases ('*name') are not permitted here.")
+        event = self.peek_event()
+        if getattr(event, "anchor", None):
+            raise _YamlTooComplex("YAML anchors ('&name') are not permitted here.")
+
+        count = getattr(self, "_gm_node_count", 0) + 1
+        self._gm_node_count = count
+        if count > _MAX_YAML_NODES:
+            raise _YamlTooComplex("YAML document is too complex (too many nodes).")
+
+        depth = getattr(self, "_gm_depth", 0) + 1
+        self._gm_depth = depth
+        if depth > _MAX_YAML_DEPTH:
+            raise _YamlTooComplex("YAML document is nested too deeply.")
+        try:
+            return super().compose_node(parent, index)
+        finally:
+            self._gm_depth -= 1
+
+
+def _bounded_safe_load(content):
+    """
+    `yaml.safe_load()`, but using `_BoundedSafeLoader` so anchors/aliases
+    and unbounded size/nesting can't force unbounded CPU/memory work or
+    stack depth on the server's single event loop. Raises `yaml.YAMLError`
+    (including `_YamlTooComplex`) on invalid or rejected input, exactly
+    like `yaml.safe_load()` raises `yaml.YAMLError` on invalid input.
+
+    Also converts a raw `RecursionError` -- which could in principle still
+    reach the interpreter's recursion limit before `_MAX_YAML_DEPTH` fires,
+    depending on the exact per-level stack-frame cost -- into the same
+    `_YamlTooComplex` (a `yaml.YAMLError`), so callers only ever need to
+    catch one exception type for "reject this content".
+    """
+    try:
+        return yaml.load(content, Loader=_BoundedSafeLoader)
+    except RecursionError:
+        raise _YamlTooComplex("YAML document is nested too deeply.")
+
+
+def _path_inside(root_realpath, candidate_path):
+    """True iff `os.path.realpath(candidate_path)` is `root_realpath` or lands inside it."""
+    real = os.path.realpath(candidate_path)
+    return real == root_realpath or real.startswith(root_realpath + os.sep)
+
+
+def _list_data_files(kind):
+    """
+    `[{"name": ..., "read_only": bool}, ...]` for every yaml file under
+    `kind`'s directory (and its `read_only/` subdirectory, if any), sorted
+    editable-first then by name. Returns `None` for an unknown `kind`.
+    """
+    base = DATA_KIND_DIRS.get(kind)
+    if base is None:
+        return None
+    files = [{"name": n, "read_only": False} for n in _list_yaml_names(base)]
+    if kind in DATA_KIND_READONLY_SUBDIR:
+        files += [
+            {"name": n, "read_only": True}
+            for n in _list_yaml_names(os.path.join(base, "read_only"))
+        ]
+    files.sort(key=lambda f: (f["read_only"], f["name"].lower()))
+    return files
+
+
+def _resolve_existing_data_path(kind, name):
+    """
+    Resolve `name` (validated against `_DATA_NAME_RE`) to an existing yaml
+    file under `kind`'s directory -- checking the `read_only/` subdirectory
+    first when `kind` has one, then the editable directory -- verifying
+    containment via `os.path.realpath` at every step. Returns the real path,
+    or `None` if `kind`/`name` are invalid or no such file exists.
+    """
+    base = DATA_KIND_DIRS.get(kind)
+    if base is None or not _DATA_NAME_RE.match(name):
+        return None
+    root = os.path.realpath(base)
+    candidates = []
+    if kind in DATA_KIND_READONLY_SUBDIR:
+        candidates.append(os.path.join(base, "read_only", f"{name}.yaml"))
+    candidates.append(os.path.join(base, f"{name}.yaml"))
+    for candidate in candidates:
+        if _path_inside(root, candidate) and os.path.isfile(os.path.realpath(candidate)):
+            return os.path.realpath(candidate)
+    return None
+
+
+def _safe_data_write_path(kind, name):
+    """
+    Resolve the EDITABLE-directory write target for `name` under `kind`,
+    for `PUT /api/gm/data/{kind}/file` (and the hub/charlist/music save
+    flows that reuse this same helper). Returns `(path, None)` on success,
+    or `(None, error_code)` on failure. Never returns a path inside a
+    `read_only/` subdirectory, and refuses to shadow an existing read-only
+    file of the same name (mirroring `/save_hub`'s own
+    "already exists and it is read-only" guard).
+    """
+    base = DATA_KIND_DIRS.get(kind)
+    if base is None:
+        return None, "unknown_kind"
+    if not _DATA_NAME_RE.match(name):
+        return None, "invalid_name"
+
+    root = os.path.realpath(base)
+    if kind in DATA_KIND_READONLY_SUBDIR:
+        ro_root = os.path.realpath(os.path.join(base, "read_only"))
+        ro_candidate = os.path.join(base, "read_only", f"{name}.yaml")
+        if _path_inside(ro_root, ro_candidate) and os.path.isfile(os.path.realpath(ro_candidate)):
+            return None, "read_only_exists"
+
+    path = os.path.join(base, f"{name}.yaml")
+    if not _path_inside(root, path):
+        return None, "invalid_name"
+    return os.path.realpath(path), None
+
+
+def _hub_data_gate_ok(session):
+    """
+    True iff the session's bound client may manage this hub's saved
+    GM-facing data files.
+
+    REPLICATES the gate every relevant command already enforces --
+    `@mod_only(hub_owners=True)` on `/save_hub`, `/load_hub`, `/charlist`,
+    `/hub_musiclist`, `/save_character_data`, `/load_character_data`
+    (`client.is_mod or client in client.area.area_manager.owners`, see
+    `mod_only()` in `server/commands/__init__.py`) -- evaluated live so a
+    GM demoted mid-session is rejected immediately rather than relying on
+    the command layer to catch it after the fact.
+    """
+    client = session.bound_client
+    hub = session.current_hub()
+    return client.is_mod or client in hub.owners
+
+
 # =============================================================================
 # Route handler classes -- one per tab, constructor-injected.
 # =============================================================================
@@ -1450,30 +1677,46 @@ class AreaRoutes:
 
     # -- A4: link management ---------------------------------------------
 
-    async def _link_mutation(self, request, arg_builder):
+    async def _resolve_link_request(self, request):
         """
-        Shared body for the `/links/*` endpoints: resolve the source area,
-        parse `target_id`, run `cmd` through `execute_command_in_area`, and
-        return the updated link list.
+        Shared prefix for every `/links/*` endpoint: pull the session and
+        source area out of the request, parse the JSON body, and parse
+        `target_id`. Returns `(session, area, data, target_id, None)` on
+        success, or `(None, None, None, None, error_response)` on failure.
         """
         session = request["gm_session"]
         if not session.is_valid():
-            return web.json_response({"error": "session_invalid"}, status=401)
+            return None, None, None, None, web.json_response(
+                {"error": "session_invalid"}, status=401
+            )
         area = self._area_from_request(session, request)
         if area is None:
-            return web.json_response({"ok": False, "output": ["[ERROR] Area not found."]}, status=404)
+            return None, None, None, None, web.json_response(
+                {"ok": False, "output": ["[ERROR] Area not found."]}, status=404
+            )
         try:
             data = await request.json()
         except Exception:
-            return web.json_response(
+            return None, None, None, None, web.json_response(
                 {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
             )
         try:
             target_id = int(data.get("target_id"))
         except (TypeError, ValueError):
-            return web.json_response(
+            return None, None, None, None, web.json_response(
                 {"ok": False, "output": ["[ERROR] 'target_id' must be an area id."]}, status=400
             )
+        return session, area, data, target_id, None
+
+    async def _link_mutation(self, request, arg_builder):
+        """
+        Shared body for the two-way `/links/*` endpoints: resolve the
+        source area, parse `target_id`, run `cmd` through
+        `execute_command_in_area`, and return the updated link list.
+        """
+        session, area, data, target_id, err = await self._resolve_link_request(request)
+        if err is not None:
+            return err
 
         try:
             resolved_cmd, arg = arg_builder(data, target_id)
@@ -1491,15 +1734,91 @@ class AreaRoutes:
             "area_id": area.id, "links": AreaSerializer.links_to_list(area),
         })
 
+    async def _link_add_or_remove_one_way(self, session, area, target_id, is_add):
+        """
+        A2: the `two_way=false` path for `/links/add|remove` -- performs the
+        one-way `Area.link()`/`Area.unlink()` primitive directly on `area`
+        (never touching the target area's own link dict), bypassing
+        `commands.call` entirely.
+
+        The permission gate below REPLICATES `/unlink`'s exactly (verified
+        against `server/commands/area_access.py`): `@mod_only(area_owners=True)`
+        gates the source area (`client.is_mod or client in area.owners`),
+        and the command's own per-target loop body additionally requires
+        `client.is_mod or client in <target>.owners`. `/link`'s gate is
+        identical up front (only the one-way vs. two-way primitive call
+        differs), so this same check covers both add and remove.
+        """
+        hub = session.current_hub()
+        if target_id < 0 or target_id >= len(hub.areas):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Target area not found."]}, status=404
+            )
+        target_area = hub.areas[target_id]
+        client = session.bound_client
+
+        if not (client.is_mod or client in area.owners):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] You must be authorized to do that."]},
+                status=403,
+            )
+        if not (client.is_mod or client in target_area.owners):
+            return web.json_response(
+                {"ok": False, "output": [
+                    f"[ERROR] You don't own area [{target_area.id}] {target_area.name}."
+                ]},
+                status=403,
+            )
+
+        if is_add:
+            area.link(target_id)
+            output = [
+                f"Area {area.name} has been linked with {target_id} (one-way)."
+            ]
+        else:
+            try:
+                area.unlink(target_id)
+            except AreaError as ex:
+                return web.json_response({"ok": False, "output": [f"[ERROR] {ex}"]}, status=400)
+            output = [
+                f"Area {area.name} has been unlinked from {target_id} (one-way)."
+            ]
+
+        # Only the source area's link dict changed -- broadcast/refresh
+        # accordingly, never the target's.
+        area.broadcast_area_list()
+        self._push_areas_changed(session)
+        return web.json_response({
+            "ok": True, "output": output,
+            "area_id": area.id, "links": AreaSerializer.links_to_list(area),
+        })
+
+    async def _handle_link_add_or_remove(self, request, is_add):
+        session, area, data, target_id, err = await self._resolve_link_request(request)
+        if err is not None:
+            return err
+
+        two_way = bool(data.get("two_way", True))
+        if not two_way:
+            return await self._link_add_or_remove_one_way(session, area, target_id, is_add)
+
+        cmd = "link" if is_add else "unlink"
+        try:
+            output = session.execute_command_in_area(area, cmd, str(target_id))
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return web.json_response({
+            "ok": _command_ok(output), "output": output,
+            "area_id": area.id, "links": AreaSerializer.links_to_list(area),
+        })
+
     async def handle_link_add(self, request):
-        return await self._link_mutation(
-            request, lambda data, target_id: ("link", str(target_id))
-        )
+        return await self._handle_link_add_or_remove(request, is_add=True)
 
     async def handle_link_remove(self, request):
-        return await self._link_mutation(
-            request, lambda data, target_id: ("unlink", str(target_id))
-        )
+        return await self._handle_link_add_or_remove(request, is_add=False)
 
     async def handle_link_set(self, request):
         def build(data, target_id):
@@ -1572,14 +1891,34 @@ class ClientRoutes:
 
 
 class CommandRoutes:
-    """Commands tab: the catalog + the free-form, allowlist-gated runner."""
+    """
+    Commands tab: the catalog (now a cookbook, not a whitelist) + the
+    free-form command runner.
+
+    `GMCommandCatalog` is UX curation only -- `is_allowed` is no longer
+    consulted here. The *only* gate on what a GM can run is the command
+    layer itself: `GMSession.execute_command` always dispatches through the
+    GM's real, live `Client`, so every `mod_only(...)` decorator and other
+    in-command permission check applies exactly as it would if the GM had
+    typed the command in their AO client. A command name outside the
+    catalog (e.g. `/getarea`) is executed exactly like a cataloged one; an
+    unrecognized command name surfaces `commands.call`'s own
+    "Invalid command: ..." message instead of a panel-side rejection.
+    """
+
+    _COMMAND_NAME_RE = re.compile(r"^[a-z0-9_]+$")
+
+    _DOCS_URL = "https://github.com/Crystalwarrior/KFO-Server/blob/master/docs/commands.md"
 
     def __init__(self, session_manager, server):
         self._session_manager = session_manager
         self._server = server
 
     async def handle_list_commands(self, request):
-        return web.json_response({"commands": GMCommandCatalog.to_list()})
+        return web.json_response({
+            "commands": GMCommandCatalog.to_list(),
+            "docs_url": self._DOCS_URL,
+        })
 
     async def handle_run_command(self, request):
         session = request["gm_session"]
@@ -1589,9 +1928,15 @@ class CommandRoutes:
             return web.json_response({"error": "invalid_request"}, status=400)
 
         cmd = str(data.get("cmd", "")).strip()
+        if cmd.startswith("/"):
+            cmd = cmd[1:]
+        cmd = cmd.lower()
         arg = str(data.get("arg", ""))
-        if not GMCommandCatalog.is_allowed(cmd):
-            return web.json_response({"error": "command_not_allowed"}, status=403)
+
+        if not self._COMMAND_NAME_RE.match(cmd):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid command name."]}, status=400
+            )
 
         try:
             output = session.execute_command(cmd, arg)
@@ -1703,6 +2048,346 @@ class CharacterRoutes:
         name = str(data.get("name", ""))
         try:
             output = session.execute_command("load_character_data", name)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        return _command_response(output)
+
+
+class HubDataRoutes:
+    """
+    Hub Data tab (A3/A4/A5/A6): hub save/load, the generic import/export
+    file API shared by all five GM-facing yaml kinds, the charlist editor,
+    and the music yaml editor.
+
+    Every endpoint here re-checks `_hub_data_gate_ok` live (see its
+    docstring) in addition to whatever gate the underlying command already
+    enforces -- for the two listing/read endpoints that have no command
+    behind them at all (`GET .../saves`, `GET .../files`, `GET .../file`),
+    this panel-side check is the ONLY gate, so it is not optional.
+
+    Command bodies this class routes through, and what was verified about
+    each by reading `server/commands/hubs.py`, `server/commands/music.py`,
+    and `server/commands/character.py` directly:
+
+    - `save_hub`/`load_hub` (hubs.py:102/168, `@mod_only(hub_owners=True)`):
+      write/read `storage/hubs/<name>.yaml` or `storage/hubs/read_only/<name>.yaml`;
+      `save_hub`'s argument is `shlex.split`, so a name containing spaces
+      must be quoted; `load_hub`'s is NOT `shlex.split` (the raw arg text is
+      used as the filename verbatim), so it must be passed unquoted.
+    - `charlist` (character.py:1424, `@mod_only(hub_owners=True)`) ->
+      `AreaManager.load_characters` (area_manager.py:185), which
+      LOWERCASES its argument before opening
+      `storage/charlists/<arg>.yaml` -- so any charlist this class writes
+      to disk for later loading through this command is saved under its
+      lowercased name, or `/charlist`/this tab's own "Apply" would never
+      find it again on a case-sensitive filesystem.
+    - `hub_musiclist` (music.py:338, `@mod_only(hub_owners=True)`) is the
+      command that actually sets `AreaManager.music_ref`/`music_list` --
+      i.e. the HUB's musiclist. `musiclist` (music.py:286, no decorator)
+      sets the *client's own local* musiclist instead
+      (`client.music_list`/`client.music_ref`); despite the similar name it
+      is the wrong command for this tab and is deliberately not used here.
+    """
+
+    def __init__(self, session_manager, server, bridge=None):
+        self._session_manager = session_manager
+        self._server = server
+        self._bridge = bridge
+
+    def _push_areas_changed(self, session):
+        if self._bridge is None:
+            return
+        try:
+            hub_id = session.current_hub().id
+        except Exception:
+            return
+        self._bridge.push_areas_changed(hub_id)
+
+    def _require_session_and_gate(self, request):
+        """
+        Shared prefix for every handler below: pull the session out of the
+        request, re-validate it, and re-check `_hub_data_gate_ok` live.
+        Returns `(session, None)` on success or `(None, error_response)`.
+        """
+        session = request["gm_session"]
+        if not session.is_valid():
+            return None, web.json_response({"error": "session_invalid"}, status=401)
+        if not _hub_data_gate_ok(session):
+            return None, web.json_response(
+                {"ok": False, "output": ["[ERROR] You must be authorized to do that."],
+                 "error": "not_authorized"},
+                status=403,
+            )
+        return session, None
+
+    # -- A3: hub save/load ------------------------------------------------
+
+    async def handle_hub_saves(self, request):
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        return web.json_response({"ok": True, "files": _list_data_files("hubs")})
+
+    async def handle_hub_save(self, request):
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400)
+        name = str(data.get("name", "")).strip()
+        if not _DATA_NAME_RE.match(name):
+            # A blank (or otherwise malformed) argument to `ooc_cmd_save_hub`
+            # is NOT "save this hub under no name" -- for a mod-bound session
+            # it dumps EVERY hub on the server to `config/areas_new.yaml`.
+            # This endpoint is a scoped "save this one hub" action, so
+            # anything that isn't a well-formed data-file name (same
+            # allowlist every other `/api/gm/data/...`/`/api/gm/hub/...`
+            # file name is validated against) must be rejected here rather
+            # than silently forwarded into the far more destructive global
+            # variant.
+            return web.json_response({"ok": False, "error": "invalid_name"}, status=400)
+        # `ooc_cmd_save_hub` runs its argument through `shlex.split` --
+        # quote so a name containing spaces survives as one token instead
+        # of being split apart (and so args[1:] doesn't get misread as the
+        # "read_only" flag).
+        arg = shlex.quote(name)
+        try:
+            output = session.execute_command("save_hub", arg)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        return _command_response(output)
+
+    async def handle_hub_load(self, request):
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400)
+        name = str(data.get("name", "")).strip()
+        if not _DATA_NAME_RE.match(name):
+            # A blank (or otherwise malformed) argument to `ooc_cmd_load_hub`
+            # is NOT "load nothing" -- for a mod-bound session it calls
+            # `hub_manager.load()`, which reloads/resets EVERY hub on the
+            # server from `areas.yaml`, discarding all hubs' live state.
+            # This endpoint is a scoped "load this one hub" action, so
+            # anything that isn't a well-formed data-file name (same
+            # allowlist every other `/api/gm/data/...`/`/api/gm/hub/...`
+            # file name is validated against) must be rejected here rather
+            # than silently forwarded into the far more destructive global
+            # variant.
+            return web.json_response({"ok": False, "error": "invalid_name"}, status=400)
+        try:
+            # `ooc_cmd_load_hub` uses its raw argument text verbatim as the
+            # filename (no `shlex.split`) -- pass it through unquoted.
+            output = session.execute_command("load_hub", name)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return _command_response(output)
+
+    # -- A4: generic yaml file API -----------------------------------------
+
+    async def handle_data_files(self, request):
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        kind = request.match_info.get("kind", "")
+        files = _list_data_files(kind)
+        if files is None:
+            return web.json_response({"ok": False, "error": "unknown_kind"}, status=400)
+        return web.json_response({"ok": True, "files": files})
+
+    async def handle_data_file_get(self, request):
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        kind = request.match_info.get("kind", "")
+        if kind not in DATA_KIND_DIRS:
+            return web.json_response({"ok": False, "error": "unknown_kind"}, status=400)
+        name = request.query.get("name", "")
+        path = _resolve_existing_data_path(kind, name)
+        if path is None:
+            return web.json_response({"ok": False, "error": "not_found"}, status=404)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except OSError:
+            return web.json_response({"ok": False, "error": "read_failed"}, status=500)
+        return web.json_response({"ok": True, "name": name, "content": content})
+
+    async def handle_data_file_put(self, request):
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        kind = request.match_info.get("kind", "")
+        if kind not in DATA_KIND_DIRS:
+            return web.json_response({"ok": False, "error": "unknown_kind"}, status=400)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "error": "invalid_request"}, status=400)
+        name = str(data.get("name", ""))
+        content = data.get("content", "")
+        if not isinstance(content, str):
+            return web.json_response({"ok": False, "error": "invalid_content"}, status=400)
+        if len(content.encode("utf-8")) > _MAX_DATA_FILE_BYTES:
+            return web.json_response({"ok": False, "error": "file_too_large"}, status=400)
+        try:
+            _bounded_safe_load(content)
+        except yaml.YAMLError as ex:
+            return web.json_response({"ok": False, "error": f"invalid_yaml: {ex}"}, status=400)
+
+        path, path_err = _safe_data_write_path(kind, name)
+        if path is None:
+            return web.json_response({"ok": False, "error": path_err or "invalid_name"}, status=400)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+        except OSError as ex:
+            return web.json_response({"ok": False, "error": f"write_failed: {ex}"}, status=500)
+        return web.json_response({"ok": True, "kind": kind, "name": name})
+
+    # -- A5: charlist editor -------------------------------------------------
+
+    async def handle_charlist_get(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        hub = session.current_hub()
+        return web.json_response({
+            "ok": True,
+            "characters": list(hub.char_list),
+            "files": _list_yaml_names(DATA_KIND_DIRS["charlists"]),
+        })
+
+    async def handle_charlist_submit(self, request):
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400)
+
+        raw_characters = data.get("characters")
+        if not isinstance(raw_characters, list) or not all(
+            isinstance(c, str) for c in raw_characters
+        ):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] 'characters' must be a list of strings."]},
+                status=400,
+            )
+        characters = [c.strip() for c in raw_characters if c.strip() != ""]
+        if not characters:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Character list must not be empty."]}, status=400
+            )
+        yaml_text = yaml.dump(characters, default_flow_style=False, allow_unicode=True)
+
+        save_as = data.get("save_as")
+        cleanup_path = None
+        if save_as:
+            # `AreaManager.load_characters` lowercases its argument before
+            # opening the file -- save (and later apply) under the
+            # lowercased name so `/charlist <save_as>` can find it again.
+            apply_name = str(save_as).strip().lower()
+            if not apply_name:
+                return web.json_response(
+                    {"ok": False, "output": ["[ERROR] 'save_as' must not be blank."]}, status=400
+                )
+        else:
+            apply_name = f"_gmtmp_{uuid.uuid4().hex[:16]}"
+
+        path, path_err = _safe_data_write_path("charlists", apply_name)
+        if path is None:
+            return web.json_response(
+                {"ok": False, "output": [f"[ERROR] {path_err or 'invalid_name'}"]}, status=400
+            )
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(yaml_text)
+        except OSError as ex:
+            return web.json_response(
+                {"ok": False, "output": [f"[ERROR] Failed to save charlist: {ex}"]}, status=500
+            )
+        if not save_as:
+            cleanup_path = path
+
+        hub = session.current_hub()
+        if hub.char_list_ref == apply_name:
+            # `AreaManager.load_characters()` no-ops (`if self.char_list_ref
+            # == charlist: return`) whenever the requested name already
+            # matches the hub's current ref -- which is exactly what
+            # happens on a same-`save_as` resubmit (edit, Submit, edit
+            # again, Submit again). Without this, the yaml on disk gets
+            # rewritten above but the live `hub.char_list` is never
+            # refreshed, while the command still reports success. Reset the
+            # ref first so the reload below actually runs; `load_characters`
+            # will set it right back to `apply_name` on success.
+            hub.char_list_ref = ""
+
+        try:
+            # Same underlying mechanism/gate as `/charlist <name>` --
+            # `ooc_cmd_charlist` only accepts a filename, so an unsaved
+            # submit is staged through a throwaway scratch file (cleaned up
+            # below) rather than saved permanently.
+            output = session.execute_command("charlist", apply_name)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        finally:
+            if cleanup_path is not None:
+                try:
+                    os.remove(cleanup_path)
+                except OSError:
+                    pass
+
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return _command_response(output)
+
+    # -- A6: music yaml editor -----------------------------------------------
+
+    async def handle_music_get(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        hub = session.current_hub()
+        music_ref = hub.music_ref or ""
+
+        content = None
+        if music_ref and music_ref != "unsaved":
+            path = _resolve_existing_data_path("musiclists", music_ref)
+            if path is not None:
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                except OSError:
+                    content = None
+        if content is None:
+            # No (valid, on-disk) ref -- serialize the live in-memory list
+            # the same way `/musiclist_save` writes it to disk.
+            content = yaml.dump(hub.music_list, default_flow_style=False, allow_unicode=True)
+
+        return web.json_response({"ok": True, "music_ref": music_ref, "content": content})
+
+    async def handle_music_apply(self, request):
+        session, err = self._require_session_and_gate(request)
+        if err is not None:
+            return err
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400)
+        name = str(data.get("name", ""))
+        try:
+            # See class docstring: `hub_musiclist`, NOT `musiclist`, is the
+            # command that sets the HUB's musiclist.
+            output = session.execute_command("hub_musiclist", name)
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         return _command_response(output)
@@ -2098,6 +2783,7 @@ class GMPanelApp:
         client_routes = ClientRoutes(self._session_manager, self._server)
         command_routes = CommandRoutes(self._session_manager, self._server)
         character_routes = CharacterRoutes(self._session_manager, self._server)
+        hub_data_routes = HubDataRoutes(self._session_manager, self._server, self.bridge)
         evidence_routes = EvidenceRoutes(self._session_manager, self._server)
         asset_routes = AssetRoutes(self._server, self._config)
 
@@ -2206,6 +2892,35 @@ class GMPanelApp:
             "/api/gm/character_data/{folder}",
             require(character_routes.handle_character_data_one),
         )
+
+        # Hub Data tab -- hub save/load, generic yaml import/export for all
+        # five GM-facing data kinds, the charlist editor, the music editor.
+        app.router.add_get("/api/gm/hub/saves", require(hub_data_routes.handle_hub_saves))
+        app.router.add_post("/api/gm/hub/save", require(hub_data_routes.handle_hub_save))
+        app.router.add_post("/api/gm/hub/load", require(hub_data_routes.handle_hub_load))
+
+        # Literal routes ("data/{kind}/files") registered before the
+        # dynamic "data/{kind}/file" route to mirror the Evidence tab's
+        # ordering convention below -- these don't actually collide (aiohttp
+        # matches on full path shape) but keeping the convention consistent
+        # makes the route table easier to scan.
+        app.router.add_get(
+            "/api/gm/data/{kind}/files", require(hub_data_routes.handle_data_files)
+        )
+        app.router.add_get(
+            "/api/gm/data/{kind}/file", require(hub_data_routes.handle_data_file_get)
+        )
+        app.router.add_put(
+            "/api/gm/data/{kind}/file", require(hub_data_routes.handle_data_file_put)
+        )
+
+        app.router.add_get("/api/gm/charlist", require(hub_data_routes.handle_charlist_get))
+        app.router.add_post(
+            "/api/gm/charlist/submit", require(hub_data_routes.handle_charlist_submit)
+        )
+
+        app.router.add_get("/api/gm/music", require(hub_data_routes.handle_music_get))
+        app.router.add_post("/api/gm/music/apply", require(hub_data_routes.handle_music_apply))
 
         # Evidence tab (formerly "Demos") -- literal routes registered
         # before the dynamic {evidence_id} route so e.g. "status" isn't

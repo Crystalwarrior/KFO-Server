@@ -40,7 +40,11 @@ class AreasGraphTab extends TabBase {
         this._renderer = new GraphRenderer(this._svg, {
             onNodeClick: (areaId) => this._openInspector(areaId),
         });
-        if (this._localContent) this._renderer.setLocalContent(this._localContent);
+        this._localContentUnsubscribe = null;
+        if (this._localContent) {
+            this._renderer.setLocalContent(this._localContent);
+            this._subscribeLocalContent();
+        }
 
         this._buildManagementBar();
 
@@ -59,6 +63,28 @@ class AreasGraphTab extends TabBase {
     setLocalContent(localContent) {
         this._localContent = localContent || null;
         this._renderer.setLocalContent(this._localContent);
+        this._subscribeLocalContent();
+    }
+
+    /** Keep the graph's icon/thumbnail caches in sync with GMLocalContent:
+     * a GM setting/clearing a per-character icon override (Characters/
+     * Clients tabs) or a background override updates instantly there, but
+     * GraphRenderer keeps its own char-icon cache on top for render-loop
+     * performance (see gm-graph.js), and neither cache would otherwise
+     * notice the change until the next 4s poll happened to re-render.
+     * Re-subscribes on every call so late-injecting a different
+     * `localContent` (setLocalContent above) doesn't leave a listener
+     * bound to the old one. */
+    _subscribeLocalContent() {
+        if (typeof this._localContentUnsubscribe === 'function') {
+            this._localContentUnsubscribe();
+            this._localContentUnsubscribe = null;
+        }
+        if (!this._localContent || typeof this._localContent.subscribe !== 'function') return;
+        this._localContentUnsubscribe = this._localContent.subscribe((kind, name) => {
+            if (kind === null || kind === 'char_icon') this._renderer.clearCharIconCache(name);
+            if (kind === null || kind === 'background') this._renderer.refreshBackgroundThumbs();
+        });
     }
 
     async activate() {
@@ -303,6 +329,16 @@ class AreasGraphTab extends TabBase {
         return false;
     }
 
+    /** Does `fromId`'s area have an outgoing link to `toId`, per the
+     * currently-loaded hub snapshot? Used to tell a mutual link pair apart
+     * from a one-way link so the inspector can offer "Unlink both" only
+     * where a second direction actually exists to remove. */
+    _hasLinkBetween(fromId, toId) {
+        const a = ((this._hubData && this._hubData.areas) || []).find((x) => x.id === fromId);
+        if (!a) return false;
+        return (a.links || []).some((l) => l.target_id === toId);
+    }
+
     _renderInspector(area) {
         // 'overlay' is edited via the dedicated background/overlay form
         // below, not the generic fields list; the rest are bookkeeping keys
@@ -368,9 +404,14 @@ class AreasGraphTab extends TabBase {
             // separated evidence ids (matching EvidenceSerializer's 0-indexed
             // `id`), empty = no restriction.
             const evidenceVal = Array.isArray(l.evidence) ? l.evidence.join(', ') : '';
+            // Reciprocal is not known from this area's own link list alone
+            // -- it needs the target area's own links too -- so "Unlink
+            // both" can be disabled when there's only ever been a one-way
+            // link to remove the other side of.
+            const mutual = this._hasLinkBetween(l.target_id, area.id);
             return `
                 <div class="gm-link-row" data-target="${l.target_id}">
-                    <div class="gm-link-target">${label}</div>
+                    <div class="gm-link-target">${label}${mutual ? ' <span class="badge cm" title="Linked back to this area too">↔</span>' : ' <span class="badge gm" title="One-way: target does not link back">→</span>'}</div>
                     <div class="gm-link-props">
                         <label><input type="checkbox" data-prop="lock" ${l.locked ? 'checked' : ''}> Locked</label>
                         <label><input type="checkbox" data-prop="hide" ${l.hidden ? 'checked' : ''}> Hidden</label>
@@ -378,7 +419,10 @@ class AreasGraphTab extends TabBase {
                     </div>
                     <div class="gm-link-pos-row">
                         <label>Pos <input type="text" class="gm-link-pos-input" value="${esc(posVal)}" placeholder="(none)"></label>
-                        <button class="btn-sm danger gm-link-remove">Unlink</button>
+                    </div>
+                    <div class="gm-link-pos-row gm-link-unlink-row">
+                        <button class="btn-sm danger gm-link-remove-one" title="Remove only this area's link to the target (leaves the target's link back, if any, untouched)">Unlink one-way</button>
+                        <button class="btn-sm danger gm-link-remove-both" title="Remove the link in both directions (requires GM or ownership of both areas)" ${mutual ? '' : 'disabled'}>Unlink both</button>
                     </div>
                     <div class="gm-link-pos-row">
                         <label title="Evidence ids (comma-separated) required to see this link; empty = no restriction">Evidence ids <input type="text" class="gm-link-evidence-input" value="${esc(evidenceVal)}" placeholder="(none)"></label>
@@ -413,6 +457,9 @@ class AreasGraphTab extends TabBase {
                 <div class="gm-link-list">${linksHtml}</div>
                 <div class="gm-inline-form">
                     <select id="inspectorLinkAddSelect">${targetOptions}</select>
+                    <label class="gm-link-twoway-label" title="Unchecked: only this area gets a link to the target, the target does not link back">
+                        <input type="checkbox" id="inspectorLinkTwoWay" checked> Two-way
+                    </label>
                     <button class="btn-sm" id="inspectorLinkAddBtn">Add Link</button>
                 </div>
             </div>
@@ -471,15 +518,20 @@ class AreasGraphTab extends TabBase {
                     this._setLinkProp(area.id, targetId, 'evidence', ids);
                 });
             }
-            const removeBtn = row.querySelector('.gm-link-remove');
-            if (removeBtn) removeBtn.addEventListener('click', () => this._removeLink(area.id, targetId));
+            const removeOneBtn = row.querySelector('.gm-link-remove-one');
+            if (removeOneBtn) removeOneBtn.addEventListener('click', () => this._removeLink(area.id, targetId, false));
+            const removeBothBtn = row.querySelector('.gm-link-remove-both');
+            if (removeBothBtn && !removeBothBtn.disabled) {
+                removeBothBtn.addEventListener('click', () => this._removeLink(area.id, targetId, true));
+            }
         });
 
         const addBtn = p.querySelector('#inspectorLinkAddBtn');
         if (addBtn) addBtn.addEventListener('click', () => {
             const sel = p.querySelector('#inspectorLinkAddSelect');
             if (!sel || !sel.value) return;
-            this._addLink(area.id, parseInt(sel.value, 10));
+            const twoWayCb = p.querySelector('#inspectorLinkTwoWay');
+            this._addLink(area.id, parseInt(sel.value, 10), !twoWayCb || twoWayCb.checked);
         });
 
         const swapBtn = p.querySelector('#inspectorSwapBtn');
@@ -529,9 +581,13 @@ class AreasGraphTab extends TabBase {
         }
     }
 
-    async _addLink(areaId, targetId) {
+    /** @param {boolean} [twoWay=true] - false creates only this area's
+     * outgoing link (the one-way primitive); true (default) routes through
+     * /link, which links both directions. */
+    async _addLink(areaId, targetId, twoWay) {
         try {
-            const result = await this.api.post(`/api/gm/areas/${areaId}/links/add`, { target_id: targetId });
+            const body = { target_id: targetId, two_way: twoWay !== false };
+            const result = await this.api.post(`/api/gm/areas/${areaId}/links/add`, body);
             this.shell.toast((result.output || []).join(' ') || 'Link added.', result.ok ? 'success' : 'error');
             await this.reload();
             if (this._selectedAreaId === areaId) await this._refreshInspector();
@@ -540,9 +596,14 @@ class AreasGraphTab extends TabBase {
         }
     }
 
-    async _removeLink(areaId, targetId) {
+    /** @param {boolean} [twoWay=true] - false removes only this area's
+     * outgoing link to targetId (the one-way primitive), leaving any link
+     * back untouched; true (default) routes through /unlink, which removes
+     * both directions. */
+    async _removeLink(areaId, targetId, twoWay) {
         try {
-            const result = await this.api.post(`/api/gm/areas/${areaId}/links/remove`, { target_id: targetId });
+            const body = { target_id: targetId, two_way: twoWay !== false };
+            const result = await this.api.post(`/api/gm/areas/${areaId}/links/remove`, body);
             this.shell.toast((result.output || []).join(' ') || 'Link removed.', result.ok ? 'success' : 'error');
             await this.reload();
             if (this._selectedAreaId === areaId) await this._refreshInspector();
@@ -594,6 +655,23 @@ class AreasGraphTab extends TabBase {
         const style = document.createElement('style');
         style.id = 'gm-areas-inspector-style';
         style.textContent = `
+            /* Dragging/panning the graph must never turn into a native
+             * text-selection drag over node labels (name/status/count/
+             * background caption/chip-more text). user-select:none on the
+             * whole graph surface is the belt; pointer-events:none on the
+             * label text itself (so hits fall through to the node's <rect>,
+             * which owns the drag listener) is the suspenders -- together
+             * they cover both the "drag started on a label" and "drag
+             * crossed over a label mid-gesture" cases across browsers.
+             */
+            .area-graph {
+                -webkit-user-select: none; -moz-user-select: none; user-select: none;
+            }
+            .gr-node text {
+                -webkit-user-select: none; -moz-user-select: none; user-select: none;
+                pointer-events: none;
+            }
+
             .gr-controls {
                 position: absolute; top: 0.6rem; left: 0.6rem; z-index: 6;
                 display: flex; flex-direction: column; gap: 0.3rem;
@@ -656,6 +734,14 @@ class AreasGraphTab extends TabBase {
                 width: 100px; background: var(--gm-bg); color: var(--gm-text); border: 1px solid var(--gm-border);
                 border-radius: 4px; padding: 0.2rem 0.3rem; font-size: 0.75rem;
             }
+            .gm-link-unlink-row { display: flex; gap: 0.35rem; }
+            .gm-link-unlink-row .btn-sm { flex: 1; padding: 0.25rem 0.3rem; font-size: 0.7rem; }
+            .gm-link-unlink-row .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+            .gm-link-twoway-label {
+                display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem;
+                color: var(--gm-text-dim); white-space: nowrap;
+            }
+            .gm-link-twoway-label input[type=checkbox] { accent-color: var(--gm-accent); }
         `;
         document.head.appendChild(style);
     }

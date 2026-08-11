@@ -8,12 +8,24 @@
  */
 
 class CharactersTab extends TabBase {
-    constructor(shell, api, root) {
+    /**
+     * @param {GMPanelShell} shell
+     * @param {ApiClient} api
+     * @param {HTMLElement} root
+     * @param {?GMLocalContent} localContent - optional; resolves each
+     *   character-list row's icon and backs the per-character color swatch,
+     *   using the exact same resolution/keying convention as the Clients
+     *   tab and the area graph (key = character FOLDER name). Safe to
+     *   omit -- icons just stay on the text fallback.
+     */
+    constructor(shell, api, root, localContent) {
         super(shell, api, root);
+        this._localContent = localContent || null;
 
         this._characterData = {};
         this._folders = [];
         this._selectedFolder = null;
+        this._slots = [];
 
         this._charListRefEl = root.querySelector('#charListRef');
         this._charlistSelect = root.querySelector('#charlistSelect');
@@ -30,6 +42,39 @@ class CharactersTab extends TabBase {
         root.querySelector('#snapshotLoadBtn').addEventListener('click', () => this._loadSnapshot());
         root.querySelector('#snapshotSaveBtn').addEventListener('click', () => this._saveSnapshot());
         this._dataTbody.addEventListener('click', (e) => this._onDataTableClick(e));
+        this._slotsTbody.addEventListener('click', (e) => this._onSlotsTableClick(e));
+        this._slotsTbody.addEventListener('change', (e) => this._onSlotsTableChange(e));
+
+        this._ensureSlotsColumns();
+    }
+
+    /** Late-inject local content resolution (mirrors ClientsTab /
+     * AreasGraphTab), so the shell can wire this up even if it's not
+     * available yet at construction time. */
+    setLocalContent(localContent) {
+        this._localContent = localContent || null;
+    }
+
+    /** The character list table (gm.html) ships with 3 columns (#, Folder,
+     * Occupied By). Icon and Color previously only appeared on the Clients
+     * tab, even though this tab is the one keyed by character folder name
+     * -- insert the two extra header cells here at runtime so both tabs
+     * present icons/colors the same way, without touching the static
+     * template. Idempotent so re-construction (shouldn't happen, but stay
+     * defensive) never doubles the columns. */
+    _ensureSlotsColumns() {
+        const headRow = this.root.querySelector('#charSlotsTable thead tr');
+        if (!headRow || headRow.dataset.gmExtended === '1') return;
+        const folderTh = headRow.children[1];
+        const occupiedTh = headRow.children[2];
+        if (!folderTh || !occupiedTh) return;
+        const iconTh = document.createElement('th');
+        iconTh.textContent = 'Icon';
+        headRow.insertBefore(iconTh, folderTh);
+        const colorTh = document.createElement('th');
+        colorTh.textContent = 'Color';
+        headRow.insertBefore(colorTh, occupiedTh);
+        headRow.dataset.gmExtended = '1';
     }
 
     async activate() {
@@ -46,18 +91,94 @@ class CharactersTab extends TabBase {
         try {
             const data = await this.api.getCharacters();
             this._charListRefEl.textContent = `Hub ${data.hub_id} — list: ${data.char_list_ref || '(server default)'}`;
-            const slots = data.slots || [];
-            this._slotsTbody.innerHTML = slots.length
-                ? slots.map((s) => `
-                    <tr>
-                        <td class="mono">${s.char_id}</td>
-                        <td>${esc(s.folder)}</td>
-                        <td>${s.taken ? `#${s.occupied_by_client_id}` : '<span class="dim">free</span>'}</td>
-                    </tr>`).join('')
-                : '<tr><td colspan="3" class="gm-empty">No characters.</td></tr>';
+            this._slots = data.slots || [];
+            this._renderSlots();
         } catch (e) {
             this.shell.toast('Failed to load character slots: ' + e.message, 'error');
         }
+    }
+
+    _renderSlots() {
+        const slots = this._slots;
+        this._slotsTbody.innerHTML = slots.length
+            ? slots.map((s) => this._slotRowHtml(s)).join('')
+            : '<tr><td colspan="5" class="gm-empty">No characters.</td></tr>';
+        if (slots.length) this._loadSlotIcons(slots);
+    }
+
+    _slotRowHtml(s) {
+        const folder = s.folder || '';
+        const color = this._localContent ? this._localContent.getClientColor(folder) : null;
+        return `<tr>
+            <td class="mono">${s.char_id}</td>
+            <td>
+                <span class="gm-icon-slot" data-role="icon"><span class="gm-icon-fallback">${esc((folder || '?').slice(0, 1).toUpperCase())}</span></span>
+                <button class="btn-sm gm-icon-set-btn" data-action="set-icon" data-folder="${esc(folder)}" title="Set a local icon override for this character folder">Set icon</button>
+            </td>
+            <td>${esc(folder)}</td>
+            <td><input type="color" class="gm-color-input" data-folder="${esc(folder)}" value="${esc(color || '#4a4f66')}" title="Marker color for ${esc(folder || 'this character')}"></td>
+            <td>${s.taken ? `#${s.occupied_by_client_id}` : '<span class="dim">free</span>'}</td>
+        </tr>`;
+    }
+
+    /** Resolves each visible row's icon by DOM position (rows render in the
+     * same order as `slots`), the same lazy resolve('char_icon', folder)
+     * convention the Clients tab and the area graph use. */
+    _loadSlotIcons(slots) {
+        if (!this._localContent) return;
+        const rows = Array.from(this._slotsTbody.children);
+        slots.forEach((s, i) => {
+            const folder = s.folder;
+            const row = rows[i];
+            if (!folder || !row) return;
+            this._localContent.resolve('char_icon', folder).then((url) => {
+                if (!url) return;
+                const slot = row.querySelector('.gm-icon-slot[data-role="icon"]');
+                if (!slot) return;
+                const img = document.createElement('img');
+                img.className = 'gm-char-icon-img';
+                img.alt = folder;
+                img.src = url;
+                img.addEventListener('error', () => { img.remove(); });
+                slot.innerHTML = '';
+                slot.appendChild(img);
+            }).catch(() => { /* keep the text fallback */ });
+        });
+    }
+
+    _onSlotsTableClick(e) {
+        const btn = e.target.closest('button[data-action="set-icon"]');
+        if (!btn) return;
+        this._promptSlotIconOverride(btn.dataset.folder);
+    }
+
+    _promptSlotIconOverride(folder) {
+        if (!this._localContent) return;
+        if (!folder) { this.shell.toast('This slot has no character folder to override.', 'error'); return; }
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.addEventListener('change', async () => {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            try {
+                await this._localContent.setOverride('char_icon', folder, file);
+                this.shell.toast(`Icon override saved for ${folder}.`, 'success');
+                this._loadSlotIcons(this._slots);
+            } catch (e) {
+                this.shell.toast('Failed to save icon override: ' + e.message, 'error');
+            }
+        });
+        input.click();
+    }
+
+    _onSlotsTableChange(e) {
+        const input = e.target.closest('input.gm-color-input');
+        if (!input || !this._localContent) return;
+        const folder = input.dataset.folder;
+        if (!folder) { this.shell.toast('This slot has no character folder to attach a color to.', 'error'); return; }
+        this._localContent.setClientColor(folder, input.value);
+        this.shell.toast(`Color saved for ${folder}.`, 'success');
     }
 
     async _loadCharlists() {

@@ -22,6 +22,7 @@
     <div class="gm-tab" data-tab="characters">Characters</div>
     <div class="gm-tab" data-tab="commands">Commands</div>
     <div class="gm-tab" data-tab="evidence">Evidence</div>
+    <div class="gm-tab" data-tab="data">Hub Data</div>
     <span class="gm-conn-status">
         <span class="live-dot" id="wsDot"></span>
         <span id="wsStatus">Connecting…</span>
@@ -203,6 +204,131 @@
         </div>
     </section>
 
+    <!-- HUB DATA TAB -->
+    <section class="gm-tab-panel" id="tab-data">
+        <div class="gm-toolbar">
+            <span class="hub-label" id="dataHubLabel">Loading hub…</span>
+            <button class="btn-sm" id="dataRefreshBtn">Refresh</button>
+            <span class="gm-toolbar-hint">Import/export the hub's yaml files: hub layout, evidence packs, character data, music lists and character lists.</span>
+        </div>
+        <div class="gm-data-body">
+        <div class="gm-data-grid">
+
+            <div class="gm-panel-box gm-data-hub-box">
+                <h3>Hub Layout (save_hub / load_hub)</h3>
+                <div class="gm-inline-form">
+                    <input type="text" id="hubSaveNameInput" placeholder="save as name">
+                    <button class="btn-sm" id="hubSaveBtn">Save</button>
+                    <button class="btn-sm" id="hubSaveDownloadBtn">Save &amp; Download</button>
+                </div>
+                <div class="gm-scroll-area gm-data-filelist">
+                    <table class="gm-table">
+                        <thead><tr><th>Saved hub</th><th></th><th></th></tr></thead>
+                        <tbody id="hubSavesTbody"><tr><td colspan="3" class="gm-empty">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+                <h4>Import</h4>
+                <div class="gm-inline-form">
+                    <input type="file" id="hubImportFile" accept=".yaml,.yml">
+                    <label class="gm-inline-form" style="gap:0.25rem">
+                        <input type="checkbox" id="hubImportLoadCheck"> load into hub now
+                    </label>
+                    <button class="btn-sm" id="hubImportBtn">Import</button>
+                </div>
+            </div>
+
+            <div class="gm-panel-box" data-kind="evidence">
+                <h3>Evidence Packs</h3>
+                <div class="gm-scroll-area gm-data-filelist">
+                    <table class="gm-table">
+                        <thead><tr><th>File</th><th></th></tr></thead>
+                        <tbody class="gm-data-files-tbody"><tr><td colspan="2" class="gm-empty">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+                <h4>Import</h4>
+                <div class="gm-inline-form">
+                    <input type="file" class="gm-data-upload-file" accept=".yaml,.yml">
+                    <button class="btn-sm gm-data-upload-btn">Upload</button>
+                </div>
+            </div>
+
+            <div class="gm-panel-box" data-kind="character_data">
+                <h3>Character Data</h3>
+                <div class="gm-scroll-area gm-data-filelist">
+                    <table class="gm-table">
+                        <thead><tr><th>File</th><th></th></tr></thead>
+                        <tbody class="gm-data-files-tbody"><tr><td colspan="2" class="gm-empty">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+                <h4>Import</h4>
+                <div class="gm-inline-form">
+                    <input type="file" class="gm-data-upload-file" accept=".yaml,.yml">
+                    <button class="btn-sm gm-data-upload-btn">Upload</button>
+                </div>
+            </div>
+
+            <div class="gm-panel-box" data-kind="charlists">
+                <h3>Character Lists (saved files)</h3>
+                <div class="gm-scroll-area gm-data-filelist">
+                    <table class="gm-table">
+                        <thead><tr><th>File</th><th></th></tr></thead>
+                        <tbody class="gm-data-files-tbody"><tr><td colspan="2" class="gm-empty">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+                <h4>Import</h4>
+                <div class="gm-inline-form">
+                    <input type="file" class="gm-data-upload-file" accept=".yaml,.yml">
+                    <button class="btn-sm gm-data-upload-btn">Upload</button>
+                </div>
+            </div>
+
+            <div class="gm-panel-box gm-data-music-box" data-kind="musiclists">
+                <h3>Music Lists</h3>
+                <div class="gm-scroll-area gm-data-filelist">
+                    <table class="gm-table">
+                        <thead><tr><th>File</th><th></th></tr></thead>
+                        <tbody class="gm-data-files-tbody"><tr><td colspan="2" class="gm-empty">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+                <h4>Import</h4>
+                <div class="gm-inline-form">
+                    <input type="file" class="gm-data-upload-file" accept=".yaml,.yml">
+                    <button class="btn-sm gm-data-upload-btn">Upload</button>
+                </div>
+                <h4>Current Hub Musiclist</h4>
+                <div class="dim" id="musicRefLabel">Loading…</div>
+                <textarea id="musicEditorTextarea" class="gm-script-editor" spellcheck="false"
+                    placeholder="- title: Track Name&#10;  length: 0"></textarea>
+                <div class="gm-inline-form">
+                    <input type="text" id="musicNameInput" placeholder="music list name">
+                    <button class="btn-sm" id="musicSaveAsBtn">Save as…</button>
+                    <button class="btn-sm" id="musicApplyBtn">Apply to Hub</button>
+                </div>
+            </div>
+
+            <div class="gm-panel-box gm-data-charlist-editor">
+                <h3>Character List Editor (live hub roster)</h3>
+                <p class="dim">One character folder name per line, in slot order.</p>
+                <textarea id="charlistEditorTextarea" class="gm-script-editor" spellcheck="false"
+                    placeholder="Spam_HD&#10;Judge_HD"></textarea>
+                <div class="gm-inline-form">
+                    <input type="text" id="charlistSaveAsInput" placeholder="also save as… (optional)">
+                </div>
+                <div class="gm-toolbar">
+                    <button class="btn-sm" id="charlistSubmitBtn">Submit</button>
+                    <button class="btn-sm" id="charlistRevertBtn">Revert</button>
+                </div>
+            </div>
+
+            <div class="gm-panel-box gm-data-output-box">
+                <h3>Output</h3>
+                <div class="gm-output" id="dataOutput"></div>
+            </div>
+
+        </div>
+        </div>
+    </section>
+
 </main>
 
 <!-- Local Content settings dialog (GMLocalContent), reachable from the header -->
@@ -244,6 +370,7 @@
 <script src="/static/js/gm-characters-tab.js"></script>
 <script src="/static/js/gm-commands-tab.js"></script>
 <script src="/static/js/gm-evidence-tab.js"></script>
+<script src="/static/js/gm-data-tab.js"></script>
 <script src="/static/js/gm-shell.js"></script>
 <script src="/static/js/gm-main.js"></script>
 </body>

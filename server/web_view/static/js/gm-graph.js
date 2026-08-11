@@ -42,6 +42,17 @@ class GraphRenderer {
         this._localContent = null;
         this._clientFolders = {}; // client_id -> character folder name
 
+        // Per-character-folder icon resolution cache (B3): resolving an
+        // icon goes through GMLocalContent (IndexedDB lookups / Image()
+        // reachability probes for URL bases), which is not free -- with a
+        // 4s poll cycle rebuilding every node's chips on every reload,
+        // re-resolving on every render would hammer it needlessly. Settled
+        // results (including "no icon") are cached for the lifetime of
+        // this renderer / until setLocalContent() swaps the source; in-
+        // flight lookups are deduped so concurrent renders share one call.
+        this._charIconCache = new Map();   // folder -> url|null
+        this._charIconPending = new Map(); // folder -> Promise<url|null>
+
         this._nodes = new Map();       // area_id -> {area, x, y}
         this._baseLayout = new Map();  // area_id -> {x, y} grid position (no manual offset)
         this._offsets = new Map();     // offsetKey -> {x, y} manual drag offsets
@@ -97,7 +108,77 @@ class GraphRenderer {
 
     setThumbBaseUrl(url) { this._thumbBaseUrl = url || ''; }
 
-    setLocalContent(localContent) { this._localContent = localContent || null; }
+    setLocalContent(localContent) {
+        this._localContent = localContent || null;
+        // A different resolution source can legitimately answer 'no icon'
+        // vs 'has icon' differently for the same folder name, so stale
+        // cached results must not survive the swap.
+        this._charIconCache.clear();
+        this._charIconPending.clear();
+        // Per-item invalidation (a GM setting/clearing a per-character icon
+        // override, or a background override) is handled by the owning tab
+        // subscribing to `localContent` and calling clearCharIconCache()/
+        // refreshBackgroundThumbs() below -- see AreasGraphTab, which is
+        // this renderer's only consumer.
+    }
+
+    /** Invalidate one (or, when `folderOrNull` is falsy, every) cached
+     * char_icon resolution and immediately re-render the client chips.
+     * GMLocalContent.setOverride/clearOverride (used by the Characters and
+     * Clients tabs) invalidate GMLocalContent's own resolve cache, but this
+     * renderer keeps a separate wrapper cache on top of it (see
+     * _resolveCharIcon doc) for render-loop performance -- without this,
+     * that wrapper cache would keep serving a character's old icon (or "no
+     * icon") after a GM uploads/clears a per-character icon override, until
+     * the next poll cycle (or a full page reload) happened to re-render it. */
+    clearCharIconCache(folderOrNull) {
+        if (folderOrNull) {
+            this._charIconCache.delete(folderOrNull);
+            this._charIconPending.delete(folderOrNull);
+        } else {
+            this._charIconCache.clear();
+            this._charIconPending.clear();
+        }
+        if (this._lastAreas.length) this._render(this._lastAreas);
+    }
+
+    /** Re-render node thumbnails using the most recently pushed data.
+     * Background thumbnails have no separate renderer-level cache (each
+     * render re-resolves via `GMLocalContent.resolve('background', ...)`,
+     * whose own resolve cache GMLocalContent already invalidates on
+     * override/base-source changes) -- so nothing needs clearing here, only
+     * a fresh render pass so the new result is picked up immediately
+     * instead of waiting for the next poll cycle. */
+    refreshBackgroundThumbs() {
+        if (this._lastAreas.length) this._render(this._lastAreas);
+    }
+
+    /** Cached, deduped char_icon lookup keyed by character folder name
+     * (see setClientFolders doc). Returns a Promise<?string>; settled
+     * results are memoized so a 4s poll-driven re-render never re-asks
+     * GMLocalContent for a folder it already resolved. */
+    _resolveCharIcon(folder) {
+        if (!folder) return Promise.resolve(null);
+        if (this._charIconCache.has(folder)) return Promise.resolve(this._charIconCache.get(folder));
+        if (this._charIconPending.has(folder)) return this._charIconPending.get(folder);
+        const base = (this._localContent && typeof this._localContent.resolve === 'function')
+            ? this._localContent.resolve('char_icon', folder).catch(() => null)
+            : Promise.resolve(null);
+        const pending = base.then((url) => {
+            this._charIconCache.set(folder, url || null);
+            this._charIconPending.delete(folder);
+            return url || null;
+        });
+        this._charIconPending.set(folder, pending);
+        return pending;
+    }
+
+    /** Join a (possibly slash-less) base URL with a path segment without
+     * producing a doubled or missing '/'. */
+    _urlJoin(base, path) {
+        if (!base) return '';
+        return base.endsWith('/') ? `${base}${path}` : `${base}/${path}`;
+    }
 
     /** client_id -> character folder name map (see gm-areas-tab.js's
      * _loadClientFolders()). GMLocalContent.getClientColor() is keyed by
@@ -180,6 +261,11 @@ class GraphRenderer {
         this._svg.addEventListener('pointerdown', (e) => {
             if (e.button !== 0) return;
             if (e.target.closest && e.target.closest('.gr-node')) return;
+            // Without this, a drag that starts on/crosses a <text> label
+            // (node names, thumb captions, chip counts) is interpreted by
+            // the browser as a text-selection drag instead of a pan --
+            // preventDefault suppresses that native selection gesture.
+            e.preventDefault();
             this._panning = {
                 pointerId: e.pointerId,
                 startClientX: e.clientX, startClientY: e.clientY,
@@ -471,19 +557,53 @@ class GraphRenderer {
         return (a.links || []).some((l) => l.target_id === toId);
     }
 
+    /**
+     * The point where a ray from a rectangle's center in direction (dx,dy)
+     * crosses that rectangle's boundary. The rectangle is centered at
+     * (cx,cy) with half-extents this._nodeW/2 x this._nodeH/2 (every node
+     * is drawn at that fixed size). Standard centered-box ray/AABB
+     * parametrization: scale (dx,dy) by the smallest t that pushes either
+     * axis out to its half-extent.
+     *
+     * Guards against NaN on the two degenerate inputs edge lists can
+     * legitimately produce: a zero-length vector (dx=dy=0, e.g. a link
+     * targeting its own area, or two nodes dragged to the exact same
+     * point) falls back to a fixed direction instead of computing 0/0;
+     * an axis-aligned vector (dx=0 or dy=0, i.e. a perfectly horizontal or
+     * vertical link -- previously the exact case that got swallowed by
+     * wide rectangular nodes) skips the division on the zero axis instead
+     * of dividing by it, relying on Infinity losing the Math.min below.
+     */
+    _rectEdgePoint(cx, cy, dx, dy) {
+        const halfW = this._nodeW / 2;
+        const halfH = this._nodeH / 2;
+        if (dx === 0 && dy === 0) return { x: cx, y: cy + halfH };
+        const tx = dx !== 0 ? halfW / Math.abs(dx) : Infinity;
+        const ty = dy !== 0 ? halfH / Math.abs(dy) : Infinity;
+        const t = Math.min(tx, ty);
+        return { x: cx + dx * t, y: cy + dy * t };
+    }
+
     _edgePathD(from, to, curve) {
         const dx = to.x - from.x, dy = to.y - from.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const ux = dx / dist, uy = dy / dist;
-        const nodeRadius = 58;
-        const sx = from.x + ux * nodeRadius, sy = from.y + uy * nodeRadius;
-        const ex = to.x - ux * nodeRadius, ey = to.y - uy * nodeRadius;
-        if (!curve) return `M ${sx} ${sy} L ${ex} ${ey}`;
-        const mx = (sx + ex) / 2, my = (sy + ey) / 2;
+        // Anchor each endpoint on its OWN node's rectangle boundary along
+        // the center-to-center direction (and its reverse for the target),
+        // rather than a fixed circular radius -- a wide node's horizontal
+        // half-extent (75px) is well past a circle-derived radius, so the
+        // old approach left both the visible line segment and the
+        // arrowhead stranded underneath the opaque node card for
+        // horizontal/near-horizontal links.
+        const start = this._rectEdgePoint(from.x, from.y, dx, dy);
+        const end = this._rectEdgePoint(to.x, to.y, -dx, -dy);
+        if (!curve) return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+        const mx = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const ux = dist > 1e-6 ? dx / dist : 1;
+        const uy = dist > 1e-6 ? dy / dist : 0;
         const nx = -uy, ny = ux;
         const bend = 22;
         const cx = mx + nx * bend, cy = my + ny * bend;
-        return `M ${sx} ${sy} Q ${cx} ${cy} ${ex} ${ey}`;
+        return `M ${start.x} ${start.y} Q ${cx} ${cy} ${end.x} ${end.y}`;
     }
 
     _buildNode(area, pos) {
@@ -528,17 +648,32 @@ class GraphRenderer {
         };
 
         if (area.background) {
+            const bgName = area.background;
+            // NOTE: `background_thumb_base_url` (this._thumbBaseUrl) is a
+            // config knob documented (config_sample/config.yaml) as
+            // pointing directly at a flat static-host mirror of the
+            // server's own `backgrounds/` folder (e.g.
+            // "https://assets.example.com/backgrounds/") -- i.e. its root
+            // already *is* the backgrounds directory, one image per
+            // background name (`<name>.png`). That is a different
+            // convention from the AO asset root (`asset_url` /
+            // GMLocalContent's base, resolved above via
+            // `this._localContent.resolve('background', bgName)`), which
+            // uses the folder-per-background `background/<name>/
+            // witnessempty.png` layout. Do not conflate the two here --
+            // doing so 404s every thumbnail for a deployment configured
+            // per the documented convention.
+            const tryThumbBase = () => {
+                if (this._thumbBaseUrl) {
+                    showImage(this._urlJoin(this._thumbBaseUrl, `${encodeURIComponent(bgName)}.png`));
+                }
+            };
             if (this._localContent && typeof this._localContent.resolve === 'function') {
-                this._localContent.resolve('background', area.background)
-                    .then((url) => {
-                        if (url) { showImage(url); return; }
-                        if (this._thumbBaseUrl) showImage(`${this._thumbBaseUrl}${encodeURIComponent(area.background)}.png`);
-                    })
-                    .catch(() => {
-                        if (this._thumbBaseUrl) showImage(`${this._thumbBaseUrl}${encodeURIComponent(area.background)}.png`);
-                    });
-            } else if (this._thumbBaseUrl) {
-                showImage(`${this._thumbBaseUrl}${encodeURIComponent(area.background)}.png`);
+                this._localContent.resolve('background', bgName)
+                    .then((url) => { if (url) { showImage(url); } else { tryThumbBase(); } })
+                    .catch(() => tryThumbBase());
+            } else {
+                tryThumbBase();
             }
         }
         g.appendChild(thumbGroup);
@@ -565,19 +700,61 @@ class GraphRenderer {
         ids.slice(0, maxChips).forEach((cid, i) => {
             const isGm = (area.gm_client_ids || []).includes(cid);
             const isCm = (area.cm_client_ids || []).includes(cid);
+            // Keyed by character folder (falling back to the client id when
+            // no folder is known yet), matching the Clients/Characters tabs
+            // and GMLocalContent's own color-store key convention -- this is
+            // what makes a color a GM sets on one tab show up here too.
+            const folder = this._clientFolders[cid] || '';
+            const colorKey = folder || String(cid);
+            const cx = i * 15 + 6, cy = 6, r = 6;
             const chipClasses = ['gr-chip'];
             if (isGm) chipClasses.push('gr-chip-gm');
             else if (isCm) chipClasses.push('gr-chip-cm');
-            const chip = grEl('circle', { r: 6, cx: i * 15 + 6, cy: 6, class: chipClasses.join(' ') });
-            if (this._localContent && typeof this._localContent.getClientColor === 'function') {
-                const folder = this._clientFolders[cid];
-                const color = this._localContent.getClientColor(folder || String(cid));
-                if (color) chip.setAttribute('fill', color);
+            const chipG = grEl('g', { class: chipClasses.join(' ') });
+
+            const color = (this._localContent && typeof this._localContent.getClientColor === 'function')
+                ? (this._localContent.getClientColor(colorKey) || '#5a6280')
+                : '#5a6280';
+            // Fallback colored dot -- always drawn first so it shows
+            // immediately and stays visible (via the icon's clip) as the
+            // ring around/behind whatever sliver of a non-square icon peeks
+            // out. Inline styles (not classList/setAttribute('fill', ...))
+            // deliberately win over the .gr-chip-gm/.gr-chip-cm stylesheet
+            // fill rules, which otherwise out-specificity a plain fill
+            // attribute and silently discard the resolved color.
+            const dot = grEl('circle', { r, cx, cy, class: 'gr-chip-dot' });
+            dot.style.fill = color;
+            chipG.appendChild(dot);
+
+            if (isGm || isCm) {
+                const ring = grEl('circle', { r: r + 1.5, cx, cy, class: 'gr-chip-ring', fill: 'none' });
+                ring.style.stroke = isGm ? 'var(--gm-accent)' : 'var(--gm-accent2)';
+                ring.style.strokeWidth = '1.2';
+                chipG.appendChild(ring);
             }
+
+            if (folder) {
+                const clipId = `gr-chip-clip-${area.id}-${i}`;
+                const clip = grEl('clipPath', { id: clipId });
+                clip.appendChild(grEl('circle', { r, cx, cy }));
+                chipG.appendChild(clip);
+                this._resolveCharIcon(folder).then((url) => {
+                    if (!url || !chipG.isConnected) return;
+                    const img = grEl('image', {
+                        x: cx - r, y: cy - r, width: r * 2, height: r * 2,
+                        'clip-path': `url(#${clipId})`, preserveAspectRatio: 'xMidYMid slice',
+                    });
+                    img.setAttributeNS(GR_XLINK_NS, 'href', url);
+                    img.setAttribute('href', url);
+                    img.addEventListener('error', () => { if (img.parentNode) img.parentNode.removeChild(img); });
+                    chipG.appendChild(img);
+                });
+            }
+
             const title = grEl('title');
             title.textContent = `Client #${cid}`;
-            chip.appendChild(title);
-            chipsGroup.appendChild(chip);
+            chipG.appendChild(title);
+            chipsGroup.appendChild(chipG);
         });
         if (ids.length > maxChips) {
             const more = grEl('text', { x: maxChips * 15 + 8, y: 10, class: 'gr-chip-more' });
@@ -600,6 +777,9 @@ class GraphRenderer {
         g.addEventListener('pointerdown', (e) => {
             if (e.button !== 0) return;
             e.stopPropagation();
+            // Same rationale as the pan handler above: a node drag that
+            // starts on a label must not turn into a text selection.
+            e.preventDefault();
             const key = this._offsetKey(area);
             const existing = this._offsets.get(key) || { x: 0, y: 0 };
             dragMoved = false;

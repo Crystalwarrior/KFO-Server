@@ -328,10 +328,23 @@ body {
 .gm-lc-override-row:last-child { border-bottom: none; }
 .gm-lc-override-row span:nth-child(2) { flex: 1; word-break: break-word; }
 
+/* --- Hub Data tab --- */
+.gm-data-body { flex: 1; overflow-y: auto; padding-right: 0.2rem; }
+.gm-data-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.7rem; align-items: start;
+}
+.gm-data-grid > .gm-panel-box { overflow: visible; }
+.gm-data-hub-box, .gm-data-music-box, .gm-data-charlist-editor, .gm-data-output-box { grid-column: 1 / -1; }
+.gm-data-filelist { max-height: 200px; flex: none; }
+.gm-data-output-box .gm-output { min-height: 90px; max-height: 220px; }
+.badge.readonly { background: #333; color: var(--gm-warn); border: 1px solid #4a4a1f; }
+
 /* --- Mobile responsive --- */
 @media (max-width: 900px) {
     .gm-split { flex-direction: column; overflow: auto; }
     .gm-split > .gm-panel-box { overflow: visible; }
+    .gm-data-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
     .gm-header { padding: 0.5rem 0.7rem; }
