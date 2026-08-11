@@ -22,6 +22,16 @@
 const GR_SVG_NS = 'http://www.w3.org/2000/svg';
 const GR_XLINK_NS = 'http://www.w3.org/1999/xlink';
 
+// ITEM 1 (v6 brief): player marker/chip size, a compact slider in the
+// graph controls overlay. Global (not per-hub) -- a GM's preferred marker
+// size is a panel-wide preference, not something worth re-picking per hub
+// -- so it lives under one flat localStorage key rather than the
+// per-hub-keyed offsets/layouts above it.
+const GR_ICON_SCALE_MIN = 0.5;
+const GR_ICON_SCALE_MAX = 2.0;
+const GR_ICON_SCALE_DEFAULT = 1;
+const GR_ICON_SCALE_STORAGE_KEY = 'gm-graph-icon-scale';
+
 function grEl(tag, attrs) {
     const el = document.createElementNS(GR_SVG_NS, tag);
     if (attrs) {
@@ -95,6 +105,11 @@ class GraphRenderer {
         this._panY = 0;
         this._minZoom = 0.25;
         this._maxZoom = 3;
+
+        // ITEM 1 (v6 brief): current marker/chip render scale, restored
+        // from its global localStorage key (see setIconScale()/
+        // _loadIconScale() below) so it survives a page reload.
+        this._iconScale = this._loadIconScale();
 
         this._draggingNode = null;
         this._panning = null;
@@ -332,11 +347,64 @@ class GraphRenderer {
     }
 
     /** client_id -> character folder name map (see gm-areas-tab.js's
-     * _loadClientFolders()). GMLocalContent.getClientColor() is keyed by
+     * _clientFoldersMap()). GMLocalContent.getClientColor() is keyed by
      * folder name (persistent across client-id reuse, matching how the
      * Clients tab sets colors), not by client id, so this lookup is what
      * lets a marker here show the same color a GM picked there. */
     setClientFolders(map) { this._clientFolders = map || {}; }
+
+    // --- marker/chip size (ITEM 1, v6 brief) ------------------------------
+
+    _clampIconScale(n) {
+        return Math.min(GR_ICON_SCALE_MAX, Math.max(GR_ICON_SCALE_MIN, n));
+    }
+
+    _loadIconScale() {
+        try {
+            const raw = localStorage.getItem(GR_ICON_SCALE_STORAGE_KEY);
+            const n = raw === null ? NaN : parseFloat(raw);
+            if (Number.isFinite(n)) return this._clampIconScale(n);
+        } catch (e) { /* storage unavailable: fall through to the default */ }
+        return GR_ICON_SCALE_DEFAULT;
+    }
+
+    /** `translate(8, 80)` is the chips group's fixed anchor point inside a
+     * node (see _buildNode) -- appending `scale(iconScale)` after it grows
+     * every chip (dot + embedded char icon + the "+N" overflow count text,
+     * all children of this one group) away from that same anchor, with no
+     * change to any chip's own local geometry (cx/cy/r/image size all stay
+     * exactly as _buildNode wrote them). Node name/status/"N here" count
+     * text are siblings of this group, not children of it, so they're
+     * untouched by design -- label text stays fixed per the brief. */
+    _chipsGroupTransform() {
+        return `translate(8, 80) scale(${this._iconScale})`;
+    }
+
+    /** Cheap in-place geometry update: re-stamps the transform on every
+     * already-rendered node's chips group. No DOM rebuild and no re-layout
+     * (chip positions inside a node, and node positions on the canvas, are
+     * both untouched) -- safe to call on every 'input' event while the
+     * slider is being dragged, and never disturbs an in-flight node drag
+     * or pan (it doesn't go through _scheduleSnapshot/_render at all). */
+    _applyIconScale() {
+        const t = this._chipsGroupTransform();
+        this._layerNodes.querySelectorAll('.gr-chips').forEach((g) => g.setAttribute('transform', t));
+    }
+
+    /** Set the marker/chip render scale (clamped to
+     * [GR_ICON_SCALE_MIN, GR_ICON_SCALE_MAX]), persist it under the global
+     * (not per-hub) localStorage key, and live-update every already-
+     * rendered node's chips in place -- see _applyIconScale(). */
+    setIconScale(scale) {
+        const next = this._clampIconScale(Number(scale));
+        if (!Number.isFinite(next)) return;
+        this._iconScale = next;
+        try { localStorage.setItem(GR_ICON_SCALE_STORAGE_KEY, String(next)); } catch (e) { /* storage full/unavailable: scale stays in-memory only */ }
+        this._applyIconScale();
+        if (this._iconScaleSlider && this._iconScaleSlider.value !== String(next)) {
+            this._iconScaleSlider.value = String(next);
+        }
+    }
 
     // --- overlay controls ------------------------------------------------
 
@@ -360,6 +428,7 @@ class GraphRenderer {
         mk('⤡', 'Fit graph to view', () => this.fit());
         mk('⟳', 'Reset zoom & pan', () => this.resetView());
         mk('✕', 'Reset manual layout for this hub', () => this.resetOffsets());
+        this._buildIconScaleControl(controls);
 
         // ITEM 4 (v4 brief) -- save/load/export/import named layout
         // snapshots (node offsets + zoom/pan), per hub, in localStorage.
@@ -384,6 +453,39 @@ class GraphRenderer {
         wrap.appendChild(controls);
         this._controlsEl = controls;
         this._buildLayoutMenu(wrap);
+    }
+
+    /** ITEM 1 (v6 brief): a compact slider controlling the rendered size of
+     * every player marker/chip, alongside the +/-/Fit/Reset controls. Live-
+     * updates on 'input' (see setIconScale/_applyIconScale) -- no need to
+     * wait for 'change'/release. Pointer/click events are stopped from
+     * bubbling to the <svg> pan/zoom handlers below it, same as every other
+     * control in this overlay. */
+    _buildIconScaleControl(controls) {
+        const wrap = document.createElement('div');
+        wrap.className = 'gr-ctrl-iconscale';
+        wrap.title = 'Player marker size';
+        const label = document.createElement('span');
+        label.className = 'gr-ctrl-iconscale-label';
+        label.textContent = 'Icons';
+        wrap.appendChild(label);
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = String(GR_ICON_SCALE_MIN);
+        slider.max = String(GR_ICON_SCALE_MAX);
+        slider.step = '0.05';
+        slider.value = String(this._iconScale);
+        slider.className = 'gr-ctrl-iconscale-slider';
+        const stop = (e) => e.stopPropagation();
+        slider.addEventListener('pointerdown', stop);
+        slider.addEventListener('click', stop);
+        slider.addEventListener('input', (e) => {
+            stop(e);
+            this.setIconScale(slider.value);
+        });
+        wrap.appendChild(slider);
+        controls.appendChild(wrap);
+        this._iconScaleSlider = slider;
     }
 
     /** Small popover listing this hub's saved layouts (toggled by the
@@ -512,7 +614,11 @@ class GraphRenderer {
     getLayoutSnapshot() {
         const offsets = {};
         this._offsets.forEach((v, k) => { offsets[k] = { x: v.x, y: v.y }; });
-        return { offsets, view: { zoom: this._zoom, panX: this._panX, panY: this._panY } };
+        // ITEM 1 (v6 brief): iconScale rides along in the `view` object --
+        // see _isValidLayoutSnapshot/applyLayoutSnapshot for the tolerate-
+        // and-round-trip handling that keeps older exports/saved layouts
+        // (which predate this field) importing cleanly.
+        return { offsets, view: { zoom: this._zoom, panX: this._panX, panY: this._panY, iconScale: this._iconScale } };
     }
 
     /** Validate an arbitrary parsed value as a layout snapshot shape before
@@ -529,6 +635,12 @@ class GraphRenderer {
         }
         if (!snap.view || typeof snap.view !== 'object') return false;
         if (!Number.isFinite(snap.view.zoom) || !Number.isFinite(snap.view.panX) || !Number.isFinite(snap.view.panY)) return false;
+        // ITEM 1 (v6 brief): iconScale is OPTIONAL -- older exports/saved
+        // layouts predate it entirely and must still import (that's the
+        // "tolerate" half); when present it must be a finite number like
+        // every other view field (the "round-trip" half: a malformed value
+        // must reject the whole snapshot, not silently corrupt state).
+        if (snap.view.iconScale !== undefined && !Number.isFinite(snap.view.iconScale)) return false;
         return true;
     }
 
@@ -548,6 +660,12 @@ class GraphRenderer {
         this._panX = snapshot.view.panX;
         this._panY = snapshot.view.panY;
         this._saveOffsets();
+        // Older exports/saved layouts predate iconScale and simply omit it
+        // -- leave whatever's currently active (the global, panel-wide
+        // preference) untouched rather than snapping it to some implicit
+        // default (see _isValidLayoutSnapshot's tolerate-and-round-trip
+        // doc above).
+        if (Number.isFinite(snapshot.view.iconScale)) this.setIconScale(snapshot.view.iconScale);
         this._applyViewportTransform();
         if (this._lastAreas.length) this._scheduleSnapshot(this._lastAreas, true);
         return true;
@@ -1240,7 +1358,10 @@ class GraphRenderer {
         countText.textContent = `${ids.length} here`;
         g.appendChild(countText);
 
-        const chipsGroup = grEl('g', { transform: 'translate(8, 80)' });
+        // ITEM 1 (v6 brief): class 'gr-chips' is how _applyIconScale()
+        // finds every rendered node's chips group to live-update its scale
+        // without a full re-render -- see that method's doc.
+        const chipsGroup = grEl('g', { class: 'gr-chips', transform: this._chipsGroupTransform() });
         const maxChips = 8;
         ids.slice(0, maxChips).forEach((cid, i) => {
             const isGm = (area.gm_client_ids || []).includes(cid);

@@ -27,6 +27,12 @@ class AreasGraphTab extends TabBase {
         this._hubData = null;
         this._thumbBaseUrl = '';
         this._selectedAreaId = null;
+        // ITEM 2 (v6 brief): id -> full ClientSerializer record, refreshed
+        // every reload() alongside the graph's folder map (see
+        // _loadClientsData below) -- the inspector's occupant list needs
+        // more than an id + area-scoped gm/cm membership to build its
+        // descriptive label (role flags, char folder, pos, showname).
+        this._clientsById = new Map();
         this._localContent = localContent || null;
         this._pollTimer = null;
         this._usingApiPolling = false;
@@ -145,28 +151,47 @@ class AreasGraphTab extends TabBase {
             // name (persistent across client-id reuse -- see gm-clients-tab.js
             // and the spec), but the area snapshot only carries client ids.
             // Resolve id -> folder here so graph markers use the same color
-            // a GM set from the Clients tab for that character.
-            this._renderer.setClientFolders(await this._loadClientFolders());
+            // a GM set from the Clients tab for that character. This same
+            // fetch also refreshes `_clientsById` (ITEM 2, v6 brief) -- the
+            // full records the inspector's occupant list needs.
+            const clients = await this._loadClientsData();
+            this._clientsById = new Map(clients.map((c) => [c.id, c]));
+            this._renderer.setClientFolders(this._clientFoldersMap(clients));
             this._renderer.setData(data);
             this._populateCreatePositionSelect();
             if (this._selectedAreaId !== null) {
                 const stillExists = (data.areas || []).some((a) => a.id === this._selectedAreaId);
-                if (!stillExists) this._closeInspector();
+                if (!stillExists) {
+                    this._closeInspector();
+                } else {
+                    // ITEM 2 (v6 brief): the occupant list needs to reflect
+                    // joins/leaves/moves live, not just at the moment the
+                    // inspector was opened or an edit was saved -- reload()
+                    // is the poll (4s) and every WS-driven refresh's entry
+                    // point (see onEvent above), so this is what makes the
+                    // roster's labels (which embed live state: who's here,
+                    // their pos, ...) actually stay live.
+                    await this._refreshInspector();
+                }
             }
         } catch (e) {
             this.shell.toast('Failed to load areas: ' + e.message, 'error');
         }
     }
 
-    async _loadClientFolders() {
+    async _loadClientsData() {
         try {
             const data = await this.api.getClients();
-            const map = {};
-            (data.clients || []).forEach((c) => { map[c.id] = c.iniswap || c.char_name || ''; });
-            return map;
+            return data.clients || [];
         } catch (e) {
-            return {};
+            return [];
         }
+    }
+
+    _clientFoldersMap(clients) {
+        const map = {};
+        clients.forEach((c) => { map[c.id] = c.iniswap || c.char_name || ''; });
+        return map;
     }
 
     onEvent(msg) {
@@ -369,13 +394,27 @@ class AreasGraphTab extends TabBase {
         const editableFields = new Set(area.editable_fields || []);
         const basicFields = Object.keys(area).filter((k) => !skipKeys.has(k) && typeof area[k] !== 'object');
 
+        // ITEM 2 (v6 brief): "Client #0 [GM]" wasn't descriptive enough --
+        // build the shared, richer label (icon, role badges, id, char
+        // folder incl. iniswap, <pos>, showname) via buildClientLabel()
+        // (gm-utils.js), the exact same helper gm-clients-tab.js's rows
+        // use, so a client is described identically everywhere in this
+        // panel. `<pos>` is dropped area-wide when pos_lock has exactly 1
+        // entry (everyone present is necessarily there -- see
+        // buildClientLabel's doc). A client missing from `_clientsById`
+        // (a join the periodic client-list fetch hasn't caught up with
+        // yet) still gets a sane fallback label from this area's own
+        // gm/cm membership instead of no role info at all.
         const clientIds = area.client_ids || [];
+        const dropPos = Array.isArray(area.pos_lock) && area.pos_lock.length === 1;
         const roster = clientIds.length
             ? clientIds.map((id) => {
-                const isGm = (area.gm_client_ids || []).includes(id);
-                const isCm = (area.cm_client_ids || []).includes(id);
-                const badges = `${isGm ? ' <span class="badge gm">GM</span>' : ''}${isCm ? ' <span class="badge cm">CM</span>' : ''}`;
-                return `<li>Client #${id}${badges}</li>`;
+                const client = this._clientsById.get(id) || {
+                    id,
+                    is_hub_gm: (area.gm_client_ids || []).includes(id),
+                    is_area_cm: (area.cm_client_ids || []).includes(id),
+                };
+                return `<li>${buildClientLabel(client, { dropPos }).html}</li>`;
             }).join('')
             : '<li class="dim">Nobody here.</li>';
 
@@ -537,6 +576,35 @@ class AreasGraphTab extends TabBase {
         `;
 
         this._wireInspector(area);
+        this._loadRosterIcons(clientIds);
+    }
+
+    /** Async icon fill-in for the occupant roster's label placeholders
+     * (see buildClientLabel's `iconHtml` doc in gm-utils.js) -- mirrors
+     * ClientsTab._loadIcons()'s pattern: resolve is cached/deduped by
+     * GMLocalContent itself, so re-running this on every inspector refresh
+     * (including the 4s poll-driven one, see reload() above) is cheap once
+     * warm. Scoped to `this._popover` so it can never touch another
+     * container's same-numbered slot. */
+    _loadRosterIcons(clientIds) {
+        if (!this._localContent) return;
+        clientIds.forEach((id) => {
+            const client = this._clientsById.get(id);
+            const folder = client ? (client.iniswap || client.char_name || '') : '';
+            if (!folder) return;
+            this._localContent.resolve('char_icon', folder).then((url) => {
+                if (!url) return;
+                const slot = this._popover.querySelector(`.gm-label-icon-slot[data-cid="${id}"]`);
+                if (!slot) return;
+                const img = document.createElement('img');
+                img.className = 'gm-char-icon-img';
+                img.alt = folder;
+                img.src = url;
+                img.addEventListener('error', () => { img.remove(); });
+                slot.innerHTML = '';
+                slot.appendChild(img);
+            }).catch(() => { /* keep the icon-less label */ });
+        });
     }
 
     _wireInspector(area) {
@@ -806,6 +874,27 @@ class AreasGraphTab extends TabBase {
             }
             .gr-ctrl-btn:hover { background: #26304a; border-color: var(--gm-accent); }
             .area-graph.gr-panning { cursor: grabbing; }
+
+            /* ITEM 1 (v6 brief): player marker/chip size slider, grouped
+             * with the +/-/Fit/Reset glyph buttons above it. */
+            .gr-ctrl-iconscale {
+                display: flex; align-items: center; gap: 0.3rem; background: var(--gm-panel);
+                border: 1px solid var(--gm-border); border-radius: 4px; padding: 0.15rem 0.4rem;
+            }
+            .gr-ctrl-iconscale-label { font-size: 0.68rem; color: var(--gm-text-dim); white-space: nowrap; }
+            .gr-ctrl-iconscale-slider { width: 64px; accent-color: var(--gm-accent); cursor: pointer; }
+
+            /* ITEM 2 (v6 brief): the shared occupant/client label's mini
+             * char-icon placeholder (see buildClientLabel in gm-utils.js) --
+             * sized small and inline so it sits before the [badges][id]
+             * text without disturbing line height. The actual <img>
+             * (appended async once resolved) reuses .gm-char-icon-img's
+             * existing 100%/100%-of-parent sizing (gm.css). */
+            .gm-label-icon-slot {
+                display: inline-block; width: 14px; height: 14px; border-radius: 3px;
+                overflow: hidden; vertical-align: -2px; margin-right: 0.2rem;
+                background: var(--gm-panel-alt);
+            }
 
             /* ITEM 4 (v4 brief): Save/Load/Export/Import Layout controls --
              * text-labeled, so they need more room than the square +/-/Fit/

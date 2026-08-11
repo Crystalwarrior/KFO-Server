@@ -22,6 +22,11 @@ class ClientsTab extends TabBase {
         this._localContent = localContent || null;
 
         this._clients = [];
+        // ITEM 2 (v6 brief): area id -> that area's pos_lock length, so a
+        // row's <pos> can be dropped per the same rule the inspector uses
+        // (pos_lock has exactly 1 entry => everyone present is necessarily
+        // there) -- see _loadPosLockCounts()/_rowHtml() below.
+        this._posLockCountByArea = {};
         this._hubLabel = root.querySelector('#clientsHubLabel');
         this._countEl = root.querySelector('#clientsCount');
         this._tbody = root.querySelector('#clientsTbody');
@@ -62,9 +67,30 @@ class ClientsTab extends TabBase {
             const data = await this.api.getClients();
             this._clients = data.clients || [];
             this._hubLabel.textContent = `Hub ${data.hub_id}`;
+            await this._loadPosLockCounts();
             this._render();
         } catch (e) {
             this.shell.toast('Failed to load clients: ' + e.message, 'error');
+        }
+    }
+
+    /** ITEM 2 (v6 brief): the areas payload (`/api/gm/areas`, the same
+     * snapshot the graph tab uses) carries each area's `pos_lock` -- the
+     * clients list itself has no such thing, so a small extra fetch here
+     * is what lets a row's <pos> follow the exact same drop rule as the
+     * area inspector's occupant list. Best-effort: a failure here just
+     * means every row shows its pos (the more-informative default), not a
+     * broken page. */
+    async _loadPosLockCounts() {
+        try {
+            const areasData = await this.api.getAreas();
+            const map = {};
+            (areasData.areas || []).forEach((a) => {
+                map[a.id] = Array.isArray(a.pos_lock) ? a.pos_lock.length : 0;
+            });
+            this._posLockCountByArea = map;
+        } catch (e) {
+            this._posLockCountByArea = {};
         }
     }
 
@@ -108,13 +134,27 @@ class ClientsTab extends TabBase {
         const folder = this._folderKey(c);
         const color = this._localContent ? this._localContent.getClientColor(folder) : null;
 
+        // ITEM 2 (v6 brief): the Character cell reuses buildClientLabel()
+        // (gm-utils.js) -- literally the same helper the area inspector's
+        // occupant list uses -- for the folder ("base/iniswap" when
+        // iniswapped, matching the inspector exactly, replacing this
+        // column's old "(iniswap: X)" annotation) and the new <pos> part.
+        // Icon/role-badge/id/showname are deliberately left out of this
+        // cell: this row already has its own dedicated Icon, Status and
+        // Showname/ID columns, so pulling those pieces in too would just
+        // duplicate them right next to themselves.
+        const dropPos = this._posLockCountByArea[c.area_id] === 1;
+        const label = buildClientLabel(c, { dropPos });
+        const charCell = [label.folderHtml || '<span class="dim">(none)</span>', label.posHtml]
+            .filter(Boolean).join(' ');
+
         return `<tr data-id="${c.id}">
             <td class="mono">#${c.id}</td>
             <td>
                 <span class="gm-icon-slot" data-cid="${c.id}"><span class="gm-icon-fallback">${esc((c.char_name || '?').slice(0, 1).toUpperCase())}</span></span>
                 <button class="btn-sm gm-icon-set-btn" data-action="set-icon" data-id="${c.id}" title="Set a local icon override for this character folder">Set icon</button>
             </td>
-            <td>${esc(c.char_name || '(none)')}${c.iniswap ? ` <span class="dim">(iniswap: ${esc(c.iniswap)})</span>` : ''}</td>
+            <td>${charCell}</td>
             <td>${esc(c.showname || '')}</td>
             <td>${esc(c.name || '')}</td>
             <td>A${c.area_id}</td>
