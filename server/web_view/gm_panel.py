@@ -222,25 +222,33 @@ class AreaDetailSerializer:
     only place allowed to turn this slice of `Area` into JSON.
     """
 
-    # Non-boolean scalar fields safe to expose read-only in the inspector.
-    # Every attribute name here has been verified to exist on `Area`
+    # Non-boolean scalar fields safe to expose in the inspector. Every
+    # attribute name here has been verified to exist on `Area`
     # (server/area.py `Area.__init__`) or as a computed `@property`.
     #
-    # `abbreviation`/`ambience`/`broadcast_list` were added by the same audit
-    # that added `pos_lock` editing (see `EDITABLE_FIELDS` below): a diff of
-    # every non-boolean instance attribute `Area.__init__` sets against what
-    # this tuple already exposed. See that audit's notes for the full list of
-    # attributes considered and why each was included or left out -- nothing
-    # here is moderator-only or exposes ipid/hdid/IP.
+    # `triggers` is a dict (`{"join": ..., "leave": ...}`), serialized as
+    # such (see `to_dict`); `music` is the track currently playing in the
+    # area (`Area.music`, set via `add_music_playing`); `ambience` is the
+    # area's ambience track -- both `music` and `ambience` are read-only.
+    # `background_dark`/`pos_dark`/`passing_msg`/`msg_delay`/`music_ref`/
+    # `hp_def`/`hp_pro` and the nine minigame song scalars were added with
+    # the same audit this block describes: nothing here is moderator-only
+    # or exposes ipid/hdid/IP.
     _SCALAR_FIELDS = (
         "name", "background", "background_suffix", "overlay", "dark",
         "locked", "status", "doc", "desc", "move_delay", "max_players",
         "evidence_mod", "pos_lock", "abbreviation", "ambience", "broadcast_list",
+        "background_dark", "pos_dark", "passing_msg", "msg_delay", "music_ref",
+        "hp_def", "hp_pro", "music", "password", "triggers",
+        "cross_swords_song_start", "cross_swords_song_end", "cross_swords_song_concede",
+        "scrum_debate_song_start", "scrum_debate_song_end", "scrum_debate_song_concede",
+        "panic_talk_action_song_start", "panic_talk_action_song_end",
+        "panic_talk_action_song_concede",
     )
 
-    # Fields from `_SCALAR_FIELDS` that have a real command behind them,
-    # reachable via `AreaRoutes.handle_edit_area`. Everything else in
-    # `_SCALAR_FIELDS` is read-only in the inspector.
+    # Fields from `_SCALAR_FIELDS` that have a real command behind them (or a
+    # gated direct-write path), reachable via `AreaRoutes.handle_edit_area`.
+    # Everything else in `_SCALAR_FIELDS` is read-only in the inspector.
     #
     # `pos_lock` routes through the *real* `/pos_lock` / `/pos_lock_clear`
     # commands (see `handle_edit_area`), same as every other entry here --
@@ -248,7 +256,53 @@ class AreaDetailSerializer:
     # permission check or its area-is-`dark` special case (in a dark area,
     # `/pos_lock <arg>` sets `pos_dark` instead of `pos_lock`, exactly as it
     # would if the GM had typed the command themselves).
-    EDITABLE_FIELDS = frozenset(["name", "desc", "doc", "max_players", "status", "pos_lock"])
+    EDITABLE_FIELDS = frozenset([
+        "name", "desc", "doc", "max_players", "status", "pos_lock",
+        # Command-backed scalar writes (each mapped in `handle_edit_area`):
+        "dark", "locked", "background_suffix", "background_dark",
+        "move_delay", "evidence_mod", "password", "music_ref", "pos_dark",
+        "msg_delay", "passing_msg", "hp_def", "hp_pro", "triggers",
+        "cross_swords_song_start", "cross_swords_song_end", "cross_swords_song_concede",
+        "scrum_debate_song_start", "scrum_debate_song_end", "scrum_debate_song_concede",
+        "panic_talk_action_song_start", "panic_talk_action_song_end",
+        "panic_talk_action_song_concede",
+    ])
+
+    # Input-type hints per editable field, so the inspector can render the
+    # right control without hardcoding a field-name list in the front end.
+    # Keys must be a subset of `EDITABLE_FIELDS`. `options` (for selects) is
+    # filled in at request time by `to_dict` when it needs to be live
+    # (`music_ref` scans `storage/musiclists` on every detail load).
+    FIELD_META = {
+        "name": {"input": "text"},
+        "desc": {"input": "text"},
+        "doc": {"input": "text"},
+        "max_players": {"input": "number"},
+        "status": {"input": "text"},
+        "dark": {"input": "checkbox"},
+        "locked": {"input": "checkbox"},
+        "passing_msg": {"input": "checkbox"},
+        "background_suffix": {"input": "text"},
+        "background_dark": {"input": "text"},
+        "pos_dark": {"input": "text"},
+        "password": {"input": "text"},
+        "move_delay": {"input": "number"},
+        "msg_delay": {"input": "number"},
+        "hp_def": {"input": "number", "min": 0, "max": 10},
+        "hp_pro": {"input": "number", "min": 0, "max": 10},
+        "evidence_mod": {"input": "select", "options": ["FFA", "CM", "Mods", "HiddenCM"]},
+        "music_ref": {"input": "select", "options": [], "clearable": True},
+        "triggers": {"input": "triggers"},
+        "cross_swords_song_start": {"input": "text"},
+        "cross_swords_song_end": {"input": "text"},
+        "cross_swords_song_concede": {"input": "text"},
+        "scrum_debate_song_start": {"input": "text"},
+        "scrum_debate_song_end": {"input": "text"},
+        "scrum_debate_song_concede": {"input": "text"},
+        "panic_talk_action_song_start": {"input": "text"},
+        "panic_talk_action_song_end": {"input": "text"},
+        "panic_talk_action_song_concede": {"input": "text"},
+    }
 
     @staticmethod
     def _prefs(area):
@@ -284,6 +338,12 @@ class AreaDetailSerializer:
             # and never leaks a live object.
             if name == "broadcast_list" and isinstance(value, list):
                 value = [getattr(v, "id", v) for v in value]
+            # `triggers` is a dict of `{trigger_key: command_string}`; it is
+            # its own JSON-safe type, so pass it through as-is instead of
+            # letting the generic coercion below stringify it.
+            if name == "triggers" and isinstance(value, dict):
+                fields[name] = {str(k): str(v) for k, v in value.items()}
+                continue
             # `pos_lock`/`broadcast_list` are lists (of position strings /
             # area ids respectively); everything else here is a str/int.
             # Coerce defensively so a future non-JSON-safe Area attribute
@@ -295,10 +355,35 @@ class AreaDetailSerializer:
                 value = str(value)
             fields[name] = value
 
+        # `field_meta` drives the inspector's per-field control type (see
+        # `FIELD_META`). `music_ref`'s options are live -- the `/area_musiclist`
+        # command loads from `storage/musiclists/` + `read_only/` (top-level
+        # only, matching `ooc_cmd_musiclist`/`ooc_cmd_area_musiclist`), so
+        # re-scan on every detail load.
+        field_meta = {
+            name: dict(meta)
+            for name, meta in AreaDetailSerializer.FIELD_META.items()
+            if name in AreaDetailSerializer.EDITABLE_FIELDS
+        }
+        if "music_ref" in field_meta:
+            music_refs = set()
+            for root in (
+                DATA_KIND_DIRS["musiclists"],
+                os.path.join(DATA_KIND_DIRS["musiclists"], "read_only"),
+            ):
+                try:
+                    for f in os.listdir(root):
+                        if f.lower().endswith(".yaml"):
+                            music_refs.add(f[:-5])
+                except OSError:
+                    continue
+            field_meta["music_ref"]["options"] = sorted(music_refs)
+
         return {
             "id": area.id,
             "fields": fields,
             "editable_fields": sorted(AreaDetailSerializer.EDITABLE_FIELDS),
+            "field_meta": field_meta,
             "prefs": AreaDetailSerializer._prefs(area),
             "links": AreaSerializer.links_to_list(area),
         }
@@ -750,6 +835,38 @@ class GMSession:
         self._call_on_target_area(area, run)
         return CommandOutputScrubber.scrub(buffer)
 
+    def set_area_direct(self, area, attr, value, key=None):
+        """
+        Set a scalar `Area` attribute directly (or a dict entry, when `key`
+        is given -- e.g. `area.triggers["join"]`), without a backing OOC
+        command. Used for `background_dark`, `pos_dark`, `msg_delay`,
+        clearing a minigame song (`/minigame_*_song` with an empty name
+        enters "waiting for a played song" mode instead of clearing), and
+        clearing a trigger (there is no `/trigger <key>` clear form).
+
+        This is the same deliberate exception `edit_evidence_direct` makes:
+        the attribute is written only after the real bound client --
+        evaluated against the target area -- passes the same gate the
+        `@mod_only(area_owners=True)` commands use (`/bg`, `/pos_lock`,
+        ...): the GM must be a mod or an owner (GM or CM) of the target
+        area. The attribute name is always chosen by
+        `AreaRoutes.handle_edit_area`, never by the client, so a bad `attr`
+        can never escape to an arbitrary attribute write.
+        """
+        if not self.is_valid() or not self._area_in_scope(area):
+            raise SessionInvalid()
+
+        def apply(client):
+            if not client.is_mod and client not in area.owners:
+                raise ClientError("You do not own that area!")
+            if key is not None:
+                getattr(area, attr)[key] = value
+            else:
+                setattr(area, attr, value)
+            return True
+
+        return bool(self._call_on_target_area(area, apply))
+
     def edit_evidence_direct(self, area, demo_id, name, desc, image, pos="*"):
         """
         Edit a demo script's evidence entry directly.
@@ -1057,6 +1174,14 @@ class GMPanelBridge:
             "to_area_id": new_area.id,
             "from_hub_id": from_hub_id,
             "to_hub_id": to_hub_id,
+            # Showname + character folder ride along so the front-end's
+            # traveling token can label itself with the SHOWNAME (not #id)
+            # and use the mover's character color/icon immediately, without
+            # waiting for the next poll's client list. Whitelisted fields
+            # only (ClientSerializer-shaped); no ipid/hdid/ip here.
+            "showname": client.showname,
+            "char_name": client.char_name,
+            "iniswap": client.iniswap,
         }
         self._broadcast_to_hub({from_hub_id, to_hub_id}, "client_moved", data)
         if from_hub_id != to_hub_id:
@@ -1710,11 +1835,45 @@ class AreaRoutes:
             )
         field = str(data.get("field", ""))
         value = str(data.get("value", ""))
+        trigger = str(data.get("trigger", "")).strip()
 
         if field not in AreaDetailSerializer.EDITABLE_FIELDS:
             return web.json_response(
                 {"ok": False, "output": [f"[ERROR] Unsupported field: {field}"]}, status=400
             )
+
+        # `minigame_*_song` commands take `<cs|sd|pta> [songname]`; map each
+        # area song scalar to its (minigame, condition) pair. Empty value is
+        # written directly (the command would enter "pick a song" edit mode).
+        _MINIGAME_FIELD_TOPS = {
+            "cross_swords": "cs",
+            "scrum_debate": "sd",
+            "panic_talk_action": "pta",
+        }
+        _CONDITION_COMMAND = {0: "start", 1: "end", 2: "concede"}
+        _minigame_song = None
+        for _minigame, _code in _MINIGAME_FIELD_TOPS.items():
+            if field.startswith(f"{_minigame}_song_"):
+                _condition = field[len(f"{_minigame}_song_"):]
+                for _num, _word in _CONDITION_COMMAND.items():
+                    if _condition == _word:
+                        _minigame_song = (_code, _num)
+                        break
+                break
+
+        def _direct_set(attr, val, key=None, note=None):
+            try:
+                if not session.set_area_direct(area, attr, val, key=key):
+                    return ["[ERROR] Could not update area field."]
+                return [f"{attr} updated." if note is None else note]
+            except ClientError as ex:
+                return [f"[ERROR] {ex}"]
+
+        def _as_int(err_label):
+            try:
+                return int(str(value).strip())
+            except (TypeError, ValueError):
+                raise ValueError(err_label)
 
         try:
             if field == "name":
@@ -1732,7 +1891,12 @@ class AreaRoutes:
                 cmd, arg = ("cleardoc", "") if value == "" else ("doc", value)
                 output = session.execute_command_in_area(area, cmd, arg)
             elif field == "max_players":
-                output = session.execute_command_in_area(area, "max_players", value)
+                try:
+                    _as_int("max_players must be an integer.")
+                except ValueError as ex:
+                    output = [f"[ERROR] {ex}"]
+                else:
+                    output = session.execute_command_in_area(area, "max_players", value)
             elif field == "pos_lock":
                 # Mirrors `/pos_lock`/`/pos_lock_clear` exactly: empty value
                 # clears the lock (all positions available again), non-empty
@@ -1745,8 +1909,98 @@ class AreaRoutes:
                     output = session.execute_command_in_area(area, "pos_lock_clear", "")
                 else:
                     output = session.execute_command_in_area(area, "pos_lock", value)
-            else:  # "status"
+            elif field == "status":
                 output = session.execute_command_in_area(area, "status", value)
+            elif field == "dark":
+                # Run the real `/lights` process (`ooc_cmd_lights`): toggling
+                # the flag itself is not enough, the area must re-send BN to
+                # every client and rebroadcast the evidence list. Note the
+                # polarity: `dark = True` means lights are OFF, and `/lights
+                # off` is what makes the area dark -- so a checked box
+                # ("dark" on) must route to `/lights off`.
+                output = session.execute_command_in_area(area, "lights", "off" if value == "true" else "on")
+            elif field == "locked":
+                # `/lock <id>` / `/unlock <id>` target by explicit area id
+                # (see ooc_cmd_lock/ooc_cmd_unlock -> ooc_cmd_area_{lock,
+                # unlock}), so no area shadowing needed -- the per-target
+                # ownership check runs inside the command.
+                output = session.execute_command("unlock" if value == "false" else "lock", str(area.id))
+            elif field == "passing_msg":
+                output = session.execute_command_in_area(
+                    area, "area_pref", f"passing_msg {'on' if value == 'true' else 'off'}"
+                )
+            elif field == "background_suffix":
+                output = session.execute_command_in_area(area, "bg_suffix", value)
+            elif field == "move_delay":
+                try:
+                    _as_int("Move delay must be an integer between -1800 and 1800.")
+                except ValueError as ex:
+                    output = [f"[ERROR] {ex}"]
+                else:
+                    output = session.execute_command_in_area(area, "area_move_delay", value)
+            elif field == "evidence_mod":
+                if value not in ("FFA", "CM", "Mods", "HiddenCM"):
+                    output = ["[ERROR] Invalid evidence mod. Use FFA, CM, Mods or HiddenCM."]
+                else:
+                    output = session.execute_command_in_area(area, "evidence_mod", value)
+            elif field == "music_ref":
+                # `/area_musiclist` with no argument clears the area list;
+                # with a name it validates against storage/musiclists.
+                output = session.execute_command_in_area(area, "area_musiclist", value)
+            elif field == "password":
+                # `/setpw <id> [password]` -- blank password clears.
+                output = session.execute_command("setpw", f"{area.id} {value}".rstrip())
+            elif field == "hp_def":
+                try:
+                    hp = _as_int("HP must be an integer between 0 and 10.")
+                    if not 0 <= hp <= 10:
+                        raise ValueError("HP must be between 0 and 10.")
+                except ValueError as ex:
+                    output = [f"[ERROR] {ex}"]
+                else:
+                    # `ooc_cmd_hpset` runs on the (shadowed) client.area and
+                    # routes through `Area.change_hp`, which re-sends HP to
+                    # every client in the area.
+                    output = session.execute_command_in_area(area, "hpset", f"def {hp}")
+            elif field == "hp_pro":
+                try:
+                    hp = _as_int("HP must be an integer between 0 and 10.")
+                    if not 0 <= hp <= 10:
+                        raise ValueError("HP must be between 0 and 10.")
+                except ValueError as ex:
+                    output = [f"[ERROR] {ex}"]
+                else:
+                    output = session.execute_command_in_area(area, "hpset", f"pro {hp}")
+            elif field == "triggers":
+                # `/trigger <key> <cmd>` -- but there is no clear form, so an
+                # empty command is written directly to the dict entry.
+                if trigger not in area.triggers:
+                    output = [f"[ERROR] Invalid trigger: {trigger}"]
+                elif value == "":
+                    output = _direct_set("triggers", "", key=trigger, note=f"Cleared trigger '{trigger}'.")
+                else:
+                    output = session.execute_command_in_area(area, "trigger", f"{trigger} {value}")
+            elif _minigame_song is not None:
+                code, condition = _minigame_song
+                if value == "":
+                    output = _direct_set(field, "")
+                else:
+                    output = session.execute_command_in_area(
+                        area, f"minigame_{_CONDITION_COMMAND[condition]}_song", f"{code} {value}"
+                    )
+            elif field == "background_dark":
+                output = _direct_set(field, value)
+            elif field == "pos_dark":
+                output = _direct_set(field, value)
+            elif field == "msg_delay":
+                try:
+                    _as_int("msg_delay must be an integer.")
+                except ValueError as ex:
+                    output = [f"[ERROR] {ex}"]
+                else:
+                    output = _direct_set(field, int(value))
+            else:  # should be unreachable -- every EDITABLE_FIELDS member is handled above
+                output = [f"[ERROR] Unsupported field: {field}"]
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
 
@@ -1841,6 +2095,61 @@ class AreaRoutes:
             )
         try:
             output = session.execute_command("area_swap", f"{a} {b}")
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+
+        hub = session.current_hub()
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return web.json_response({
+            "ok": _command_ok(output), "output": output,
+            "hub_id": hub.id, "hub_name": hub.name, "areas": self._areas_snapshot(hub),
+        })
+
+    async def handle_switch_areas(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        try:
+            a = int(data.get("a"))
+            b = int(data.get("b"))
+        except (TypeError, ValueError):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] 'a' and 'b' must be area ids."]}, status=400
+            )
+        try:
+            # `/area_switch` swaps two areas WITHOUT correcting links --
+            # deliberately distinct from `/area_swap` (the "Swap" button).
+            output = session.execute_command("area_switch", f"{a} {b}")
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+
+        hub = session.current_hub()
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return web.json_response({
+            "ok": _command_ok(output), "output": output,
+            "hub_id": hub.id, "hub_name": hub.name, "areas": self._areas_snapshot(hub),
+        })
+
+    async def handle_duplicate_area(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        try:
+            area_id = int(request.match_info["area_id"])
+        except ValueError:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid area id."]}, status=400
+            )
+        try:
+            output = session.execute_command("area_duplicate", str(area_id))
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
 
@@ -3281,6 +3590,12 @@ class GMPanelApp:
         )
         app.router.add_post(
             "/api/gm/hub/areas/swap", require(area_routes.handle_swap_areas)
+        )
+        app.router.add_post(
+            "/api/gm/hub/areas/switch", require(area_routes.handle_switch_areas)
+        )
+        app.router.add_post(
+            "/api/gm/hub/areas/{area_id}/duplicate", require(area_routes.handle_duplicate_area)
         )
         app.router.add_post(
             "/api/gm/hub/areas/{area_id}/remove", require(area_routes.handle_remove_area)

@@ -268,7 +268,16 @@ class AreasGraphTab extends TabBase {
             data.client_id,
             inScopeFrom ? data.from_area_id : null,
             inScopeTo ? data.to_area_id : null,
-            `#${data.client_id}`,
+            null,
+            {
+                // The `client_moved` payload (gm_panel.py's
+                // on_client_moved) carries the freshest showname/folder, so
+                // the traveling token labels the mover by SHOWNAME (not #id)
+                // and takes its character color/icon even before the next
+                // poll's client list lands.
+                showname: data.showname,
+                folder: data.iniswap || data.char_name || '',
+            },
         );
         // Give the ~620ms token animation a moment to play before the
         // occupancy chips/counts snap to their new, authoritative state.
@@ -398,6 +407,7 @@ class AreasGraphTab extends TabBase {
         const merged = Object.assign({}, detail.fields || {}, {
             id: detail.id,
             editable_fields: detail.editable_fields || [],
+            field_meta: detail.field_meta || {},
             prefs: detail.prefs || [],
             links: detail.links || [],
             client_ids: summary.client_ids || [],
@@ -422,6 +432,89 @@ class AreasGraphTab extends TabBase {
         return (a.links || []).some((l) => l.target_id === toId);
     }
 
+    /** One inspector row for a single allowlisted Area scalar. The row
+     * TYPE is driven by `detail.field_meta` (FieldMeta in gm_panel.py), not
+     * hardcoded per name, so a future editable field renders automatically:
+     *   checkbox -> self-saving toggle, current state shown as on/off text
+     *   select   -> self-saving dropdown (evidence_mod / music_ref)
+     *   number   -> numeric input + Save (move_delay, msg_delay, hp_*,
+     *               max_players) -- invalid non-numeric input is rejected
+     *               by the backend
+     *   text     -> text input + Save (everything else)
+     * Fields the backend does NOT list in `editable_fields` render as a
+     * read-only value instead. */
+    _fieldRowHtml(k, area, editableFields) {
+        const meta = (area.field_meta || {})[k] || {};
+        if (!editableFields.has(k)) {
+            return `
+            <div class="gm-field-row" data-field="${esc(k)}">
+                <label title="${esc(k)} (read-only)">${esc(k)}</label>
+                <span class="gm-field-readonly">${esc(fmtValue(area[k]))}</span>
+            </div>`;
+        }
+        if (meta.input === 'checkbox') {
+            const on = area[k] ? 'checked' : '';
+            return `
+            <div class="gm-field-row" data-field="${esc(k)}">
+                <label title="${esc(k)}">${esc(k)}</label>
+                <input type="checkbox" class="gm-field-input gm-field-checkbox" ${on}>
+                <span class="gm-field-readonly">${area[k] ? 'on' : 'off'}</span>
+            </div>`;
+        }
+        if (meta.input === 'select') {
+            const current = area[k] == null ? '' : String(area[k]);
+            // A musiclist (music_ref) set to a file that no longer exists
+            // on disk won't be in `meta.options`; keep showing the current
+            // value (prepended) so it can be seen and replaced, plus a
+            // clear option for lists (music_ref) that support being unset.
+            const hasCurrent = (meta.options || []).some((o) => String(o) === current);
+            const currentOpt = (current !== '' && !hasCurrent)
+                ? `<option value="${esc(current)}" selected>${esc(current)}</option>` : '';
+            const clearOpt = meta.clearable
+                ? `<option value="">${current === '' ? '(none)' : '(clear)'}</option>` : '';
+            const opts = (meta.options || []).map((o) =>
+                `<option value="${esc(o)}" ${current === String(o) ? 'selected' : ''}>${esc(o)}</option>`).join('');
+            return `
+            <div class="gm-field-row" data-field="${esc(k)}">
+                <label title="${esc(k)}">${esc(k)}</label>
+                <select class="gm-field-input gm-field-select">${clearOpt}${currentOpt}${opts}</select>
+            </div>`;
+        }
+        if (meta.input === 'number') {
+            const min = meta.min !== undefined ? ` min="${meta.min}"` : '';
+            const max = meta.max !== undefined ? ` max="${meta.max}"` : '';
+            return `
+            <div class="gm-field-row" data-field="${esc(k)}">
+                <label title="${esc(k)}">${esc(k)}</label>
+                <input type="number" class="gm-field-input" ${min}${max} value="${esc(fmtValue(area[k]))}">
+                <button class="btn-sm gm-field-save">Save</button>
+            </div>`;
+        }
+        return `
+            <div class="gm-field-row" data-field="${esc(k)}">
+                <label title="${esc(k)}">${esc(k)}</label>
+                <input type="text" class="gm-field-input" value="${esc(fmtValue(area[k]))}">
+                <button class="btn-sm gm-field-save">Save</button>
+            </div>`;
+    }
+
+    /** Rows for the `triggers` dict (`/trigger` in server/commands/
+     * roleplay.py) -- one row per trigger key (typically `join`/`leave`).
+     * Empty values are also accepted: handle_edit_area clears that key's
+     * entry directly when the command is sent with an empty arg. */
+    _triggersRowsHtml(area) {
+        const triggers = area.triggers || {};
+        const keys = Object.keys(triggers);
+        if (!keys.length) return '';
+        return keys.map((key) => `
+            <div class="gm-field-row" data-trigger-row="${esc(key)}">
+                <label title="Command run when a client ${esc(key)}s this area">trigger ${esc(key)}</label>
+                <input type="text" class="gm-field-input" value="${esc(triggers[key] || '')}" placeholder="command to run, e.g. lock">
+                <button class="btn-sm gm-field-save" data-trigger-save="${esc(key)}">Save</button>
+            </div>
+        `).join('');
+    }
+
     _renderInspector(area) {
         // The 4s poll (and every WS-driven reload) rebuilds this whole frame
         // via innerHTML, which resets the frame's own scroll to the top --
@@ -438,14 +531,16 @@ class AreasGraphTab extends TabBase {
         // dedicated list+editor section too (ITEM 2, v4 brief) -- it's a
         // LIST of position strings, not a scalar, so the generic
         // `typeof area[k] !== 'object'` filter below already excludes it
-        // from `basicFields` on its own, but it's listed here explicitly
-        // too so that exclusion reads as deliberate, not a silent drop (the
-        // exact bug this item fixes: pos_lock used to fall through and
-        // never render at all). The rest are bookkeeping keys merged in by
-        // `_refreshInspector`, not real Area scalars.
+        // (and the `triggers` dict) from `basicFields` on its own, but
+        // both are listed here explicitly too so that exclusion reads as
+        // deliberate, not a silent drop (the exact bug this item fixes:
+        // pos_lock used to fall through and never render at all). The rest
+        // are bookkeeping keys merged in by `_refreshInspector`, not real
+        // Area scalars.
         const skipKeys = new Set([
-            'id', 'prefs', 'links', 'background', 'overlay', 'pos_lock',
-            'editable_fields', 'client_ids', 'gm_client_ids', 'cm_client_ids',
+            'id', 'prefs', 'links', 'background', 'overlay', 'background_suffix',
+            'pos_lock', 'triggers',
+            'editable_fields', 'field_meta', 'client_ids', 'gm_client_ids', 'cm_client_ids',
         ]);
         const editableFields = new Set(area.editable_fields || []);
         const basicFields = Object.keys(area).filter((k) => !skipKeys.has(k) && typeof area[k] !== 'object');
@@ -474,26 +569,15 @@ class AreasGraphTab extends TabBase {
             }).join('')
             : '<li class="dim">Nobody here.</li>';
 
-        // Only fields the backend actually has a real command behind
-        // (`editable_fields`) get an editable input + Save button; the rest
-        // of the allowlisted scalars (background_suffix, dark, locked,
-        // evidence_mod, pos_lock, move_delay, ...) are shown read-only --
-        // saving them would just 400 with "Unsupported field".
-        const basicsHtml = basicFields.map((k) => {
-            if (!editableFields.has(k)) {
-                return `
-            <div class="gm-field-row" data-field="${esc(k)}">
-                <label title="${esc(k)} (read-only)">${esc(k)}</label>
-                <span class="gm-field-readonly">${esc(fmtValue(area[k]))}</span>
-            </div>`;
-            }
-            return `
-            <div class="gm-field-row" data-field="${esc(k)}">
-                <label title="${esc(k)}">${esc(k)}</label>
-                <input type="text" class="gm-field-input" value="${esc(fmtValue(area[k]))}">
-                <button class="btn-sm gm-field-save">Save</button>
-            </div>`;
-        }).join('');
+        // Only fields the backend actually lists in `editable_fields` get an
+        // editable control; the rest of the allowlisted scalars are shown
+        // read-only. The control TYPE comes from `detail.field_meta`
+        // (`FieldMeta` in gm_panel.py): checkbox (dark/locked/passing_msg),
+        // select (evidence_mod/music_ref), number (move_delay/msg_delay/
+        // hp_def/hp_pro/max_players), or plain text. Saving a field the
+        // backend doesn't allow would just 400 with "Unsupported field".
+        const basicsHtml = basicFields.map((k) => this._fieldRowHtml(k, area, editableFields)).join('');
+        const triggersHtml = this._triggersRowsHtml(area);
 
         const prefsHtml = (area.prefs || []).map((p) => `
             <label class="gm-pref-toggle">
@@ -589,7 +673,28 @@ class AreasGraphTab extends TabBase {
                 ${alreadyHere ? 'disabled' : ''}>Teleport here</button>
 
             <div class="gm-inspector-section">
+                <h4>Area Management</h4>
+                <div class="gm-inline-form">
+                    <select id="inspectorSwapSelect">${targetOptions}</select>
+                    <button class="btn-sm" id="inspectorSwapBtn">Swap</button>
+                    <button class="btn-sm" id="inspectorSwitchBtn"
+                        title="Swap without correcting the linked areas' positions/evidence">Switch</button>
+                </div>
+                <div class="gm-inline-form" style="margin-top:0.35rem">
+                    <button class="btn-sm" id="inspectorDuplicateBtn" style="flex:1"
+                        title="Duplicate this area, copying its properties and evidence into a new area">Duplicate</button>
+                    <button class="btn-sm danger" id="inspectorRemoveBtn" style="flex:1">Remove</button>
+                </div>
+            </div>
+
+            <div class="gm-inspector-section">
                 <label>Background (this area only)</label>
+                <div class="gm-field-row" data-field="background_suffix">
+                    <label title="background_suffix">background_suffix</label>
+                    <input type="text" class="gm-field-input" id="inspectorBgSuffixInput"
+                        value="${esc(area.background_suffix || '')}" placeholder="suffix appended to the background name">
+                    <button class="btn-sm gm-field-save">Save</button>
+                </div>
                 <div class="gm-inline-form">
                     <input type="text" id="inspectorBgInput" value="${esc(area.background || '')}" placeholder="background name">
                     <input type="text" id="inspectorOverlayInput" value="${esc(area.overlay || '')}" placeholder="overlay">
@@ -611,10 +716,7 @@ class AreasGraphTab extends TabBase {
 
             ${basicFields.length ? `<div class="gm-inspector-section"><h4>Fields</h4>${basicsHtml}</div>` : ''}
 
-            <div class="gm-inspector-section">
-                <h4>Preferences</h4>
-                <div class="gm-pref-list">${prefsHtml}</div>
-            </div>
+            ${triggersHtml ? `<div class="gm-inspector-section"><h4>Triggers</h4>${triggersHtml}</div>` : ''}
 
             <div class="gm-inspector-section">
                 <h4>Links</h4>
@@ -629,12 +731,8 @@ class AreasGraphTab extends TabBase {
             </div>
 
             <div class="gm-inspector-section">
-                <h4>Area Management</h4>
-                <div class="gm-inline-form">
-                    <select id="inspectorSwapSelect">${targetOptions}</select>
-                    <button class="btn-sm" id="inspectorSwapBtn">Swap</button>
-                </div>
-                <button class="btn-sm danger" id="inspectorRemoveBtn" style="width:100%;margin-top:0.35rem">Remove This Area</button>
+                <h4>Preferences</h4>
+                <div class="gm-pref-list">${prefsHtml}</div>
             </div>
         `;
         this._popover.scrollTop = prevScrollTop;
@@ -693,13 +791,33 @@ class AreasGraphTab extends TabBase {
             posLockClearBtn.addEventListener('click', () => this._editField(area.id, 'pos_lock', ''));
         }
 
-        p.querySelectorAll('.gm-field-row').forEach((row) => {
+        p.querySelectorAll('.gm-field-row[data-field]').forEach((row) => {
+            const field = row.dataset.field;
+            const checkbox = row.querySelector('.gm-field-checkbox');
+            if (checkbox) {
+                checkbox.addEventListener('change', () =>
+                    this._editField(area.id, field, checkbox.checked ? 'true' : 'false'));
+                return;
+            }
+            const select = row.querySelector('.gm-field-select');
+            if (select) {
+                select.addEventListener('change', () => this._editField(area.id, field, select.value));
+                return;
+            }
             const saveBtn = row.querySelector('.gm-field-save');
             if (!saveBtn) return; // read-only field row -- no command backs it
             saveBtn.addEventListener('click', () => {
-                const field = row.dataset.field;
                 const value = row.querySelector('.gm-field-input').value;
                 this._editField(area.id, field, value);
+            });
+        });
+
+        p.querySelectorAll('.gm-field-row[data-trigger-row]').forEach((row) => {
+            const key = row.dataset.triggerRow;
+            const saveBtn = row.querySelector('[data-trigger-save]');
+            saveBtn.addEventListener('click', () => {
+                const value = row.querySelector('.gm-field-input').value;
+                this._editField(area.id, 'triggers', value, { trigger: key });
             });
         });
 
@@ -763,6 +881,16 @@ class AreasGraphTab extends TabBase {
             this._swapAreas(area.id, parseInt(sel.value, 10));
         });
 
+        const switchBtn = p.querySelector('#inspectorSwitchBtn');
+        if (switchBtn) switchBtn.addEventListener('click', () => {
+            const sel = p.querySelector('#inspectorSwapSelect');
+            if (!sel || !sel.value) return;
+            this._switchAreas(area.id, parseInt(sel.value, 10));
+        });
+
+        const duplicateBtn = p.querySelector('#inspectorDuplicateBtn');
+        if (duplicateBtn) duplicateBtn.addEventListener('click', () => this._duplicateArea(area.id));
+
         const removeBtn = p.querySelector('#inspectorRemoveBtn');
         if (removeBtn) removeBtn.addEventListener('click', () => this._removeArea(area.id));
     }
@@ -819,9 +947,10 @@ class AreasGraphTab extends TabBase {
         }
     }
 
-    async _editField(areaId, field, value) {
+    async _editField(areaId, field, value, extra) {
         try {
-            const result = await this.api.post(`/api/gm/areas/${areaId}/edit`, { field, value });
+            const body = Object.assign({ field, value }, extra || {});
+            const result = await this.api.post(`/api/gm/areas/${areaId}/edit`, body);
             this.shell.toast((result.output || []).join(' ') || `${field} updated.`, result.ok ? 'success' : 'error');
             await this.reload();
             if (this._selectedAreaId === areaId) await this._refreshInspector();
@@ -889,8 +1018,36 @@ class AreasGraphTab extends TabBase {
             const result = await this.api.post('/api/gm/hub/areas/swap', { a, b });
             this.shell.toast((result.output || []).join(' ') || 'Areas swapped.', result.ok ? 'success' : 'error');
             await this.reload();
+            if (this._selectedAreaId === a) await this._refreshInspector();
         } catch (e) {
             this.shell.toast('Failed to swap areas: ' + e.message, 'error');
+        }
+    }
+
+    /** /area_switch -- swaps two areas' identities without correcting the
+     * linked areas' positions/evidence (the swap does that); see
+     * handle_switch_areas in gm_panel.py. */
+    async _switchAreas(a, b) {
+        try {
+            const result = await this.api.post('/api/gm/hub/areas/switch', { a, b });
+            this.shell.toast((result.output || []).join(' ') || 'Areas switched.', result.ok ? 'success' : 'error');
+            await this.reload();
+            if (this._selectedAreaId === a) await this._refreshInspector();
+        } catch (e) {
+            this.shell.toast('Failed to switch areas: ' + e.message, 'error');
+        }
+    }
+
+    /** Duplicates `areaId`'s properties/evidence into a new area appended
+     * to the hub; see handle_duplicate_area in gm_panel.py. */
+    async _duplicateArea(areaId) {
+        try {
+            const result = await this.api.post(`/api/gm/hub/areas/${areaId}/duplicate`);
+            this.shell.toast((result.output || []).join(' ') || 'Area duplicated.', result.ok ? 'success' : 'error');
+            await this.reload();
+            if (this._selectedAreaId === areaId) await this._refreshInspector();
+        } catch (e) {
+            this.shell.toast('Failed to duplicate area: ' + e.message, 'error');
         }
     }
 
@@ -1015,7 +1172,11 @@ class AreasGraphTab extends TabBase {
                 border-radius: 4px; padding: 0.32rem 0.5rem; font-size: 0.82rem;
             }
 
-            .area-popover.gm-area-inspector { width: 340px; max-width: calc(100% - 1.4rem); }
+            /* The inspector is deliberately wider than the graph popover
+             * (540px vs 340px) -- the field rows' label column fits the
+             * longest allowlisted name ("background_suffix") without
+             * truncating to "background_...". */
+            .area-popover.gm-area-inspector { width: 540px; max-width: calc(100% - 1.4rem); }
             .gm-inspector-section { border-top: 1px solid var(--gm-border); margin-top: 0.55rem; padding-top: 0.5rem; }
             .gm-inspector-section h4 {
                 font-size: 0.78rem; color: var(--gm-accent2); margin-bottom: 0.35rem;
@@ -1023,7 +1184,7 @@ class AreasGraphTab extends TabBase {
             }
             .gm-field-row { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.3rem; }
             .gm-field-row label {
-                flex: 0 0 auto; font-size: 0.72rem; color: var(--gm-text-dim); width: 78px;
+                flex: 0 0 auto; font-size: 0.72rem; color: var(--gm-text-dim); width: 150px;
                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
             }
             .gm-field-row .gm-field-input {
@@ -1033,6 +1194,12 @@ class AreasGraphTab extends TabBase {
             .gm-field-row .gm-field-readonly {
                 flex: 1; min-width: 0; color: var(--gm-text-dim); font-size: 0.78rem;
                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            }
+            .gm-field-row .gm-field-select {
+                cursor: pointer;
+            }
+            .gm-field-row .gm-field-checkbox {
+                flex: 0 0 auto; width: 16px; height: 16px; accent-color: var(--gm-accent); cursor: pointer;
             }
 
             /* No nested scrollbar: the preferences list grows in place and

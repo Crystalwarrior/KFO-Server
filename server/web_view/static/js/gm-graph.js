@@ -1659,19 +1659,77 @@ class GraphRenderer {
      * inside the pan/zoom viewport, so it survives node/edge re-renders
      * (which only touch the edges/nodes layers) and pans/zooms along with
      * everything else.
+     *
+     * The token mirrors the moving client's node-chip look: its dot takes
+     * the per-character color (GMLocalContent, keyed by character folder),
+     * it swaps in the character icon when one resolves, and its label is
+     * the client's SHOWNAME (from the `client_moved` payload via `opts`,
+     * falling back to the already-loaded client record, then to
+     * `labelText`/`#id`). Pass `null` as `labelText` when supplying
+     * `opts` so the SHOWNAME wins.
      */
-    animateMovement(clientId, fromAreaId, toAreaId, labelText) {
+    animateMovement(clientId, fromAreaId, toAreaId, labelText, opts) {
         const from = fromAreaId !== null && fromAreaId !== undefined ? this.getNodeCenter(fromAreaId) : null;
         const to = toAreaId !== null && toAreaId !== undefined ? this.getNodeCenter(toAreaId) : null;
         if (!from && !to) return;
         const start = from || to;
         const end = to || from;
 
+        const client = (this._clientsById instanceof Map)
+            ? this._clientsById.get(clientId)
+            : (this._clientsById ? this._clientsById[clientId] : null);
+        const opt = opts || {};
+        // Same id -> folder resolution as the nodes' chips (_clientFolders,
+        // fed by setClientFolders in gm-areas-tab.js); `opts.folder` wins
+        // because it rides in the fresh `client_moved` event.
+        const folder = opt.folder
+            || (this._clientFolders ? this._clientFolders[clientId] : '')
+            || '';
+        const showname = (opt.showname !== undefined && opt.showname !== null)
+            ? opt.showname : (client ? client.showname : '');
+        const tokenLabel = (showname !== undefined && showname !== null && String(showname).trim() !== '')
+            ? showname
+            : (labelText !== undefined && labelText !== null ? String(labelText) : `#${clientId}`);
+
+        // Same colorKey convention as _buildNode: character folder name, or
+        // the client id until a folder is known -- so a color a GM set on
+        // the Clients tab for this character is what travels the edge.
+        const colorKey = folder || String(clientId);
+        const hasLocalContent = !!(this._localContent && typeof this._localContent.getClientColor === 'function');
+        const color = hasLocalContent ? (this._localContent.getClientColor(colorKey) || '#5a6280') : '#5a6280';
+
         const token = grEl('g', { class: 'gr-token' });
-        token.appendChild(grEl('circle', { r: 9, class: 'gr-token-dot' }));
+        // Inline fill deliberately wins over .gr-token-dot's stylesheet
+        // accent color, same trick the chips use for per-character colors.
+        const dot = grEl('circle', { r: 9, class: 'gr-token-dot' });
+        dot.style.fill = color;
+        token.appendChild(dot);
         const label = grEl('text', { y: -13, 'text-anchor': 'middle', class: 'gr-token-label' });
-        label.textContent = labelText !== undefined && labelText !== null ? String(labelText) : `#${clientId}`;
+        label.textContent = tokenLabel;
         token.appendChild(label);
+
+        if (folder) {
+            // Unique id per token (the counter guards a repeat move by the
+            // same client while a previous token is still traveling). The
+            // icon is clipped to the dot's exact circle; the dot's own
+            // stroke ring stays visible as the icon's border.
+            const clipId = `gr-token-clip-${clientId}-${this._tokenSeq = (this._tokenSeq || 0) + 1}`;
+            const clip = grEl('clipPath', { id: clipId });
+            clip.appendChild(grEl('circle', { r: 9, cx: 0, cy: 0 }));
+            token.appendChild(clip);
+            this._resolveCharIcon(folder).then((url) => {
+                if (!url || !token.isConnected) return;
+                const img = grEl('image', {
+                    x: -9, y: -9, width: 18, height: 18,
+                    'clip-path': `url(#${clipId})`, preserveAspectRatio: 'xMidYMid slice',
+                });
+                img.setAttributeNS(GR_XLINK_NS, 'href', url);
+                img.setAttribute('href', url);
+                img.addEventListener('error', () => { if (img.parentNode) img.parentNode.removeChild(img); });
+                token.appendChild(img);
+            });
+        }
+
         this._layerTokens.appendChild(token);
 
         const pathEl = (from && to) ? this._edgePaths.get(`${fromAreaId}->${toAreaId}`) : null;
