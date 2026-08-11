@@ -230,15 +230,18 @@ class AreaDetailSerializer:
     # such (see `to_dict`); `music` is the track currently playing in the
     # area (`Area.music`, set via `add_music_playing`); `ambience` is the
     # area's ambience track -- both `music` and `ambience` are read-only.
-    # `background_dark`/`pos_dark`/`passing_msg`/`msg_delay`/`music_ref`/
+    # `background_dark`/`pos_dark`/`desc_dark`/`msg_delay`/`music_ref`/
     # `hp_def`/`hp_pro` and the nine minigame song scalars were added with
     # the same audit this block describes: nothing here is moderator-only
-    # or exposes ipid/hdid/IP.
+    # or exposes ipid/hdid/IP. `passing_msg` is deliberately NOT listed:
+    # it is a plain bool on `Area`, so it already renders as a toggle in
+    # the inspector's Preferences section (via `_prefs`) -- a second
+    # checkbox in Fields would be redundant.
     _SCALAR_FIELDS = (
         "name", "background", "background_suffix", "overlay", "dark",
         "locked", "status", "doc", "desc", "move_delay", "max_players",
         "evidence_mod", "pos_lock", "abbreviation", "ambience", "broadcast_list",
-        "background_dark", "pos_dark", "passing_msg", "msg_delay", "music_ref",
+        "background_dark", "pos_dark", "desc_dark", "msg_delay", "music_ref",
         "hp_def", "hp_pro", "music", "password", "triggers",
         "cross_swords_song_start", "cross_swords_song_end", "cross_swords_song_concede",
         "scrum_debate_song_start", "scrum_debate_song_end", "scrum_debate_song_concede",
@@ -261,7 +264,7 @@ class AreaDetailSerializer:
         # Command-backed scalar writes (each mapped in `handle_edit_area`):
         "dark", "locked", "background_suffix", "background_dark",
         "move_delay", "evidence_mod", "password", "music_ref", "pos_dark",
-        "msg_delay", "passing_msg", "hp_def", "hp_pro", "triggers",
+        "desc_dark", "msg_delay", "hp_def", "hp_pro", "triggers",
         "cross_swords_song_start", "cross_swords_song_end", "cross_swords_song_concede",
         "scrum_debate_song_start", "scrum_debate_song_end", "scrum_debate_song_concede",
         "panic_talk_action_song_start", "panic_talk_action_song_end",
@@ -281,10 +284,10 @@ class AreaDetailSerializer:
         "status": {"input": "text"},
         "dark": {"input": "checkbox"},
         "locked": {"input": "checkbox"},
-        "passing_msg": {"input": "checkbox"},
         "background_suffix": {"input": "text"},
         "background_dark": {"input": "text"},
         "pos_dark": {"input": "text"},
+        "desc_dark": {"input": "text"},
         "password": {"input": "text"},
         "move_delay": {"input": "number"},
         "msg_delay": {"input": "number"},
@@ -1762,6 +1765,18 @@ class AreaRoutes:
         arg = f"{area_id} {background} {overlay}".strip()
         try:
             output = session.execute_command("gm_set_bg", arg)
+            # The suffix rides along in the same request (the inspector's
+            # "suffix | background / overlay" form) -- run the real
+            # `/bg_suffix` on the target area when the caller supplied one.
+            # It is only sent when present, so older clients that POST
+            # without a `suffix` key leave the current suffix untouched.
+            if _command_ok(output) and "suffix" in data:
+                area = self._area_from_request(session, request)
+                if area is not None:
+                    suffix_out = session.execute_command_in_area(
+                        area, "bg_suffix", str(data.get("suffix", ""))
+                    )
+                    output = output + suffix_out
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         if _command_ok(output):
@@ -1925,10 +1940,11 @@ class AreaRoutes:
                 # unlock}), so no area shadowing needed -- the per-target
                 # ownership check runs inside the command.
                 output = session.execute_command("unlock" if value == "false" else "lock", str(area.id))
-            elif field == "passing_msg":
-                output = session.execute_command_in_area(
-                    area, "area_pref", f"passing_msg {'on' if value == 'true' else 'off'}"
-                )
+            elif field == "desc_dark":
+                # `/desc_dark` sets the dark-area description; `/desc_dark_clear`
+                # restores the default (see ooc_cmd_desc_dark/clear in areas.py).
+                cmd, arg = ("desc_dark_clear", "") if value == "" else ("desc_dark", value)
+                output = session.execute_command_in_area(area, cmd, arg)
             elif field == "background_suffix":
                 output = session.execute_command_in_area(area, "bg_suffix", value)
             elif field == "move_delay":

@@ -94,8 +94,8 @@ class ApiClient {
     // --- Areas tab (§3.2) ------------------------------------------------
 
     getAreas() { return this.get('/api/gm/areas'); }
-    setAreaBackground(areaId, background, overlay) {
-        return this.post(`/api/gm/areas/${areaId}/background`, { background, overlay });
+    setAreaBackground(areaId, background, overlay, suffix) {
+        return this.post(`/api/gm/areas/${areaId}/background`, { background, overlay, suffix });
     }
     getBackgroundThumbBaseUrl() { return this.get('/api/gm/areas/background_thumb_base_url'); }
 

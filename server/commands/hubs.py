@@ -1099,7 +1099,7 @@ def ooc_cmd_hpset(client, arg):
             "Invalid position. Use \"pro\" or \"def\"")
 
     area_list = [client.area]
-    if len(args > 2):
+    if len(args) > 2:
         area_list = client.area.area_manager.get_areas_by_args(args[1:])
     for area in area_list:
         area.change_hp(side, int(args[1]))

@@ -54,6 +54,28 @@ class AreasGraphTab extends TabBase {
             this._inspectorRefreshPending = false;
             if (this._selectedAreaId !== null) this._refreshInspector();
         });
+        // A <select>'s options popup is modal while open: the first click
+        // anywhere else dismisses it (leaving the select merely focused --
+        // native selects keep focus on a non-focusable click target, which
+        // is why `document.activeElement` alone can't tell "dropdown open"
+        // from "focused but idle"). Track the open window explicitly:
+        // opening a select starts it, any other click / an option pick /
+        // Escape closes it. Falls back to a time window so a dropdown that
+        // stays open past one poll cycle is still protected.
+        this._selectOpenSince = 0;
+        this._popover.addEventListener('click', (e) => {
+            if (e.target.closest && e.target.closest('select')) {
+                this._selectOpenSince = Date.now();
+            } else {
+                this._selectOpenSince = 0;
+            }
+        });
+        this._popover.addEventListener('change', (e) => {
+            if (e.target.tagName === 'SELECT') this._selectOpenSince = 0;
+        });
+        this._popover.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') this._selectOpenSince = 0;
+        });
         this._hubLabel = root.querySelector('#areasHubLabel');
 
         this._injectStyles();
@@ -367,13 +389,22 @@ class AreasGraphTab extends TabBase {
         this._popover.innerHTML = '';
     }
 
-    /** Is the popover currently editing text? The 4s poll must not rebuild
-     * the inspector's DOM (wiping the focused input's value) while a GM is
-     * typing in it. Selects/checkboxes are committed on interaction and are
-     * *not* "editing" -- a rebuild after their `change` is expected. */
+    /** Is the popover currently being interacted with? The 4s poll must not
+     * rebuild the inspector's DOM (wiping the focused input's value or
+     * closing an open dropdown popup) while a GM is mid-edit. A <select>
+     * counts as "editing" only while its options popup is actually open
+     * (tracked by `_selectOpenSince` -- focus alone isn't enough, since a
+     * native select keeps focus after its dismissed popup). Checkboxes
+     * commit on click and are *not* "editing" -- a rebuild after their
+     * `change` is expected. */
     _editingPopover() {
         const active = document.activeElement;
         if (!active || !this._popover.contains(active)) return false;
+        if (active.tagName === 'SELECT') {
+            // Allow one poll cycle of slack beyond the 4s cycle so an
+            // open dropdown is never torn down mid-read.
+            return (Date.now() - this._selectOpenSince) < 6000;
+        }
         if (active.tagName === 'TEXTAREA') return true;
         if (active.tagName !== 'INPUT') return false;
         const t = (active.type || 'text').toLowerCase();
@@ -572,8 +603,8 @@ class AreasGraphTab extends TabBase {
         // Only fields the backend actually lists in `editable_fields` get an
         // editable control; the rest of the allowlisted scalars are shown
         // read-only. The control TYPE comes from `detail.field_meta`
-        // (`FieldMeta` in gm_panel.py): checkbox (dark/locked/passing_msg),
-        // select (evidence_mod/music_ref), number (move_delay/msg_delay/
+        // (`FieldMeta` in gm_panel.py): checkbox (dark/locked), select
+        // (evidence_mod/music_ref), number (move_delay/msg_delay/
         // hp_def/hp_pro/max_players), or plain text. Saving a field the
         // backend doesn't allow would just 400 with "Unsupported field".
         const basicsHtml = basicFields.map((k) => this._fieldRowHtml(k, area, editableFields)).join('');
@@ -689,15 +720,13 @@ class AreasGraphTab extends TabBase {
 
             <div class="gm-inspector-section">
                 <label>Background (this area only)</label>
-                <div class="gm-field-row" data-field="background_suffix">
-                    <label title="background_suffix">background_suffix</label>
-                    <input type="text" class="gm-field-input" id="inspectorBgSuffixInput"
-                        value="${esc(area.background_suffix || '')}" placeholder="suffix appended to the background name">
-                    <button class="btn-sm gm-field-save">Save</button>
-                </div>
                 <div class="gm-inline-form">
                     <input type="text" id="inspectorBgInput" value="${esc(area.background || '')}" placeholder="background name">
+                    <input type="text" id="inspectorBgSuffixInput" value="${esc(area.background_suffix || '')}" placeholder="suffix">
+                </div>
+                <div class="gm-inline-form" style="margin-top:0.35rem">
                     <input type="text" id="inspectorOverlayInput" value="${esc(area.overlay || '')}" placeholder="overlay">
+                    <span class="gm-field-hint">Image layered over the background, e.g. a vignette or foreground effect.</span>
                 </div>
                 <button class="btn-sm" id="inspectorBgSetBtn" style="margin-top:0.35rem;width:100%">Set Background</button>
             </div>
@@ -898,9 +927,10 @@ class AreasGraphTab extends TabBase {
     async _setBackground(areaId) {
         const bg = this._popover.querySelector('#inspectorBgInput').value.trim();
         const overlay = this._popover.querySelector('#inspectorOverlayInput').value.trim();
+        const suffix = this._popover.querySelector('#inspectorBgSuffixInput').value.trim();
         if (!bg) { this.shell.toast('Background name is required.', 'error'); return; }
         try {
-            const result = await this.api.setAreaBackground(areaId, bg, overlay);
+            const result = await this.api.setAreaBackground(areaId, bg, overlay, suffix);
             this.shell.toast((result.output || []).join(' ') || 'Background updated.', result.ok ? 'success' : 'error');
             // Belt-and-suspenders alongside the WS `background_changed`
             // handler above: this GM's own panel doesn't need to depend on
@@ -1200,6 +1230,13 @@ class AreasGraphTab extends TabBase {
             }
             .gm-field-row .gm-field-checkbox {
                 flex: 0 0 auto; width: 16px; height: 16px; accent-color: var(--gm-accent); cursor: pointer;
+            }
+            /* Inline explanation next to a field (e.g. the overlay input):
+             * dim, right-aligned filler that takes up the row's spare width
+             * instead of leaving it blank. */
+            .gm-field-hint {
+                flex: none; font-size: 0.7rem; color: var(--gm-text-dim); font-style: italic;
+                line-height: 1.3;
             }
 
             /* No nested scrollbar: the preferences list grows in place and
