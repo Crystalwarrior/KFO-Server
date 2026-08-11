@@ -106,8 +106,13 @@ class ApiClient {
     demoteClient(clientId) { return this.post(`/api/gm/clients/${clientId}/ungm`); }
 
     // --- Commands tab (§3.4) ----------------------------------------------
+    // GET /api/gm/commands returns { ok, docs_url, groups: [{ module,
+    // commands: [{name, summary, usage}] }] } -- an auto-generated reference
+    // built from server/commands/'s own submodules (CommandLister), not a
+    // hand-curated/allowlisted catalog. It never gates anything: the run
+    // endpoint below accepts any command name regardless of what's listed.
 
-    getCommandCatalog() { return this.get('/api/gm/commands'); }
+    getCommandGroups() { return this.get('/api/gm/commands'); }
     runCommand(cmd, arg) { return this.post('/api/gm/commands/run', { cmd, arg }); }
 
     // --- Characters tab (§3.5) --------------------------------------------

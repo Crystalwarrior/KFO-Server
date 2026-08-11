@@ -18,6 +18,49 @@ const GM_DATA_KIND_LABELS = {
     musiclists: 'Music list',
 };
 
+/** Matches the backend's single-segment name regex exactly (gm_panel.py's
+ * HubDataRoutes) -- 1-64 letters/digits/spaces/underscore/hyphen. */
+const GM_DATA_SEGMENT_RE = /^[A-Za-z0-9 _-]{1,64}$/;
+
+/** Client-side mirror of the backend's multi-segment path validation: 1-4
+ * "/"-separated segments, each matching GM_DATA_SEGMENT_RE, none of them
+ * "read_only" (that name is reserved for the server's own top-level,
+ * excluded-from-recursion convention -- see gm_panel.py's HubDataRoutes).
+ * Never a substitute for the server's own check -- purely so a GM sees a
+ * clear message instead of a raw 400. Returns { ok: true, name } or
+ * { ok: false, error }. */
+function validateDataName(raw) {
+    const name = String(raw || '').trim();
+    if (!name) return { ok: false, error: 'A name is required.' };
+    const segments = name.split('/');
+    if (segments.length > 4) {
+        return { ok: false, error: 'Path may have at most 4 folder segments.' };
+    }
+    for (const seg of segments) {
+        if (!GM_DATA_SEGMENT_RE.test(seg)) {
+            return {
+                ok: false,
+                error: `Invalid path segment "${seg}": use 1-64 letters, numbers, spaces, "_" or "-", with no empty segments.`,
+            };
+        }
+        if (seg === 'read_only') {
+            // Case-sensitive, matching the backend's own check (and the
+            // on-disk directory name it guards) exactly -- see
+            // gm_panel.py's _split_data_name.
+            return { ok: false, error: '"read_only" is a reserved folder name and cannot be used here.' };
+        }
+    }
+    return { ok: true, name };
+}
+
+/** Join an optional folder-prefix field with a file's derived basename into
+ * one candidate path name (folder prefix may itself be blank, or already
+ * contain multiple "/"-separated segments). */
+function joinDataFolderPrefix(prefix, basename) {
+    const trimmedPrefix = String(prefix || '').trim().replace(/\/+$/, '');
+    return trimmedPrefix ? `${trimmedPrefix}/${basename}` : basename;
+}
+
 class GMDataTab extends TabBase {
     /**
      * @param {GMPanelShell} shell
@@ -79,6 +122,55 @@ class GMDataTab extends TabBase {
         this._musicApplyBtn.addEventListener('click', () => this._musicApply());
         this._charlistSubmitBtn.addEventListener('click', () => this._charlistSubmit());
         this._charlistRevertBtn.addEventListener('click', () => this._charlistRevert());
+
+        // File lists can now contain subpath entries ("events/mystery");
+        // uploads default their name from the picked file's basename at the
+        // kind's top level, same as before, but a GM needs a way to target
+        // a subfolder too -- inject a small optional "folder" field next to
+        // every file input (hub import + each generic kind box) since
+        // gm.html/gm.css are not this package's to edit.
+        this._injectFolderPrefixFields();
+        this._injectStyles();
+    }
+
+    /** The injected folder-prefix fields (see _injectFolderPrefixFields)
+     * are new markup this tab owns entirely; gm.html/gm.css are not this
+     * package's to edit, so their styling is scoped here. Guarded by id so
+     * re-construction never doubles the <style> tag up. */
+    _injectStyles() {
+        if (document.getElementById('gm-data-tab-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'gm-data-tab-styles';
+        style.textContent = `
+            .gm-data-folder-prefix {
+                width: 9rem; min-width: 6rem;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    /** Optional folder-prefix text input, inserted right before each file
+     * <input> in the DOM (hub import + every `[data-kind]` box's upload
+     * row). Joined with the picked file's basename by _uploadDataFile()/
+     * _hubImport() and validated the same way as every other typed name. */
+    _injectFolderPrefixFields() {
+        const attach = (fileInput) => {
+            if (!fileInput || fileInput.dataset.gmFolderInjected) return null;
+            const folderInput = document.createElement('input');
+            folderInput.type = 'text';
+            folderInput.className = 'gm-data-folder-prefix';
+            folderInput.placeholder = 'folder (optional)';
+            folderInput.title = 'Optional subfolder to save into, e.g. "events/mystery" -- 1-4 path segments, letters/numbers/spaces/_/- only.';
+            fileInput.parentElement.insertBefore(folderInput, fileInput);
+            fileInput.dataset.gmFolderInjected = '1';
+            return folderInput;
+        };
+
+        this._hubImportFolderInput = attach(this._hubImportFile);
+        Object.keys(this._kindBoxes).forEach((kind) => {
+            const box = this._kindBoxes[kind];
+            box.folderInput = attach(box.fileInput);
+        });
     }
 
     async activate() {
@@ -161,8 +253,9 @@ class GMDataTab extends TabBase {
     }
 
     async _hubSave() {
-        const name = this._hubSaveNameInput.value.trim();
-        if (!name) { this.shell.toast('Enter a name to save the hub as.', 'error'); return; }
+        const check = validateDataName(this._hubSaveNameInput.value);
+        if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
+        const name = check.name;
         try {
             const result = await this.api.saveHub(name);
             this._printOutput(result.output, result.ok);
@@ -175,13 +268,14 @@ class GMDataTab extends TabBase {
     }
 
     async _hubSaveAndDownload() {
-        const name = this._hubSaveNameInput.value.trim();
-        if (!name) { this.shell.toast('Enter a name to save the hub as.', 'error'); return; }
+        const check = validateDataName(this._hubSaveNameInput.value);
+        if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
+        const name = check.name;
         try {
             const result = await this.api.saveHub(name);
             this._printOutput(result.output, result.ok);
             const file = await this.api.getDataFile('hubs', name);
-            this.api.downloadText(`${name}.yaml`, file.content || '');
+            this.api.downloadText(`${name.replace(/\//g, '_')}.yaml`, file.content || '');
             this.shell.toast(`Hub saved as "${name}" and downloaded.`, 'success');
             this._hubSaveNameInput.value = '';
             await this._loadHubSaves();
@@ -193,7 +287,10 @@ class GMDataTab extends TabBase {
     async _hubExport(name) {
         try {
             const file = await this.api.getDataFile('hubs', name);
-            this.api.downloadText(`${name}.yaml`, file.content || '');
+            // A subpath name ("events/mystery") isn't a valid single
+            // filename for a browser download -- flatten it to "_" so the
+            // save-as dialog gets one sane file, not a path.
+            this.api.downloadText(`${name.replace(/\//g, '_')}.yaml`, file.content || '');
         } catch (e) {
             this.shell.toast('Failed to export hub: ' + e.message, 'error');
         }
@@ -214,7 +311,11 @@ class GMDataTab extends TabBase {
     async _hubImport() {
         const file = this._hubImportFile.files && this._hubImportFile.files[0];
         if (!file) { this.shell.toast('Choose a .yaml file first.', 'error'); return; }
-        const name = file.name.replace(/\.ya?ml$/i, '');
+        const basename = file.name.replace(/\.ya?ml$/i, '');
+        const folderPrefix = this._hubImportFolderInput ? this._hubImportFolderInput.value : '';
+        const check = validateDataName(joinDataFolderPrefix(folderPrefix, basename));
+        if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
+        const name = check.name;
         const exists = this._hubSaves.some((f) => f.name === name);
         if (exists && !confirm(`Overwrite existing hub save "${name}"?`)) return;
         try {
@@ -222,6 +323,7 @@ class GMDataTab extends TabBase {
             await this.api.putDataFile('hubs', name, content);
             this.shell.toast(`Hub file imported as "${name}".`, 'success');
             this._hubImportFile.value = '';
+            if (this._hubImportFolderInput) this._hubImportFolderInput.value = '';
             await this._loadHubSaves();
             if (this._hubImportLoadCheck.checked && confirm(`Load "${name}" into the current hub now?`)) {
                 await this._hubLoad(name, { skipConfirm: true });
@@ -267,7 +369,7 @@ class GMDataTab extends TabBase {
     async _downloadDataFile(kind, name) {
         try {
             const file = await this.api.getDataFile(kind, name);
-            this.api.downloadText(`${name}.yaml`, file.content || '');
+            this.api.downloadText(`${name.replace(/\//g, '_')}.yaml`, file.content || '');
         } catch (e) {
             this.shell.toast('Failed to download: ' + e.message, 'error');
         }
@@ -277,7 +379,11 @@ class GMDataTab extends TabBase {
         const box = this._kindBoxes[kind];
         const file = box.fileInput.files && box.fileInput.files[0];
         if (!file) { this.shell.toast('Choose a .yaml file first.', 'error'); return; }
-        const name = file.name.replace(/\.ya?ml$/i, '');
+        const basename = file.name.replace(/\.ya?ml$/i, '');
+        const folderPrefix = box.folderInput ? box.folderInput.value : '';
+        const check = validateDataName(joinDataFolderPrefix(folderPrefix, basename));
+        if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
+        const name = check.name;
         const exists = box.files.some((f) => f.name === name);
         if (exists && !confirm(`Overwrite existing file "${name}"?`)) return;
         const label = GM_DATA_KIND_LABELS[kind] || 'File';
@@ -286,6 +392,7 @@ class GMDataTab extends TabBase {
             await this.api.putDataFile(kind, name, content);
             this.shell.toast(`${label} "${name}" saved.`, 'success');
             box.fileInput.value = '';
+            if (box.folderInput) box.folderInput.value = '';
             await this._loadDataFiles(kind);
         } catch (e) {
             this.shell.toast(`Failed to upload ${label.toLowerCase()}: ` + e.message, 'error');
@@ -307,8 +414,9 @@ class GMDataTab extends TabBase {
     }
 
     async _musicSaveAs() {
-        const name = this._musicNameInput.value.trim();
-        if (!name) { this.shell.toast('Enter a name to save the music list as.', 'error'); return; }
+        const check = validateDataName(this._musicNameInput.value);
+        if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
+        const name = check.name;
         const box = this._kindBoxes.musiclists;
         const exists = box && box.files.some((f) => f.name === name);
         if (exists && !confirm(`Overwrite existing music list "${name}"?`)) return;
@@ -322,8 +430,9 @@ class GMDataTab extends TabBase {
     }
 
     async _musicApply() {
-        const name = this._musicNameInput.value.trim();
-        if (!name) { this.shell.toast('Enter the saved music list name to apply.', 'error'); return; }
+        const check = validateDataName(this._musicNameInput.value);
+        if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
+        const name = check.name;
         if (!confirm(`Apply music list "${name}" to the current hub now?`)) return;
         try {
             const result = await this.api.applyMusic(name);
@@ -360,7 +469,13 @@ class GMDataTab extends TabBase {
             .filter((s) => s.length > 0);
         if (!characters.length) { this.shell.toast('Character list cannot be empty.', 'error'); return; }
         if (!confirm('Apply this character list to the hub now? This changes what everyone can select as a character.')) return;
-        const saveAs = this._charlistSaveAsInput.value.trim();
+        const rawSaveAs = this._charlistSaveAsInput.value.trim();
+        let saveAs = '';
+        if (rawSaveAs) {
+            const check = validateDataName(rawSaveAs);
+            if (!check.ok) { this.shell.toast(check.error, 'error'); return; }
+            saveAs = check.name;
+        }
         try {
             const result = await this.api.submitCharlist(characters, saveAs || undefined);
             this._printOutput(result.output, result.ok);

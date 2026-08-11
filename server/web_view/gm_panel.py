@@ -23,23 +23,28 @@ module-global style of `admin_panel.py`:
     GMSession         -- one GM's bound web session
     *Serializer       -- field-level whitelisting, one per object type
     CommandOutputScrubber -- last-resort ipid/hdid/IP redaction
-    GMCommandCatalog  -- curated cookbook (UX aid, not a gate) for the
-                         Commands tab
+    CommandLister     -- auto-generated ooc_cmd_ reference (UX aid, not a
+                         gate) for the Commands tab, built from
+                         `server/commands/__init__.py`'s own submodules
     *Routes           -- one handler class per tab
 
 ipid/hdid/IP are never exposed to a GM: `ClientSerializer` is the only code
-path allowed to turn a `Client` into JSON, the command catalog excludes any
-command that could print those fields, and `CommandOutputScrubber` redacts
-captured command output as a last-resort safety net.
+path allowed to turn a `Client` into JSON, and `CommandOutputScrubber`
+redacts captured command output as a last-resort safety net. The command
+lister is a UX aid only -- it does not gate what `POST
+/api/gm/commands/run` will execute; the live `mod_only(...)` checks inside
+the command layer itself are the only real gate (see `CommandRoutes`).
 """
 
 import asyncio
+import inspect
 import json
 import logging
 import os
 import re
 import secrets
 import shlex
+import shutil
 import ssl
 import time
 import uuid
@@ -161,6 +166,11 @@ class AreaSerializer:
             "dark": area.dark,
             "locked": area.locked,
             "status": area.status,
+            # List of position strings, e.g. ["def", "pro"]; empty means "all
+            # positions available". The graph needs this (not just the
+            # inspector) so node header background images can prefer
+            # `pos_lock[0]`'s asset over the generic witness-stand fallback.
+            "pos_lock": [str(p) for p in area.pos_lock],
             "client_ids": client_ids,
             "gm_client_ids": gm_ids,
             "cm_client_ids": cm_ids,
@@ -215,16 +225,30 @@ class AreaDetailSerializer:
     # Non-boolean scalar fields safe to expose read-only in the inspector.
     # Every attribute name here has been verified to exist on `Area`
     # (server/area.py `Area.__init__`) or as a computed `@property`.
+    #
+    # `abbreviation`/`ambience`/`broadcast_list` were added by the same audit
+    # that added `pos_lock` editing (see `EDITABLE_FIELDS` below): a diff of
+    # every non-boolean instance attribute `Area.__init__` sets against what
+    # this tuple already exposed. See that audit's notes for the full list of
+    # attributes considered and why each was included or left out -- nothing
+    # here is moderator-only or exposes ipid/hdid/IP.
     _SCALAR_FIELDS = (
         "name", "background", "background_suffix", "overlay", "dark",
         "locked", "status", "doc", "desc", "move_delay", "max_players",
-        "evidence_mod", "pos_lock",
+        "evidence_mod", "pos_lock", "abbreviation", "ambience", "broadcast_list",
     )
 
     # Fields from `_SCALAR_FIELDS` that have a real command behind them,
     # reachable via `AreaRoutes.handle_edit_area`. Everything else in
     # `_SCALAR_FIELDS` is read-only in the inspector.
-    EDITABLE_FIELDS = frozenset(["name", "desc", "doc", "max_players", "status"])
+    #
+    # `pos_lock` routes through the *real* `/pos_lock` / `/pos_lock_clear`
+    # commands (see `handle_edit_area`), same as every other entry here --
+    # there is no separate write path that bypasses `ooc_cmd_pos_lock`'s own
+    # permission check or its area-is-`dark` special case (in a dark area,
+    # `/pos_lock <arg>` sets `pos_dark` instead of `pos_lock`, exactly as it
+    # would if the GM had typed the command themselves).
+    EDITABLE_FIELDS = frozenset(["name", "desc", "doc", "max_players", "status", "pos_lock"])
 
     @staticmethod
     def _prefs(area):
@@ -247,10 +271,24 @@ class AreaDetailSerializer:
         fields = {}
         for name in AreaDetailSerializer._SCALAR_FIELDS:
             value = getattr(area, name, None)
-            # `pos_lock` is a list of strings; everything else here is a
-            # str/int. Coerce defensively so a future non-JSON-safe Area
-            # attribute added to `_SCALAR_FIELDS` can't leak an unexpected
-            # type to the browser.
+            # `broadcast_list` holds live `Area` OBJECTS, not ids or strings
+            # (see `ooc_cmd_area_broadcast` in server/commands/areas.py and
+            # its hub-scoped twin in server/commands/hubs.py:
+            # `client.area.broadcast_list = <result of get_areas_by_args>`,
+            # a list of `Area`). `Area` defines no `__str__`/`__repr__`, so
+            # without this, the generic list coercion below would call
+            # `str(area_obj)` and leak a raw
+            # `<server.area.Area object at 0x...>` memory address to the
+            # browser instead of anything useful. Reduce to area ids first
+            # so it serializes exactly like `pos_lock` (a list of strings)
+            # and never leaks a live object.
+            if name == "broadcast_list" and isinstance(value, list):
+                value = [getattr(v, "id", v) for v in value]
+            # `pos_lock`/`broadcast_list` are lists (of position strings /
+            # area ids respectively); everything else here is a str/int.
+            # Coerce defensively so a future non-JSON-safe Area attribute
+            # added to `_SCALAR_FIELDS` can't leak an unexpected type to the
+            # browser.
             if isinstance(value, list):
                 value = [str(v) for v in value]
             elif not isinstance(value, (str, int, float, bool)) and value is not None:
@@ -422,131 +460,94 @@ class CommandOutputScrubber:
         return text
 
 
-class CommandDescriptor:
-    """Metadata for one command exposed on the Commands tab."""
-
-    __slots__ = ("name", "usage", "description", "args", "destructive")
-
-    def __init__(self, name, usage, description, args=None, destructive=False):
-        self.name = name
-        self.usage = usage
-        self.description = description
-        self.args = args or []
-        self.destructive = destructive
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "usage": self.usage,
-            "description": self.description,
-            "args": self.args,
-            "destructive": self.destructive,
-        }
-
-
-class GMCommandCatalog:
+class CommandLister:
     """
-    Static, curated cookbook of OOC commands shown on the Commands tab as
-    clickable examples (name/usage/description/args), linked to
-    `docs/commands.md` for the full reference.
+    Auto-generated command reference for the Commands tab, replacing the
+    old hand-curated `GMCommandCatalog`.
+
+    Built directly from `server.commands`' own submodules
+    (`server/commands/__init__.py`'s `submodules()`) and each submodule's
+    `__all__` list -- there is no separate, hand-maintained list to fall
+    out of sync with the command layer. Every `ooc_cmd_*` name reachable
+    through `server.commands` shows up here, grouped by the submodule it's
+    defined in, with a summary/usage pulled straight from the command
+    function's own docstring via `inspect.getdoc`.
 
     This is a UX aid ONLY -- `POST /api/gm/commands/run` (`CommandRoutes`)
-    does not consult it and will run *any* command name, cataloged or not.
-    Authorization always happens live inside `commands.call()` via the
+    does not consult it and will run *any* command name, listed here or
+    not. Authorization always happens live inside `commands.call()` via the
     bound client: a command's own `mod_only(...)` decorator (or lack
     thereof) is the only thing deciding whether a given GM may run it, same
     as if they had typed it in their AO client. `CommandOutputScrubber`
     (still applied to every captured output line) is the defense-in-depth
     backstop against a command incidentally printing ipid/hdid/IP -- not
-    this catalog. `is_allowed` is kept as a cheap "is this one of the
-    curated examples" hint for the frontend; it is no longer used to gate
-    anything.
+    this list.
+
+    Cached at `_cache` after the first build -- command functions (and
+    therefore their docstrings/`__all__` membership) don't change at
+    runtime except through the server-wide `/reload_commands`-style path
+    that ends up calling `server.commands.reload()` (see
+    `server/tsuserver.py`), which is rare and lives well outside this
+    module (`gm_panel.py` has no cheap hook into it without reaching into
+    `tsuserver.py`, which is out of this file's scope). A GM panel process
+    that's been up since before such a reload will keep serving the
+    pre-reload command list until the panel process itself restarts --
+    documented staleness, not a correctness hazard, since `/reload`-style
+    reloads only swap in fresh function objects for the *same* command
+    names.
     """
 
-    _COMMANDS = [
-        CommandDescriptor(
-            "gm", "/gm [id]",
-            "Make yourself or a listed client a GM of this hub.",
-            [{"name": "id", "type": "client_id", "optional": True}],
-            destructive=False,
-        ),
-        CommandDescriptor(
-            "ungm", "/ungm <id>",
-            "Revoke GM status from a client in this hub.",
-            [{"name": "id", "type": "client_id"}],
-            destructive=True,
-        ),
-        CommandDescriptor(
-            "area", "/area <id>",
-            "Move yourself to another area.",
-            [{"name": "id", "type": "area_id"}],
-            destructive=False,
-        ),
-        CommandDescriptor(
-            "bg", "/bg <name>",
-            "Change the background of your current area.",
-            [{"name": "name", "type": "string"}],
-            destructive=False,
-        ),
-        CommandDescriptor(
-            "lock", "/lock", "Lock your current area.", [], destructive=True,
-        ),
-        CommandDescriptor(
-            "unlock", "/unlock", "Unlock your current area.", [], destructive=False,
-        ),
-        CommandDescriptor(
-            "area_mute", "/area_mute [id]",
-            "Toggle IC mute for a client in this area.",
-            [{"name": "id", "type": "client_id", "optional": True}],
-            destructive=True,
-        ),
-        CommandDescriptor(
-            "link", "/link <id> [locked] [hidden]",
-            "Create a two-way link to another area.",
-            [{"name": "id", "type": "area_id"}],
-            destructive=False,
-        ),
-        CommandDescriptor(
-            "unlink", "/unlink <id>",
-            "Remove a link to another area.",
-            [{"name": "id", "type": "area_id"}],
-            destructive=True,
-        ),
-        CommandDescriptor(
-            "onelink", "/onelink <id> [locked] [hidden]",
-            "Create a one-way link to another area.",
-            [{"name": "id", "type": "area_id"}],
-            destructive=False,
-        ),
-        CommandDescriptor(
-            "charlist", "/charlist [name]",
-            "Switch this hub's character list (empty = server default).",
-            [{"name": "name", "type": "string", "optional": True}],
-            destructive=True,
-        ),
-        CommandDescriptor(
-            "list_hubs", "/list_hubs",
-            "List loadable hub templates on disk.", [], destructive=False,
-        ),
-        CommandDescriptor(
-            "info", "/info", "Show this hub's info text.", [], destructive=False,
-        ),
-        CommandDescriptor(
-            "trigger", "/trigger join|leave|present <id> <cmd> [args]",
-            "Configure area/evidence event triggers.",
-            [{"name": "raw", "type": "string"}],
-            destructive=True,
-        ),
-    ]
-    _ALLOWED = {d.name for d in _COMMANDS}
+    _cache = None
+
+    @staticmethod
+    def _describe(name, func):
+        doc = inspect.getdoc(func) or ""
+        lines = [ln.strip() for ln in doc.splitlines() if ln.strip()]
+        summary = lines[0] if lines else ""
+        usage_lines = [ln for ln in lines if "usage:" in ln.lower()]
+        prefix = "ooc_cmd_"
+        display_name = name[len(prefix):] if name.startswith(prefix) else name
+        return {
+            "name": display_name,
+            "summary": summary,
+            "usage": " ".join(usage_lines),
+        }
 
     @classmethod
-    def is_allowed(cls, name):
-        return name in cls._ALLOWED
+    def _build(cls):
+        groups = []
+        for module in commands.submodules():
+            module_name = module.__name__.split(".")[-1]
+            names = getattr(module, "__all__", None)
+            if names is None:
+                names = [n for n in dir(module) if n.startswith("ooc_cmd_")]
+            cmd_list = []
+            for name in names:
+                if not name.startswith("ooc_cmd_"):
+                    continue
+                func = getattr(module, name, None)
+                if func is None:
+                    continue
+                cmd_list.append(cls._describe(name, func))
+            cmd_list.sort(key=lambda c: c["name"])
+            groups.append({"module": module_name, "commands": cmd_list})
+        groups.sort(key=lambda g: g["module"])
+        return groups
 
     @classmethod
-    def to_list(cls):
-        return [d.to_dict() for d in cls._COMMANDS]
+    def to_groups(cls):
+        if cls._cache is None:
+            cls._cache = cls._build()
+        return cls._cache
+
+    @classmethod
+    def invalidate(cls):
+        """
+        Cache-bust hook for a future cheap `server.commands.reload()`
+        integration (see class docstring) -- not currently wired to
+        anything, since that reload path lives in `tsuserver.py`.
+        """
+        cls._cache = None
 
 
 # =============================================================================
@@ -1076,6 +1077,51 @@ def _list_yaml_names(path):
         return []
 
 
+# A "subpath" data name may descend at most this many directory levels
+# below a kind's own directory -- kept in lockstep with `_split_data_name`'s
+# "1-4 segments" rule (up to 3 subdirectory segments + 1 filename segment).
+_MAX_DATA_SUBDIR_DEPTH = 3
+
+
+def _walk_data_files(base):
+    """
+    Recursively list `*.yaml` files under `base` (a kind's own directory),
+    as relative paths WITHOUT the `.yaml` extension using "/" separators
+    (e.g. `"events/mystery"`), sorted.
+
+    Any directory literally named `read_only` is skipped entirely (neither
+    descended into nor listed) -- the read-only tree for kinds that have
+    one is listed separately, flat, exactly as before (see
+    `_list_data_files`). Recursion never follows symlinks and stops
+    descending once `_MAX_DATA_SUBDIR_DEPTH` directory levels below `base`
+    have already been listed, matching the max segment count
+    `_split_data_name` will accept for a write.
+    """
+    base = os.path.normpath(base)
+    try:
+        base_depth = base.count(os.sep)
+    except Exception:
+        return []
+    results = []
+    for root, dirs, files in os.walk(base, followlinks=False):
+        dirs[:] = [d for d in dirs if d != "read_only"]
+        depth = root.count(os.sep) - base_depth
+        if depth >= _MAX_DATA_SUBDIR_DEPTH:
+            # Already at the deepest allowed subdirectory level -- list
+            # files here, but don't descend any further.
+            dirs[:] = []
+        rel_dir = os.path.relpath(root, base)
+        for f in files:
+            if not f.lower().endswith(".yaml"):
+                continue
+            stem = f[:-5]
+            if rel_dir == ".":
+                results.append(stem)
+            else:
+                results.append("/".join(rel_dir.split(os.sep) + [stem]))
+    return sorted(results)
+
+
 def _command_ok(output):
     return not any(str(line).startswith("[ERROR]") for line in output)
 
@@ -1111,10 +1157,41 @@ DATA_KIND_READONLY_SUBDIR = frozenset(["hubs", "musiclists"])
 
 # Deliberately NOT `derelative()` (which only strips `../`/`..\\` substrings
 # and is easy to reason past) -- a strict allowlist of the characters a
-# panel-submitted file name may contain. Every `/api/gm/data/...` and
-# `/api/gm/hub/...` file name is validated against this before it ever
-# touches the filesystem.
+# panel-submitted file name SEGMENT may contain. Every `/api/gm/data/...`
+# and `/api/gm/hub/...` file name is validated segment-by-segment against
+# this before it ever touches the filesystem -- see `_split_data_name`.
 _DATA_NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,64}$")
+
+
+def _split_data_name(name):
+    """
+    Validate a (possibly multi-segment, "/"-separated) panel-submitted data
+    file name -- e.g. `"events/mystery"` -- and return its list of
+    segments, or `None` if invalid.
+
+    A valid name has 1-4 segments, EVERY segment matching `_DATA_NAME_RE`
+    (which -- since it only allows `[A-Za-z0-9 _-]` -- already rejects an
+    empty segment, `"."`, `".."`, any segment containing `/` itself, and
+    any non-ASCII/unicode segment; there is no separate traversal check
+    needed because those strings simply cannot match the allowlist). No
+    segment may literally be `"read_only"` (case-sensitive, matching the
+    on-disk directory name), so a multi-segment name submitted through this
+    path can never address a kind's read-only tree -- only the existing
+    single-segment lookup (which explicitly checks the `read_only/`
+    subdirectory first) can ever resolve there.
+    """
+    if not isinstance(name, str) or name == "":
+        return None
+    segments = name.split("/")
+    if not (1 <= len(segments) <= 4):
+        return None
+    for seg in segments:
+        if not _DATA_NAME_RE.match(seg):
+            return None
+        if seg == "read_only":
+            return None
+    return segments
+
 
 _MAX_DATA_FILE_BYTES = 256 * 1024
 
@@ -1216,13 +1293,21 @@ def _path_inside(root_realpath, candidate_path):
 def _list_data_files(kind):
     """
     `[{"name": ..., "read_only": bool}, ...]` for every yaml file under
-    `kind`'s directory (and its `read_only/` subdirectory, if any), sorted
-    editable-first then by name. Returns `None` for an unknown `kind`.
+    `kind`'s directory, sorted editable-first then by name. Returns `None`
+    for an unknown `kind`.
+
+    The editable side is listed RECURSIVELY (`_walk_data_files`; any
+    `read_only` directory encountered during that recursion is skipped, at
+    any depth), so a file saved into a subfolder (e.g.
+    `"events/mystery.yaml"`) shows up as `"events/mystery"`. The
+    `read_only/` subdirectory itself (for kinds that have one) is still
+    listed separately, flat/non-recursive, exactly as before -- read-only
+    files stay top-level.
     """
     base = DATA_KIND_DIRS.get(kind)
     if base is None:
         return None
-    files = [{"name": n, "read_only": False} for n in _list_yaml_names(base)]
+    files = [{"name": n, "read_only": False} for n in _walk_data_files(base)]
     if kind in DATA_KIND_READONLY_SUBDIR:
         files += [
             {"name": n, "read_only": True}
@@ -1234,20 +1319,26 @@ def _list_data_files(kind):
 
 def _resolve_existing_data_path(kind, name):
     """
-    Resolve `name` (validated against `_DATA_NAME_RE`) to an existing yaml
-    file under `kind`'s directory -- checking the `read_only/` subdirectory
-    first when `kind` has one, then the editable directory -- verifying
-    containment via `os.path.realpath` at every step. Returns the real path,
-    or `None` if `kind`/`name` are invalid or no such file exists.
+    Resolve `name` (validated via `_split_data_name` -- 1-4 "/"-separated
+    segments, none of them `read_only`) to an existing yaml file under
+    `kind`'s directory -- checking the `read_only/` subdirectory first for
+    a single-segment `name` when `kind` has one, then the editable
+    directory (recursively, for multi-segment names) -- verifying
+    containment via `os.path.realpath` at every step. Returns the real
+    path, or `None` if `kind`/`name` are invalid or no such file exists.
     """
     base = DATA_KIND_DIRS.get(kind)
-    if base is None or not _DATA_NAME_RE.match(name):
+    if base is None:
+        return None
+    segments = _split_data_name(name)
+    if segments is None:
         return None
     root = os.path.realpath(base)
     candidates = []
-    if kind in DATA_KIND_READONLY_SUBDIR:
-        candidates.append(os.path.join(base, "read_only", f"{name}.yaml"))
-    candidates.append(os.path.join(base, f"{name}.yaml"))
+    if len(segments) == 1 and kind in DATA_KIND_READONLY_SUBDIR:
+        candidates.append(os.path.join(base, "read_only", f"{segments[0]}.yaml"))
+    rel_parts = segments[:-1] + [f"{segments[-1]}.yaml"]
+    candidates.append(os.path.join(base, *rel_parts))
     for candidate in candidates:
         if _path_inside(root, candidate) and os.path.isfile(os.path.realpath(candidate)):
             return os.path.realpath(candidate)
@@ -1256,30 +1347,49 @@ def _resolve_existing_data_path(kind, name):
 
 def _safe_data_write_path(kind, name):
     """
-    Resolve the EDITABLE-directory write target for `name` under `kind`,
-    for `PUT /api/gm/data/{kind}/file` (and the hub/charlist/music save
-    flows that reuse this same helper). Returns `(path, None)` on success,
-    or `(None, error_code)` on failure. Never returns a path inside a
-    `read_only/` subdirectory, and refuses to shadow an existing read-only
-    file of the same name (mirroring `/save_hub`'s own
-    "already exists and it is read-only" guard).
+    Resolve the EDITABLE-directory write target for `name` (validated via
+    `_split_data_name`) under `kind`, for `PUT /api/gm/data/{kind}/file`
+    (and the hub/charlist/music save flows that reuse this same helper).
+    Returns `(path, None)` on success, or `(None, error_code)` on failure.
+    Never returns a path inside a `read_only/` subdirectory, and refuses to
+    shadow an existing read-only file of the same (single-segment) name
+    (mirroring `/save_hub`'s own "already exists and it is read-only"
+    guard).
+
+    For a multi-segment `name`, creates any missing intermediate
+    directories (`os.makedirs(..., exist_ok=True)`) AFTER the name has
+    been fully validated and containment-checked -- never before.
     """
     base = DATA_KIND_DIRS.get(kind)
     if base is None:
         return None, "unknown_kind"
-    if not _DATA_NAME_RE.match(name):
+    segments = _split_data_name(name)
+    if segments is None:
         return None, "invalid_name"
 
     root = os.path.realpath(base)
-    if kind in DATA_KIND_READONLY_SUBDIR:
+    if len(segments) == 1 and kind in DATA_KIND_READONLY_SUBDIR:
         ro_root = os.path.realpath(os.path.join(base, "read_only"))
-        ro_candidate = os.path.join(base, "read_only", f"{name}.yaml")
+        ro_candidate = os.path.join(base, "read_only", f"{segments[0]}.yaml")
         if _path_inside(ro_root, ro_candidate) and os.path.isfile(os.path.realpath(ro_candidate)):
             return None, "read_only_exists"
 
-    path = os.path.join(base, f"{name}.yaml")
+    rel_parts = segments[:-1] + [f"{segments[-1]}.yaml"]
+    path = os.path.join(base, *rel_parts)
     if not _path_inside(root, path):
         return None, "invalid_name"
+
+    if len(segments) > 1:
+        parent_dir = os.path.dirname(path)
+        # Re-check containment on the directory we're about to create,
+        # not just the final file path, before touching the filesystem.
+        if not _path_inside(root, parent_dir):
+            return None, "invalid_name"
+        try:
+            os.makedirs(parent_dir, exist_ok=True)
+        except OSError:
+            return None, "write_failed"
+
     return os.path.realpath(path), None
 
 
@@ -1568,6 +1678,18 @@ class AreaRoutes:
                 output = session.execute_command_in_area(area, cmd, arg)
             elif field == "max_players":
                 output = session.execute_command_in_area(area, "max_players", value)
+            elif field == "pos_lock":
+                # Mirrors `/pos_lock`/`/pos_lock_clear` exactly: empty value
+                # clears the lock (all positions available again), non-empty
+                # value is passed straight through as `/pos_lock`'s own
+                # comma-or-space-separated argument -- `ooc_cmd_pos_lock`
+                # does its own parsing/dedup/lowercasing, so there's nothing
+                # left for this route to do beyond picking which command to
+                # call.
+                if value.strip() == "":
+                    output = session.execute_command_in_area(area, "pos_lock_clear", "")
+                else:
+                    output = session.execute_command_in_area(area, "pos_lock", value)
             else:  # "status"
                 output = session.execute_command_in_area(area, "status", value)
         except SessionInvalid:
@@ -1892,16 +2014,17 @@ class ClientRoutes:
 
 class CommandRoutes:
     """
-    Commands tab: the catalog (now a cookbook, not a whitelist) + the
-    free-form command runner.
+    Commands tab: the auto-generated command list (`CommandLister`, not a
+    whitelist) + the free-form command runner.
 
-    `GMCommandCatalog` is UX curation only -- `is_allowed` is no longer
-    consulted here. The *only* gate on what a GM can run is the command
+    `CommandLister` is UX curation only -- it is not consulted to decide
+    what a GM can run. The *only* gate on what a GM can run is the command
     layer itself: `GMSession.execute_command` always dispatches through the
     GM's real, live `Client`, so every `mod_only(...)` decorator and other
     in-command permission check applies exactly as it would if the GM had
     typed the command in their AO client. A command name outside the
-    catalog (e.g. `/getarea`) is executed exactly like a cataloged one; an
+    listed groups (e.g. one added to a submodule's `__all__` after the
+    cache was built) is executed exactly like a listed one; an
     unrecognized command name surfaces `commands.call`'s own
     "Invalid command: ..." message instead of a panel-side rejection.
     """
@@ -1916,7 +2039,8 @@ class CommandRoutes:
 
     async def handle_list_commands(self, request):
         return web.json_response({
-            "commands": GMCommandCatalog.to_list(),
+            "ok": True,
+            "groups": CommandLister.to_groups(),
             "docs_url": self._DOCS_URL,
         })
 
@@ -1963,7 +2087,16 @@ class CharacterRoutes:
         })
 
     async def handle_list_charlists(self, request):
-        return web.json_response({"charlists": _list_yaml_names("storage/charlists")})
+        # Recursive (like `HubDataRoutes.handle_charlist_get`'s file list),
+        # so a charlist saved under a subfolder (via the Hub Data tab's
+        # "save as" or the generic data-file upload API) is discoverable
+        # here too -- both endpoints read the same `storage/charlists`
+        # directory and `/charlist <name>` (the command behind "Apply")
+        # never strips "/" from its argument, so a subpath name applies
+        # exactly like a top-level one.
+        return web.json_response({
+            "charlists": _walk_data_files(DATA_KIND_DIRS["charlists"])
+        })
 
     async def handle_apply_charlist(self, request):
         session = request["gm_session"]
@@ -2024,7 +2157,12 @@ class CharacterRoutes:
         return web.json_response({"output": output})
 
     async def handle_snapshots_list(self, request):
-        return web.json_response({"snapshots": _list_yaml_names("storage/character_data")})
+        # Recursive, for the same reason as `handle_list_charlists` above --
+        # this reads the same `storage/character_data` directory the Hub
+        # Data tab's generic file API (also recursive) already exposes.
+        return web.json_response({
+            "snapshots": _walk_data_files(DATA_KIND_DIRS["character_data"])
+        })
 
     async def handle_snapshots_save(self, request):
         session = request["gm_session"]
@@ -2087,6 +2225,20 @@ class HubDataRoutes:
       sets the *client's own local* musiclist instead
       (`client.music_list`/`client.music_ref`); despite the similar name it
       is the wrong command for this tab and is deliberately not used here.
+
+    Subfolders: every name this class accepts (hub save/load, the generic
+    `kind`/`name` file API, charlist `save_as`) may now be a multi-segment
+    "/"-separated subpath (`_split_data_name`, 1-4 segments, no `read_only`
+    segment) addressing a file nested inside its kind's directory. Listing
+    (`_list_data_files`/`_walk_data_files`) recurses to find them (skipping
+    any `read_only` directory at any depth); each kind's own `read_only/`
+    tree stays flat/top-level, exactly as before. `save_hub`/`load_hub`
+    themselves strip every "/" from their own argument
+    (`derelative(arg).replace('/', '')`), so subpath saves/loads for hubs
+    specifically are staged through a throwaway top-level temp file (see
+    `handle_hub_save`/`handle_hub_load`) rather than passed to the command
+    directly; `charlist`/`hub_musiclist` never strip "/" from their
+    argument, so their subpath names pass straight through unchanged.
     """
 
     def __init__(self, session_manager, server, bridge=None):
@@ -2137,7 +2289,8 @@ class HubDataRoutes:
         except Exception:
             return web.json_response({"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400)
         name = str(data.get("name", "")).strip()
-        if not _DATA_NAME_RE.match(name):
+        segments = _split_data_name(name)
+        if segments is None:
             # A blank (or otherwise malformed) argument to `ooc_cmd_save_hub`
             # is NOT "save this hub under no name" -- for a mod-bound session
             # it dumps EVERY hub on the server to `config/areas_new.yaml`.
@@ -2148,15 +2301,54 @@ class HubDataRoutes:
             # than silently forwarded into the far more destructive global
             # variant.
             return web.json_response({"ok": False, "error": "invalid_name"}, status=400)
-        # `ooc_cmd_save_hub` runs its argument through `shlex.split` --
-        # quote so a name containing spaces survives as one token instead
-        # of being split apart (and so args[1:] doesn't get misread as the
-        # "read_only" flag).
-        arg = shlex.quote(name)
+
+        if len(segments) == 1:
+            # `ooc_cmd_save_hub` runs its argument through `shlex.split` --
+            # quote so a name containing spaces survives as one token
+            # instead of being split apart (and so args[1:] doesn't get
+            # misread as the "read_only" flag).
+            try:
+                output = session.execute_command("save_hub", shlex.quote(name))
+            except SessionInvalid:
+                return web.json_response({"error": "session_invalid"}, status=401)
+            return _command_response(output)
+
+        # Multi-segment (subfolder) name: `ooc_cmd_save_hub` itself does
+        # `derelative(arg).replace('/', '')` on its filename argument, so it
+        # can never be made to write into a subfolder directly. Save under a
+        # throwaway top-level temp name through the real command instead
+        # (exercising the exact same save/permission path as a normal save),
+        # then move the produced file into the validated subpath.
+        temp_name = uuid.uuid4().hex
+        temp_path = os.path.join(DATA_KIND_DIRS["hubs"], f"{temp_name}.yaml")
         try:
-            output = session.execute_command("save_hub", arg)
+            output = session.execute_command("save_hub", shlex.quote(temp_name))
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
+        if not _command_ok(output):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+            return _command_response(output)
+
+        dest_path, path_err = _safe_data_write_path("hubs", name)
+        if dest_path is None:
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+            return web.json_response({"ok": False, "error": path_err or "invalid_name"}, status=400)
+        try:
+            os.replace(temp_path, dest_path)
+        except OSError as ex:
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+            return web.json_response(
+                {"ok": False, "output": [f"[ERROR] Failed to move saved hub: {ex}"]}, status=500
+            )
         return _command_response(output)
 
     async def handle_hub_load(self, request):
@@ -2168,7 +2360,8 @@ class HubDataRoutes:
         except Exception:
             return web.json_response({"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400)
         name = str(data.get("name", "")).strip()
-        if not _DATA_NAME_RE.match(name):
+        segments = _split_data_name(name)
+        if segments is None:
             # A blank (or otherwise malformed) argument to `ooc_cmd_load_hub`
             # is NOT "load nothing" -- for a mod-bound session it calls
             # `hub_manager.load()`, which reloads/resets EVERY hub on the
@@ -2180,12 +2373,46 @@ class HubDataRoutes:
             # than silently forwarded into the far more destructive global
             # variant.
             return web.json_response({"ok": False, "error": "invalid_name"}, status=400)
+
+        if len(segments) == 1:
+            try:
+                # `ooc_cmd_load_hub` uses its raw argument text verbatim as
+                # the filename (no `shlex.split`) -- pass it through
+                # unquoted.
+                output = session.execute_command("load_hub", name)
+            except SessionInvalid:
+                return web.json_response({"error": "session_invalid"}, status=401)
+            if _command_ok(output):
+                self._push_areas_changed(session)
+            return _command_response(output)
+
+        # Multi-segment (subfolder) name: `ooc_cmd_load_hub` also strips
+        # every "/" from its argument, so it can never read a subfolder
+        # file directly. Resolve+validate the subfolder file ourselves,
+        # stage a copy under a throwaway top-level temp name, and run the
+        # real command against that temp name so every permission check and
+        # side effect (`area_manager.load`, ARUP, music refresh) still goes
+        # through the exact same code path as a normal load.
+        src_path = _resolve_existing_data_path("hubs", name)
+        if src_path is None:
+            return web.json_response({"ok": False, "error": "not_found"}, status=404)
+        temp_name = uuid.uuid4().hex
+        temp_path = os.path.join(DATA_KIND_DIRS["hubs"], f"{temp_name}.yaml")
         try:
-            # `ooc_cmd_load_hub` uses its raw argument text verbatim as the
-            # filename (no `shlex.split`) -- pass it through unquoted.
-            output = session.execute_command("load_hub", name)
+            shutil.copyfile(src_path, temp_path)
+        except OSError as ex:
+            return web.json_response(
+                {"ok": False, "output": [f"[ERROR] Failed to stage hub for loading: {ex}"]}, status=500
+            )
+        try:
+            output = session.execute_command("load_hub", temp_name)
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
+        finally:
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
         if _command_ok(output):
             self._push_areas_changed(session)
         return _command_response(output)
@@ -2262,7 +2489,10 @@ class HubDataRoutes:
         return web.json_response({
             "ok": True,
             "characters": list(hub.char_list),
-            "files": _list_yaml_names(DATA_KIND_DIRS["charlists"]),
+            # Recursive (like `_list_data_files`'s editable side) so a
+            # charlist previously saved under a subfolder name (see
+            # `handle_charlist_submit`'s `save_as`) shows up here too.
+            "files": _walk_data_files(DATA_KIND_DIRS["charlists"]),
         })
 
     async def handle_charlist_submit(self, request):
@@ -2295,6 +2525,14 @@ class HubDataRoutes:
             # `AreaManager.load_characters` lowercases its argument before
             # opening the file -- save (and later apply) under the
             # lowercased name so `/charlist <save_as>` can find it again.
+            # `str.lower()` on the whole string (rather than segment-by-
+            # segment) is equivalent here since "/" itself has no case, and
+            # -- unlike `ooc_cmd_save_hub`/`ooc_cmd_load_hub` --
+            # `load_characters` never strips "/" from its argument, so a
+            # multi-segment (subfolder) `save_as` name is written and
+            # loaded from that subfolder directly, no temp-file staging
+            # needed (see `_safe_data_write_path`, which now validates and
+            # creates intermediate directories for such names).
             apply_name = str(save_as).strip().lower()
             if not apply_name:
                 return web.json_response(

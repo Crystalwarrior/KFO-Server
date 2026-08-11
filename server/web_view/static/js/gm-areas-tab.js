@@ -39,6 +39,7 @@ class AreasGraphTab extends TabBase {
 
         this._renderer = new GraphRenderer(this._svg, {
             onNodeClick: (areaId) => this._openInspector(areaId),
+            onToast: (message, kind) => this.shell.toast(message, kind),
         });
         this._localContentUnsubscribe = null;
         if (this._localContent) {
@@ -83,7 +84,7 @@ class AreasGraphTab extends TabBase {
         if (!this._localContent || typeof this._localContent.subscribe !== 'function') return;
         this._localContentUnsubscribe = this._localContent.subscribe((kind, name) => {
             if (kind === null || kind === 'char_icon') this._renderer.clearCharIconCache(name);
-            if (kind === null || kind === 'background') this._renderer.refreshBackgroundThumbs();
+            if (kind === null || kind === 'background') this._renderer.refreshBackgroundThumbs(kind === null ? null : name);
         });
     }
 
@@ -176,11 +177,22 @@ class AreasGraphTab extends TabBase {
             case 'client_present':
                 this.reload().then(() => this._renderer.flashNode(msg.data.area_id, 'gr-flash-join'));
                 break;
+            case 'background_changed':
+                // The bg name on this event (fired by any GM's /bg-style
+                // change, not just this panel's own inspector) is the
+                // freshest live signal that a background image may need
+                // re-resolving -- scoped to that one name so unrelated
+                // cached thumbnails aren't thrown away on every area
+                // mutation. Covers the "same name, updated asset" case;
+                // an actual name change is already a fresh cache key and
+                // needs no explicit invalidation.
+                if (msg.data && msg.data.background) this._renderer.refreshBackgroundThumbs(msg.data.background);
+                this.reload();
+                break;
             case 'client_absent':
             case 'client_disconnected':
             case 'hub_gm_roster_changed':
             case 'area_cm_roster_changed':
-            case 'background_changed':
             case 'areas_changed':
                 this.reload();
                 break;
@@ -341,10 +353,17 @@ class AreasGraphTab extends TabBase {
 
     _renderInspector(area) {
         // 'overlay' is edited via the dedicated background/overlay form
-        // below, not the generic fields list; the rest are bookkeeping keys
-        // merged in by `_refreshInspector`, not real Area scalars.
+        // below, not the generic fields list; 'pos_lock' gets its own
+        // dedicated list+editor section too (ITEM 2, v4 brief) -- it's a
+        // LIST of position strings, not a scalar, so the generic
+        // `typeof area[k] !== 'object'` filter below already excludes it
+        // from `basicFields` on its own, but it's listed here explicitly
+        // too so that exclusion reads as deliberate, not a silent drop (the
+        // exact bug this item fixes: pos_lock used to fall through and
+        // never render at all). The rest are bookkeeping keys merged in by
+        // `_refreshInspector`, not real Area scalars.
         const skipKeys = new Set([
-            'id', 'prefs', 'links', 'background', 'overlay',
+            'id', 'prefs', 'links', 'background', 'overlay', 'pos_lock',
             'editable_fields', 'client_ids', 'gm_client_ids', 'cm_client_ids',
         ]);
         const editableFields = new Set(area.editable_fields || []);
@@ -431,10 +450,39 @@ class AreasGraphTab extends TabBase {
             `;
         }).join('') || '<div class="dim">No outgoing links.</div>';
 
+        // ITEM 5 (v4 brief): "Teleport here" moves the GM's own bound
+        // client (the one that ran /gmpanel) into this area via the real
+        // `/area <id>` command, run through the free-form command API --
+        // see _teleportHere(). Disabled when the bound client is already
+        // standing here; `shell.gmIdentity.area_id` is kept fresh by
+        // GMPanelShell itself (the `hello` WS event on connect, and
+        // `client_moved` whenever it's this client that moved -- see
+        // gm-shell.js), so no extra plumbing is needed to know "here".
+        const boundAreaId = this.shell.gmIdentity ? this.shell.gmIdentity.area_id : null;
+        const alreadyHere = boundAreaId !== null && boundAreaId !== undefined && boundAreaId === area.id;
+
+        // ITEM 2 (v4 brief): pos_lock is a LIST of position strings
+        // (v3's scalar-only serializer allowlist silently dropped it --
+        // see AreaDetailSerializer in gm_panel.py), so it gets its own
+        // list display + comma-separated editor here instead of the
+        // generic scalar field loop above (which explicitly skips it --
+        // see skipKeys). Editing/clearing both route through the same
+        // `/api/gm/areas/{id}/edit` endpoint (field: "pos_lock") the
+        // generic fields use, which itself runs the real `/pos_lock` /
+        // `/pos_lock_clear` commands -- see _editField().
+        const posLock = Array.isArray(area.pos_lock) ? area.pos_lock : [];
+        const posLockListHtml = posLock.length
+            ? posLock.map((p) => `<span class="gm-poslock-chip">${esc(p)}</span>`).join('')
+            : '<span class="dim">No position lock (all positions available).</span>';
+
         this._popover.innerHTML = `
             <div class="area-popover-title">Area ${esc(area.id)}: ${esc(area.name || '')}</div>
             <div class="area-popover-sub">${area.locked ? 'LOCKED · ' : ''}${area.dark ? 'DARK · ' : ''}${esc(area.status || '')}</div>
             <ul class="area-popover-roster">${roster}</ul>
+
+            <button class="btn-sm" id="inspectorTeleportBtn" style="width:100%;margin-bottom:0.4rem"
+                title="${alreadyHere ? 'Your bound client is already here.' : 'Move your bound client to this area.'}"
+                ${alreadyHere ? 'disabled' : ''}>Teleport here</button>
 
             <div class="gm-inspector-section">
                 <label>Background (this area only)</label>
@@ -443,6 +491,18 @@ class AreasGraphTab extends TabBase {
                     <input type="text" id="inspectorOverlayInput" value="${esc(area.overlay || '')}" placeholder="overlay">
                 </div>
                 <button class="btn-sm" id="inspectorBgSetBtn" style="margin-top:0.35rem;width:100%">Set Background</button>
+            </div>
+
+            <div class="gm-inspector-section">
+                <label>Position Lock</label>
+                <div class="gm-poslock-list">${posLockListHtml}</div>
+                <div class="gm-inline-form">
+                    <input type="text" id="inspectorPosLockInput" value="${esc(posLock.join(', '))}" placeholder="pos one, pos two">
+                </div>
+                <div class="gm-inline-form" style="margin-top:0.35rem">
+                    <button class="btn-sm" id="inspectorPosLockSaveBtn" style="flex:1">Save</button>
+                    <button class="btn-sm danger" id="inspectorPosLockClearBtn" style="flex:1" ${posLock.length ? '' : 'disabled'}>Clear</button>
+                </div>
             </div>
 
             ${basicFields.length ? `<div class="gm-inspector-section"><h4>Fields</h4>${basicsHtml}</div>` : ''}
@@ -483,6 +543,23 @@ class AreasGraphTab extends TabBase {
         const p = this._popover;
         p.querySelector('#inspectorCloseBtn').addEventListener('click', () => this._closeInspector());
         p.querySelector('#inspectorBgSetBtn').addEventListener('click', () => this._setBackground(area.id));
+
+        const teleportBtn = p.querySelector('#inspectorTeleportBtn');
+        if (teleportBtn && !teleportBtn.disabled) {
+            teleportBtn.addEventListener('click', () => this._teleportHere(area.id));
+        }
+
+        const posLockSaveBtn = p.querySelector('#inspectorPosLockSaveBtn');
+        if (posLockSaveBtn) {
+            posLockSaveBtn.addEventListener('click', () => {
+                const value = p.querySelector('#inspectorPosLockInput').value;
+                this._editField(area.id, 'pos_lock', value);
+            });
+        }
+        const posLockClearBtn = p.querySelector('#inspectorPosLockClearBtn');
+        if (posLockClearBtn && !posLockClearBtn.disabled) {
+            posLockClearBtn.addEventListener('click', () => this._editField(area.id, 'pos_lock', ''));
+        }
 
         p.querySelectorAll('.gm-field-row').forEach((row) => {
             const saveBtn = row.querySelector('.gm-field-save');
@@ -552,10 +629,48 @@ class AreasGraphTab extends TabBase {
         try {
             const result = await this.api.setAreaBackground(areaId, bg, overlay);
             this.shell.toast((result.output || []).join(' ') || 'Background updated.', result.ok ? 'success' : 'error');
+            // Belt-and-suspenders alongside the WS `background_changed`
+            // handler above: this GM's own panel doesn't need to depend on
+            // its own WS round-trip to see its own change reflected live.
+            if (result.ok !== false) this._renderer.refreshBackgroundThumbs(bg);
             await this.reload();
             if (this._selectedAreaId === areaId) await this._refreshInspector();
         } catch (e) {
             this.shell.toast('Failed to set background: ' + e.message, 'error');
+        }
+    }
+
+    /**
+     * ITEM 5 (v4 brief): move the GM's own bound client (the one that ran
+     * /gmpanel) into `areaId`, the same way the panel already runs any
+     * other OOC command -- through the free-form command-run API
+     * (`api.runCommand`, backed by `POST /api/gm/commands/run`), which
+     * always executes through the GM's real, live `Client` object (see
+     * `GMSession.execute_command` in gm_panel.py), so this is exactly
+     * `/area <id>` typed by the GM themselves: no separate permission path
+     * to keep in sync. `/area` accepts a bare numeric id (see
+     * `ooc_cmd_area` in server/commands/areas.py), matching this area's
+     * `id`.
+     *
+     * The GM's own marker/position updates live via the normal
+     * `client_moved` WS event (GraphRenderer.animateMovement + this tab's
+     * own reload(), see onEvent/_onClientMoved above) and the header
+     * identity line updates itself (GMPanelShell._handleWsMessage already
+     * special-cases a `client_moved` whose `client_id` matches the bound
+     * GM's own). That WS round-trip is not guaranteed though (a GM panel
+     * browser tab with a flaky WS connection, for instance) -- reload()
+     * here is belt-and-suspenders so this GM's own panel never depends on
+     * its own WS delivery to see its own move reflected, same pattern as
+     * `_setBackground` above.
+     */
+    async _teleportHere(areaId) {
+        try {
+            const result = await this.api.runCommand('area', String(areaId));
+            this.shell.toast((result.output || []).join(' ') || 'Teleported.', result.ok ? 'success' : 'error');
+            await this.reload();
+            if (this._selectedAreaId === areaId) await this._refreshInspector();
+        } catch (e) {
+            this.shell.toast('Failed to teleport: ' + e.message, 'error');
         }
     }
 
@@ -672,6 +787,14 @@ class AreasGraphTab extends TabBase {
                 pointer-events: none;
             }
 
+            /* Node header background thumbnail (see GraphRenderer._buildNode
+             * / _resolveBgImage in gm-graph.js): a resolved background image
+             * paints behind the name label with a dark scrim between them so
+             * the label stays legible over any image, light or dark. Hidden
+             * by default -- only shown once an <image> actually loads. */
+            .gr-thumb-scrim { fill: #05070d; opacity: 0.45; pointer-events: none; }
+            .gr-thumb-label.gr-thumb-label-scrimmed { fill: #f0f1fa; font-weight: 600; }
+
             .gr-controls {
                 position: absolute; top: 0.6rem; left: 0.6rem; z-index: 6;
                 display: flex; flex-direction: column; gap: 0.3rem;
@@ -683,6 +806,42 @@ class AreasGraphTab extends TabBase {
             }
             .gr-ctrl-btn:hover { background: #26304a; border-color: var(--gm-accent); }
             .area-graph.gr-panning { cursor: grabbing; }
+
+            /* ITEM 4 (v4 brief): Save/Load/Export/Import Layout controls --
+             * text-labeled, so they need more room than the square +/-/Fit/
+             * Reset glyph buttons above. */
+            .gr-ctrl-btn-wide { width: auto; align-self: flex-start; padding: 0 0.5rem; white-space: nowrap; }
+
+            /* "Load Layout" popover: this hub's saved named layouts, each
+             * with an Apply/Delete pair. */
+            .gr-layout-menu {
+                position: absolute; top: 0.6rem; left: 3.4rem; z-index: 7;
+                background: var(--gm-panel); border: 1px solid var(--gm-border); border-radius: 6px;
+                padding: 0.4rem; width: 220px; max-height: 260px; overflow-y: auto;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+            }
+            .gr-layout-menu.hidden { display: none; }
+            .gr-layout-title {
+                font-size: 0.72rem; color: var(--gm-text-dim); text-transform: uppercase;
+                letter-spacing: 0.03em; margin-bottom: 0.35rem;
+            }
+            .gr-layout-empty { font-size: 0.78rem; color: var(--gm-text-dim); }
+            .gr-layout-row {
+                display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0;
+            }
+            .gr-layout-name {
+                flex: 1; min-width: 0; font-size: 0.8rem; color: var(--gm-text);
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            }
+            .gr-layout-row .btn-sm { padding: 0.2rem 0.4rem; font-size: 0.72rem; }
+
+            /* ITEM 2 (v4 brief): pos_lock's read-only chip list, above its
+             * comma-separated editor. */
+            .gm-poslock-list { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.35rem; }
+            .gm-poslock-chip {
+                background: var(--gm-panel-alt); border: 1px solid var(--gm-border); border-radius: 10px;
+                padding: 0.1rem 0.5rem; font-size: 0.74rem; color: var(--gm-text);
+            }
 
             .gm-areas-mgmt-bar { margin-top: 0.4rem; }
             .gm-areas-mgmt-bar select {

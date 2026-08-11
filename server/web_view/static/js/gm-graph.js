@@ -38,6 +38,12 @@ class GraphRenderer {
     constructor(svgElement, options) {
         this._svg = svgElement;
         this._onNodeClick = (options && options.onNodeClick) || (() => {});
+        // Optional (message, kind) toast sink -- GraphRenderer stays a pure
+        // rendering component with no shell/toast dependency of its own
+        // (see the module doc), so the Save/Load/Export/Import Layout
+        // controls (ITEM 4 in the v4 brief) report through this callback
+        // instead of reaching for `shell.toast` directly. Safe to omit.
+        this._onToast = (options && options.onToast) || (() => {});
         this._thumbBaseUrl = '';
         this._localContent = null;
         this._clientFolders = {}; // client_id -> character folder name
@@ -52,6 +58,23 @@ class GraphRenderer {
         // flight lookups are deduped so concurrent renders share one call.
         this._charIconCache = new Map();   // folder -> url|null
         this._charIconPending = new Map(); // folder -> Promise<url|null>
+
+        // Per-background-name image resolution cache. Previously there was
+        // no renderer-level cache here at all: _render() tears down and
+        // rebuilds every node from scratch on *every* setData() call
+        // (including the plain 4s occupancy poll -- see _startPolling in
+        // gm-areas-tab.js), and the old code called straight into
+        // GMLocalContent.resolve('background', ...) from every single one
+        // of those rebuilds. GMLocalContent's own cache made that "only"
+        // wasteful rather than broken, but it re-entered the whole
+        // resolution pipeline (IndexedDB reads / File System Access calls /
+        // Image() reachability probes) on every poll tick forever instead
+        // of once per background name, and gave the render path no cheap,
+        // synchronous "have we already got this one" check to render
+        // text-first-then-patch against. See _resolveBgImage()/
+        // refreshBackgroundThumbs() below.
+        this._bgImageCache = new Map();   // bg name -> url|null
+        this._bgImagePending = new Map(); // bg name -> Promise<url|null>
 
         this._nodes = new Map();       // area_id -> {area, x, y}
         this._baseLayout = new Map();  // area_id -> {x, y} grid position (no manual offset)
@@ -106,15 +129,29 @@ class GraphRenderer {
         this._applyViewportTransform();
     }
 
-    setThumbBaseUrl(url) { this._thumbBaseUrl = url || ''; }
+    /** Changing the flat-mirror thumb base (background_thumb_base_url)
+     * changes what a cache miss falls back to, so a real change must
+     * invalidate the bg image cache -- otherwise a name that previously
+     * resolved to null (nothing found) would keep answering null forever
+     * even though the new base could now serve it. */
+    setThumbBaseUrl(url) {
+        const next = url || '';
+        if (next === this._thumbBaseUrl) return;
+        this._thumbBaseUrl = next;
+        this._bgImageCache.clear();
+        this._bgImagePending.clear();
+        if (this._lastAreas.length) this._render(this._lastAreas);
+    }
 
     setLocalContent(localContent) {
         this._localContent = localContent || null;
         // A different resolution source can legitimately answer 'no icon'
-        // vs 'has icon' differently for the same folder name, so stale
-        // cached results must not survive the swap.
+        // vs 'has icon' differently for the same folder/background name, so
+        // stale cached results must not survive the swap.
         this._charIconCache.clear();
         this._charIconPending.clear();
+        this._bgImageCache.clear();
+        this._bgImagePending.clear();
         // Per-item invalidation (a GM setting/clearing a per-character icon
         // override, or a background override) is handled by the owning tab
         // subscribing to `localContent` and calling clearCharIconCache()/
@@ -142,14 +179,45 @@ class GraphRenderer {
         if (this._lastAreas.length) this._render(this._lastAreas);
     }
 
-    /** Re-render node thumbnails using the most recently pushed data.
-     * Background thumbnails have no separate renderer-level cache (each
-     * render re-resolves via `GMLocalContent.resolve('background', ...)`,
-     * whose own resolve cache GMLocalContent already invalidates on
-     * override/base-source changes) -- so nothing needs clearing here, only
-     * a fresh render pass so the new result is picked up immediately
-     * instead of waiting for the next poll cycle. */
-    refreshBackgroundThumbs() {
+    /** Invalidate one (or, when `bgNameOrNull` is falsy, every) cached
+     * background-image resolution and immediately re-render so a changed
+     * background shows up live, with no page reload. Callers (see
+     * AreasGraphTab):
+     *   - GMLocalContent's own change notifications (a per-item background
+     *     override set/cleared, passing that exact name; or a base-source
+     *     change -- new folder/URL picked -- passing null for "everything").
+     *   - the `background_changed` WS event, passing the area's (possibly
+     *     unchanged) background name so a *reused* name whose underlying
+     *     asset just changed doesn't keep serving a stale cached result.
+     *     (The broader `areas_changed` event carries no background name and
+     *     fires on every unrelated area mutation too -- it's left to fall
+     *     through to the plain reload()/setData() path, where a genuine
+     *     name change is simply a fresh cache key with nothing to
+     *     invalidate.)
+     *   - the inspector's own "Set Background" success (belt-and-suspenders
+     *     alongside the WS event, which the GM's own panel also receives,
+     *     but does not depend on WS being connected).
+     * A background *name* change on its own needs no explicit invalidation
+     * -- it is simply a different cache key that resolves fresh on its own
+     * merits -- this exists for the "same name, updated content" case. */
+    refreshBackgroundThumbs(bgNameOrNull) {
+        if (bgNameOrNull) {
+            // Cache keys are `<lowercased bgName>` or `<lowercased
+            // bgName>::<lowercased position>` (see _bgImageCacheKey) -- a
+            // given bg name may be cached under several different position
+            // suffixes across areas that share the background but differ in
+            // pos_lock, so every entry for this name (any/no position) has
+            // to go, not just the no-position key.
+            const prefix = String(bgNameOrNull).toLowerCase();
+            [this._bgImageCache, this._bgImagePending].forEach((cache) => {
+                Array.from(cache.keys()).forEach((k) => {
+                    if (k === prefix || k.startsWith(`${prefix}::`)) cache.delete(k);
+                });
+            });
+        } else {
+            this._bgImageCache.clear();
+            this._bgImagePending.clear();
+        }
         if (this._lastAreas.length) this._render(this._lastAreas);
     }
 
@@ -170,6 +238,73 @@ class GraphRenderer {
             return url || null;
         });
         this._charIconPending.set(folder, pending);
+        return pending;
+    }
+
+    /** Cache key for a (background name, preferred position) pair --
+     * `position` is normally an area's `pos_lock[0]` (see _buildNode) or
+     * null/absent when the area has no pos_lock. Lowercased throughout
+     * (see ITEM 3's case-sensitivity rule in the v4 brief: lowercase is
+     * the canonical form real asset hosts/filesystems actually serve) so
+     * "Default"/"default" share one cache entry instead of two. Including
+     * `position` in the key (rather than just the bg name) is what makes a
+     * pos_lock change automatically invalidate: a different position is
+     * simply a different, currently-uncached key, so it resolves fresh on
+     * its own without needing separate invalidation plumbing tied to
+     * pos_lock specifically. */
+    _bgImageCacheKey(bgName, position) {
+        const key = String(bgName).toLowerCase();
+        return position ? `${key}::${String(position).toLowerCase()}` : key;
+    }
+
+    /** Cached, deduped background-image lookup keyed by (background name,
+     * preferred position) -- mirrors _resolveCharIcon's cache/pending
+     * pattern (see its doc) above. Tries GMLocalContent.resolve('background',
+     * name, {position}) first (folder/URL/server-asset-url chain: the
+     * position-mapped file, e.g. `defenseempty.png` for pos "def", falling
+     * back to `witnessempty.png`, per ITEM 3 in the v4 brief), then falls
+     * back to the documented flat `background_thumb_base_url` mirror
+     * convention (`<base>/<name>.png`, no per-position imagery) -- a
+     * different layout from GMLocalContent's folder-per-background one
+     * above; a deployment configured per the documented flat-mirror
+     * convention 404s every thumbnail if these two get conflated, so don't.
+     * Settled results (including "no image found anywhere")
+     * are memoized for this renderer's lifetime / until refreshBackgroundThumbs()
+     * invalidates them, so a (name, position) pair is only ever resolved
+     * once no matter how many render passes (4s poll ticks included) ask
+     * for it. */
+    _resolveBgImage(bgName, position) {
+        if (!bgName) return Promise.resolve(null);
+        const key = this._bgImageCacheKey(bgName, position);
+        if (this._bgImageCache.has(key)) return Promise.resolve(this._bgImageCache.get(key));
+        if (this._bgImagePending.has(key)) return this._bgImagePending.get(key);
+
+        const attempt = (async () => {
+            if (this._localContent && typeof this._localContent.resolve === 'function') {
+                try {
+                    const url = await this._localContent.resolve('background', bgName, position ? { position } : undefined);
+                    if (url) return url;
+                } catch (e) { /* fall through to the flat thumb-base convention */ }
+            }
+            if (this._thumbBaseUrl) {
+                // The flat mirror is one file per background name (no
+                // per-position imagery) and this layer has no reachability
+                // probe of its own -- the <image> element's own error
+                // handler (see showImage() below) silently drops a 404'd
+                // thumb. Lowercase is the canonical form real asset hosts
+                // serve (ITEM 3, v4 brief), so that's the only candidate
+                // built here.
+                return this._urlJoin(this._thumbBaseUrl, `${encodeURIComponent(String(bgName).toLowerCase())}.png`);
+            }
+            return null;
+        })();
+
+        const pending = attempt.then((url) => {
+            this._bgImageCache.set(key, url || null);
+            this._bgImagePending.delete(key);
+            return url || null;
+        });
+        this._bgImagePending.set(key, pending);
         return pending;
     }
 
@@ -194,10 +329,10 @@ class GraphRenderer {
         if (!wrap) return;
         const controls = document.createElement('div');
         controls.className = 'gr-controls';
-        const mk = (label, title, fn) => {
+        const mk = (label, title, fn, extraClass) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'gr-ctrl-btn';
+            btn.className = extraClass ? `gr-ctrl-btn ${extraClass}` : 'gr-ctrl-btn';
             btn.textContent = label;
             btn.title = title;
             btn.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
@@ -209,8 +344,251 @@ class GraphRenderer {
         mk('⤡', 'Fit graph to view', () => this.fit());
         mk('⟳', 'Reset zoom & pan', () => this.resetView());
         mk('✕', 'Reset manual layout for this hub', () => this.resetOffsets());
+
+        // ITEM 4 (v4 brief) -- save/load/export/import named layout
+        // snapshots (node offsets + zoom/pan), per hub, in localStorage.
+        mk('Save', 'Save the current layout as a named snapshot', () => this._promptSaveLayout(), 'gr-ctrl-btn-wide');
+        const loadBtn = mk('Load', 'Load or manage saved layouts for this hub', () => this._toggleLayoutMenu(), 'gr-ctrl-btn-wide');
+        this._loadLayoutBtn = loadBtn;
+        mk('Export', 'Download the current layout as a JSON file', () => this._exportLayoutFile(), 'gr-ctrl-btn-wide');
+        mk('Import', 'Load a layout from a JSON file', () => { if (this._importInput) this._importInput.click(); }, 'gr-ctrl-btn-wide');
+
+        const importInput = document.createElement('input');
+        importInput.type = 'file';
+        importInput.accept = 'application/json,.json';
+        importInput.style.display = 'none';
+        importInput.addEventListener('change', () => {
+            const file = importInput.files && importInput.files[0];
+            importInput.value = '';
+            if (file) this._importLayoutFile(file);
+        });
+        controls.appendChild(importInput);
+        this._importInput = importInput;
+
         wrap.appendChild(controls);
         this._controlsEl = controls;
+        this._buildLayoutMenu(wrap);
+    }
+
+    /** Small popover listing this hub's saved layouts (toggled by the
+     * "Load" control button), each row offering Apply/Delete. Built once;
+     * content is (re)rendered on open via _renderLayoutMenu() so it always
+     * reflects the current hub's saved set. */
+    _buildLayoutMenu(wrap) {
+        const menu = document.createElement('div');
+        menu.className = 'gr-layout-menu hidden';
+        wrap.appendChild(menu);
+        this._layoutMenuEl = menu;
+        document.addEventListener('click', (e) => {
+            if (menu.classList.contains('hidden')) return;
+            if (menu.contains(e.target)) return;
+            if (this._loadLayoutBtn && this._loadLayoutBtn.contains(e.target)) return;
+            menu.classList.add('hidden');
+        });
+    }
+
+    _toggleLayoutMenu() {
+        if (!this._layoutMenuEl) return;
+        const willShow = this._layoutMenuEl.classList.contains('hidden');
+        this._layoutMenuEl.classList.toggle('hidden', !willShow);
+        if (willShow) this._renderLayoutMenu();
+    }
+
+    _renderLayoutMenu() {
+        if (!this._layoutMenuEl) return;
+        const names = this.listNamedLayouts();
+        const rows = names.length
+            ? names.map((n) => `
+                <div class="gr-layout-row" data-name="${esc(n)}">
+                    <span class="gr-layout-name">${esc(n)}</span>
+                    <button type="button" class="btn-sm gr-layout-apply">Apply</button>
+                    <button type="button" class="btn-sm danger gr-layout-delete" title="Delete this layout">✕</button>
+                </div>`).join('')
+            : '<div class="gr-layout-empty">No saved layouts for this hub yet.</div>';
+        this._layoutMenuEl.innerHTML = `<div class="gr-layout-title">Saved layouts</div>${rows}`;
+        this._layoutMenuEl.querySelectorAll('.gr-layout-row').forEach((row) => {
+            const name = row.dataset.name;
+            const applyBtn = row.querySelector('.gr-layout-apply');
+            if (applyBtn) applyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.loadNamedLayout(name)) {
+                    this._onToast(`Layout "${name}" loaded.`, 'success');
+                } else {
+                    this._onToast(`Failed to load layout "${name}".`, 'error');
+                }
+                this._layoutMenuEl.classList.add('hidden');
+            });
+            const delBtn = row.querySelector('.gr-layout-delete');
+            if (delBtn) delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!window.confirm(`Delete saved layout "${name}"?`)) return;
+                this.deleteNamedLayout(name);
+                this._onToast(`Layout "${name}" deleted.`, 'info');
+                this._renderLayoutMenu();
+            });
+        });
+    }
+
+    _promptSaveLayout() {
+        if (this._hubId === null || this._hubId === undefined) return;
+        const name = window.prompt('Save layout as:', 'layout 1');
+        if (name === null) return; // cancelled
+        const trimmed = name.trim() || 'layout 1';
+        this.saveNamedLayout(trimmed);
+        this._onToast(`Layout "${trimmed}" saved.`, 'success');
+    }
+
+    _exportLayoutFile() {
+        const json = this.exportLayoutJSON();
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const hubPart = (this._hubId === null || this._hubId === undefined) ? '' : `-hub${this._hubId}`;
+        a.href = url;
+        a.download = `gm-graph-layout${hubPart}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async _importLayoutFile(file) {
+        let text;
+        try {
+            text = await file.text();
+        } catch (e) {
+            this._onToast('Failed to read the selected file.', 'error');
+            return;
+        }
+        const snapshot = this.parseLayoutImport(text);
+        if (!snapshot) {
+            this._onToast('That file is not a valid graph layout.', 'error');
+            return;
+        }
+        this.applyLayoutSnapshot(snapshot);
+        this._onToast('Layout imported.', 'success');
+    }
+
+    // --- named layout snapshots (save/load/export/import) ----------------
+
+    _layoutsStorageKey(hubId) { return `gm-graph-layouts:${hubId}`; }
+
+    _loadLayoutsMap() {
+        if (this._hubId === null || this._hubId === undefined) return {};
+        try {
+            const raw = localStorage.getItem(this._layoutsStorageKey(this._hubId));
+            const obj = raw ? JSON.parse(raw) : {};
+            return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    _saveLayoutsMap(map) {
+        if (this._hubId === null || this._hubId === undefined) return;
+        try {
+            localStorage.setItem(this._layoutsStorageKey(this._hubId), JSON.stringify(map));
+        } catch (e) { /* storage full/unavailable: nothing more we can do */ }
+    }
+
+    /** The current node offsets + zoom/pan, in the exact shape persisted
+     * under a saved layout name (and exported to JSON). */
+    getLayoutSnapshot() {
+        const offsets = {};
+        this._offsets.forEach((v, k) => { offsets[k] = { x: v.x, y: v.y }; });
+        return { offsets, view: { zoom: this._zoom, panX: this._panX, panY: this._panY } };
+    }
+
+    /** Validate an arbitrary parsed value as a layout snapshot shape before
+     * trusting it -- imported JSON (and, defensively, anything read back
+     * out of localStorage) is untrusted input; a malformed one must be
+     * rejected cleanly rather than crash rendering. */
+    _isValidLayoutSnapshot(snap) {
+        if (!snap || typeof snap !== 'object') return false;
+        if (!snap.offsets || typeof snap.offsets !== 'object' || Array.isArray(snap.offsets)) return false;
+        for (const k of Object.keys(snap.offsets)) {
+            const v = snap.offsets[k];
+            if (!v || typeof v !== 'object') return false;
+            if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) return false;
+        }
+        if (!snap.view || typeof snap.view !== 'object') return false;
+        if (!Number.isFinite(snap.view.zoom) || !Number.isFinite(snap.view.panX) || !Number.isFinite(snap.view.panY)) return false;
+        return true;
+    }
+
+    /** Apply a validated layout snapshot: replaces the manual offsets and
+     * zoom/pan, persists it as this hub's active offsets (so it's what a
+     * future plain reload/re-render restores -- "making it the active
+     * persisted layout" per the v4 brief), and re-renders immediately.
+     * @returns {boolean} whether the snapshot was valid and applied. */
+    applyLayoutSnapshot(snapshot) {
+        if (!this._isValidLayoutSnapshot(snapshot)) return false;
+        this._offsets = new Map();
+        Object.keys(snapshot.offsets).forEach((k) => {
+            const v = snapshot.offsets[k];
+            this._offsets.set(k, { x: v.x, y: v.y });
+        });
+        this._zoom = Math.min(this._maxZoom, Math.max(this._minZoom, snapshot.view.zoom));
+        this._panX = snapshot.view.panX;
+        this._panY = snapshot.view.panY;
+        this._saveOffsets();
+        this._applyViewportTransform();
+        if (this._lastAreas.length) {
+            this._runLayout(this._lastAreas);
+            this._render(this._lastAreas);
+        }
+        return true;
+    }
+
+    saveNamedLayout(name) {
+        const trimmed = String(name || '').trim();
+        if (!trimmed || this._hubId === null || this._hubId === undefined) return false;
+        const map = this._loadLayoutsMap();
+        map[trimmed] = this.getLayoutSnapshot();
+        this._saveLayoutsMap(map);
+        return true;
+    }
+
+    listNamedLayouts() {
+        return Object.keys(this._loadLayoutsMap()).sort((a, b) => a.localeCompare(b));
+    }
+
+    loadNamedLayout(name) {
+        const map = this._loadLayoutsMap();
+        const snap = map[name];
+        return snap ? this.applyLayoutSnapshot(snap) : false;
+    }
+
+    deleteNamedLayout(name) {
+        const map = this._loadLayoutsMap();
+        if (!(name in map)) return false;
+        delete map[name];
+        this._saveLayoutsMap(map);
+        return true;
+    }
+
+    exportLayoutJSON() {
+        return JSON.stringify({
+            kind: 'kfo-gm-graph-layout',
+            version: 1,
+            hub_id: this._hubId,
+            snapshot: this.getLayoutSnapshot(),
+        }, null, 2);
+    }
+
+    /** @returns {?object} the validated inner snapshot from an exported
+     * layout JSON file's text, or null if `text` isn't parseable JSON or
+     * doesn't match the exported shape (a bare `{offsets, view}` snapshot,
+     * with no wrapping envelope, is also accepted). Never throws. */
+    parseLayoutImport(text) {
+        let parsed;
+        try {
+            parsed = JSON.parse(text);
+        } catch (e) {
+            return null;
+        }
+        const snapshot = (parsed && typeof parsed === 'object' && parsed.snapshot) ? parsed.snapshot : parsed;
+        return this._isValidLayoutSnapshot(snapshot) ? snapshot : null;
     }
 
     // --- measurement / resize ---------------------------------------------
@@ -247,15 +625,70 @@ class GraphRenderer {
     }
 
     // --- pan / zoom ---------------------------------------------------------
+    //
+    // ITEM 1 (v4 brief) -- ONE shared screen<->world conversion, used by
+    // every pointer handler below (pan, wheel-zoom, node drag) plus
+    // anything doing hit-testing in the future. Two coordinate spaces are
+    // in play:
+    //   - "svg-local": relative to the <svg>'s own box, i.e.
+    //     `clientX/Y - boundingRect.left/top`. Because the viewBox is kept
+    //     in sync with the element's actual rendered CSS-pixel size (see
+    //     _measure()/_onResize()), one svg-local unit == one CSS pixel --
+    //     this is also the space `panX`/`panY` live in, since the viewport
+    //     transform is `translate(panX,panY) scale(zoom)` and `translate`
+    //     is applied in the *parent* (pre-scale) coordinate system.
+    //   - "world": content coordinates *inside* the scaled viewport --
+    //     where `_nodes`/`_baseLayout`/`_offsets` all live. Getting from
+    //     svg-local to world requires undoing BOTH the pan and the zoom:
+    //     worldX = (svgLocalX - panX) / zoom.
+    //
+    // The historical form of this bug is applying a screen-pixel delta
+    // straight to a WORLD-space coordinate with no `/ zoom` at all -- the
+    // resulting error is `(1 - 1/zoom) * dragDistance`: invisible at
+    // zoom=1, and growing (in either direction) the further zoomed in/out
+    // you are, exactly matching the "the further you drag, the more it
+    // drifts" bug report. Every handler below is written against
+    // `_screenToWorld`/`_screenDeltaToWorld` so there is exactly one place
+    // that conversion can go wrong instead of N independently-hand-rolled
+    // ones.
+
+    /** clientX/clientY (page space, e.g. straight off a PointerEvent) ->
+     * svg-local space. Re-measures the bounding rect on every call (cheap)
+     * so a scroll/resize mid-gesture can't leave a stale offset baked in. */
+    _clientToSvg(clientX, clientY) {
+        const rect = this._svg.getBoundingClientRect();
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    /** svg-local -> world (see the doc block above). */
+    _svgToWorld(svgX, svgY) {
+        return { x: (svgX - this._panX) / this._zoom, y: (svgY - this._panY) / this._zoom };
+    }
+
+    /** clientX/clientY -> world in one call; the primary entry point for
+     * "where in content-space is the cursor right now" (node drag start/
+     * current point, pan's cursor anchor). */
+    _screenToWorld(clientX, clientY) {
+        const p = this._clientToSvg(clientX, clientY);
+        return this._svgToWorld(p.x, p.y);
+    }
+
+    /** Convert a pure screen-pixel DELTA (e.g. `e.clientX - startClientX`)
+     * into the equivalent WORLD-space delta. Only valid for deltas, not
+     * absolute points (panX/panY cancel out of a delta, so this is just
+     * the zoom division -- but funneled through one named helper so every
+     * caller states its intent instead of re-deriving `/ this._zoom`
+     * inline, which is exactly how this class of bug creeps back in). */
+    _screenDeltaToWorld(dxClient, dyClient) {
+        return { x: dxClient / this._zoom, y: dyClient / this._zoom };
+    }
 
     _bindPanZoom() {
         this._svg.addEventListener('wheel', (e) => {
             e.preventDefault();
-            const rect = this._svg.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
+            const p = this._clientToSvg(e.clientX, e.clientY);
             const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-            this._zoomAt(mx, my, factor);
+            this._zoomAt(p.x, p.y, factor);
         }, { passive: false });
 
         this._svg.addEventListener('pointerdown', (e) => {
@@ -268,8 +701,17 @@ class GraphRenderer {
             e.preventDefault();
             this._panning = {
                 pointerId: e.pointerId,
-                startClientX: e.clientX, startClientY: e.clientY,
-                startPanX: this._panX, startPanY: this._panY,
+                // The WORLD point currently under the cursor -- panning is
+                // "keep this world point locked under the cursor as the
+                // mouse moves", the exact same invariant _zoomAt uses for
+                // zoom-at-cursor, just solving for pan instead of zoom.
+                // This is 1:1 with cursor movement at ANY zoom level by
+                // construction (no separate "/zoom" anywhere in this
+                // handler): the world point's screen position is
+                // `panX + worldX*zoom`, so re-solving panX for a fixed
+                // worldX as svgX changes moves the screen position by
+                // exactly the svg-local (== CSS-pixel) delta every time.
+                anchorWorld: this._screenToWorld(e.clientX, e.clientY),
             };
             try { this._svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
             this._svg.classList.add('gr-panning');
@@ -277,10 +719,10 @@ class GraphRenderer {
         });
         this._svg.addEventListener('pointermove', (e) => {
             if (!this._panning || this._panning.pointerId !== e.pointerId) return;
-            const dx = e.clientX - this._panning.startClientX;
-            const dy = e.clientY - this._panning.startClientY;
-            this._panX = this._panning.startPanX + dx;
-            this._panY = this._panning.startPanY + dy;
+            const p = this._clientToSvg(e.clientX, e.clientY);
+            const a = this._panning.anchorWorld;
+            this._panX = p.x - a.x * this._zoom;
+            this._panY = p.y - a.y * this._zoom;
             this._applyViewportTransform();
         });
         const endPan = (e) => {
@@ -294,13 +736,17 @@ class GraphRenderer {
         this._svg.addEventListener('pointerleave', (e) => { if (this._panning) endPan(e); });
     }
 
-    _zoomAt(screenX, screenY, factor) {
+    /** `svgX`/`svgY` are svg-local coordinates (see the doc block above --
+     * `zoomBy()` passes the viewBox center directly since that's already
+     * in this space; the wheel handler converts clientX/Y via
+     * `_clientToSvg` first). Keeps the WORLD point currently under
+     * (svgX,svgY) fixed on screen across the zoom change. */
+    _zoomAt(svgX, svgY, factor) {
         const newZoom = Math.min(this._maxZoom, Math.max(this._minZoom, this._zoom * factor));
         if (newZoom === this._zoom) return;
-        const contentX = (screenX - this._panX) / this._zoom;
-        const contentY = (screenY - this._panY) / this._zoom;
-        this._panX = screenX - contentX * newZoom;
-        this._panY = screenY - contentY * newZoom;
+        const anchor = this._svgToWorld(svgX, svgY);
+        this._panX = svgX - anchor.x * newZoom;
+        this._panY = svgY - anchor.y * newZoom;
         this._zoom = newZoom;
         this._applyViewportTransform();
     }
@@ -623,9 +1069,19 @@ class GraphRenderer {
         clip.appendChild(grEl('rect', { width: this._nodeW, height: 44, rx: 10, ry: 10 }));
         g.appendChild(clip);
 
+        // Header band: fallback tile -> (once resolved) the background
+        // image -> a dark scrim -> the name label, in that paint order, so
+        // the label always stays on top and readable while the image sits
+        // visibly behind it (see _resolveBgImage()/showImage() below).
+        // Rendered text-first: the label/fallback show immediately and the
+        // image is patched in asynchronously whenever resolution settles,
+        // never blocking the rest of the node from drawing.
         const thumbGroup = grEl('g', { 'clip-path': `url(#${clipId})` });
         const fallback = grEl('rect', { width: this._nodeW, height: 44, class: 'gr-thumb-fallback' });
         thumbGroup.appendChild(fallback);
+        const scrim = grEl('rect', { width: this._nodeW, height: 44, class: 'gr-thumb-scrim' });
+        scrim.style.display = 'none';
+        thumbGroup.appendChild(scrim);
         const bgLabel = grEl('text', { x: this._nodeW / 2, y: 26, 'text-anchor': 'middle', class: 'gr-thumb-label' });
         bgLabel.textContent = area.background || '(no background)';
         thumbGroup.appendChild(bgLabel);
@@ -638,42 +1094,38 @@ class GraphRenderer {
             img.setAttributeNS(GR_XLINK_NS, 'href', href);
             img.setAttribute('href', href);
             img.addEventListener('load', () => {
-                fallback.style.display = 'none';
-                bgLabel.style.display = 'none';
+                scrim.style.display = '';
+                bgLabel.classList.add('gr-thumb-label-scrimmed');
             });
             img.addEventListener('error', () => {
                 if (img.parentNode) img.parentNode.removeChild(img);
+                scrim.style.display = 'none';
+                bgLabel.classList.remove('gr-thumb-label-scrimmed');
             });
-            thumbGroup.appendChild(img);
+            // Insert right before the scrim (which is itself right before
+            // the label) so DOM/paint order stays fallback -> image ->
+            // scrim -> label no matter when this settles.
+            thumbGroup.insertBefore(img, scrim);
         };
 
         if (area.background) {
             const bgName = area.background;
-            // NOTE: `background_thumb_base_url` (this._thumbBaseUrl) is a
-            // config knob documented (config_sample/config.yaml) as
-            // pointing directly at a flat static-host mirror of the
-            // server's own `backgrounds/` folder (e.g.
-            // "https://assets.example.com/backgrounds/") -- i.e. its root
-            // already *is* the backgrounds directory, one image per
-            // background name (`<name>.png`). That is a different
-            // convention from the AO asset root (`asset_url` /
-            // GMLocalContent's base, resolved above via
-            // `this._localContent.resolve('background', bgName)`), which
-            // uses the folder-per-background `background/<name>/
-            // witnessempty.png` layout. Do not conflate the two here --
-            // doing so 404s every thumbnail for a deployment configured
-            // per the documented convention.
-            const tryThumbBase = () => {
-                if (this._thumbBaseUrl) {
-                    showImage(this._urlJoin(this._thumbBaseUrl, `${encodeURIComponent(bgName)}.png`));
-                }
-            };
-            if (this._localContent && typeof this._localContent.resolve === 'function') {
-                this._localContent.resolve('background', bgName)
-                    .then((url) => { if (url) { showImage(url); } else { tryThumbBase(); } })
-                    .catch(() => tryThumbBase());
+            // ITEM 3 (v4 brief): prefer the position image for this area's
+            // pos_lock[0] (the snapshot now carries `pos_lock` -- see
+            // AreaSerializer.to_dict in gm_panel.py) over the generic
+            // witness-stand fallback _resolveBgImage() falls back to on its
+            // own. No pos_lock (or an empty one) means "all positions
+            // available", so there's no preferred position to pass.
+            const position = (area.pos_lock && area.pos_lock.length) ? area.pos_lock[0] : null;
+            const cacheKey = this._bgImageCacheKey(bgName, position);
+            if (this._bgImageCache.has(cacheKey)) {
+                // Already resolved (by an earlier render of this or any
+                // other node sharing the name+position) -- no async hop
+                // needed.
+                const cachedUrl = this._bgImageCache.get(cacheKey);
+                if (cachedUrl) showImage(cachedUrl);
             } else {
-                tryThumbBase();
+                this._resolveBgImage(bgName, position).then((url) => { if (url) showImage(url); });
             }
         }
         g.appendChild(thumbGroup);
@@ -768,9 +1220,13 @@ class GraphRenderer {
     }
 
     /** Draggable nodes: manual offset is stored keyed by hub id + area name
-     * (falling back to id) and reapplied over the computed grid layout. A
-     * drag that actually moved the node suppresses the trailing click so
-     * dragging never also opens the inspector. */
+     * (falling back to id) and reapplied over the computed grid layout,
+     * always in WORLD coordinates (see _screenDeltaToWorld) so a saved
+     * offset means the same physical position on the canvas regardless of
+     * what zoom level it was dragged at or is later viewed from -- the
+     * persisted localStorage offsets therefore survive zoom changes
+     * unchanged. A drag that actually moved the node suppresses the
+     * trailing click so dragging never also opens the inspector. */
     _bindNodeDrag(g, area) {
         let dragMoved = false;
 
@@ -794,11 +1250,19 @@ class GraphRenderer {
         g.addEventListener('pointermove', (e) => {
             const d = this._draggingNode;
             if (!d || d.pointerId !== e.pointerId || d.areaId !== area.id) return;
-            const dx = (e.clientX - d.startClientX) / this._zoom;
-            const dy = (e.clientY - d.startClientY) / this._zoom;
-            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved = true;
-            const offX = d.startOffsetX + dx;
-            const offY = d.startOffsetY + dy;
+            // Screen-space delta drives the "did this actually turn into a
+            // drag" threshold (a constant N screen pixels, independent of
+            // zoom, so the click-vs-drag feel doesn't get twitchier the
+            // further zoomed out you are); the WORLD-space delta (divided
+            // by zoom via the shared helper) is what actually moves the
+            // node, which is what keeps the exact point of the node grabbed
+            // under the cursor at every zoom level.
+            const dxScreen = e.clientX - d.startClientX;
+            const dyScreen = e.clientY - d.startClientY;
+            if (Math.abs(dxScreen) > 2 || Math.abs(dyScreen) > 2) dragMoved = true;
+            const worldDelta = this._screenDeltaToWorld(dxScreen, dyScreen);
+            const offX = d.startOffsetX + worldDelta.x;
+            const offY = d.startOffsetY + worldDelta.y;
             this._offsets.set(d.key, { x: offX, y: offY });
             const base = this._baseLayout.get(d.areaId);
             const node = this._nodes.get(d.areaId);

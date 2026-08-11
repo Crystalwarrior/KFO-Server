@@ -13,6 +13,21 @@
  * LocalContentSettingsDialog is the small UI layer (pick/clear folder,
  * set URL, browse/clear overrides) that the shell wires to a header
  * button; it only calls GMLocalContent's public methods.
+ *
+ * Case sensitivity (ITEM 3 in the v4 brief, user-confirmed rule): lowercase
+ * is how KFO-Server actually resolves assets -- stored names (an area's
+ * `background`, a client's character folder, an evidence `image`) can
+ * carry arbitrary casing (e.g. `/bg "Default"`), but real asset hosts
+ * (plain static web servers) and unix filesystems are case-sensitive and
+ * only serve the lowercase paths the server itself writes/expects. So for
+ * every kind (background/char_icon/evidence) the CANONICAL lookup form
+ * used to build URL candidates is the lowercased name; original casing is
+ * only ever tried as a last-resort extra candidate once every lowercase
+ * candidate has failed (see _buildUrlCandidates/_resolveFromUrl below).
+ * FS-Access folder mode matches directory entries case-insensitively
+ * instead (see _dirEntryCI/_fileEntryCI) since there's no way to know a
+ * real folder's on-disk casing up front. Resolve-cache keys (see
+ * _cacheKey) are always the lowercased name (+ position, for backgrounds).
  */
 
 const GM_LC_DB_NAME = 'gm-local-content';
@@ -20,6 +35,45 @@ const GM_LC_DB_VERSION = 1;
 const GM_LC_HANDLE_STORE = 'handles';
 const GM_LC_OVERRIDE_STORE = 'overrides';
 const GM_LC_IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.apng', '.bmp'];
+
+/** Standard AO courtroom-position -> background-preview-file mapping (ITEM
+ * 3, v4 brief): the file inside a background's folder (or, in URL/server
+ * mode, the equivalent path segment) that shows what that position looks
+ * like. Keys are lowercase position abbreviations as stored in
+ * `area.pos_lock`. */
+const GM_LC_POSITION_BG_FILES = {
+    def: 'defenseempty',
+    pro: 'prosecutorempty',
+    wit: 'witnessempty',
+    jud: 'judgestand',
+    hld: 'helperstand',
+    hlp: 'prohelperstand',
+    jur: 'jurystand',
+    sea: 'seancestand',
+};
+
+/** Ordered list of background-preview basenames (no extension) to try for
+ * an optional preferred `position` (an area's `pos_lock[0]`), most
+ * specific first, always ending in the universal `witnessempty` fallback
+ * so every background still resolves *something* when the preferred
+ * position has no dedicated asset:
+ *   - a known position (per GM_LC_POSITION_BG_FILES) -> its mapped file.
+ *   - an unrecognized/custom position -> try `<pos>` then `<pos>empty`
+ *     (the same `empty`-suffix convention every standard position file
+ *     follows) as literal guesses.
+ *   - no position at all -> just `witnessempty`, matching the pre-ITEM-3
+ *     behavior exactly. */
+function gmLcBackgroundCandidateFiles(position) {
+    const names = [];
+    const pos = position ? String(position).trim().toLowerCase() : '';
+    if (pos) {
+        const mapped = GM_LC_POSITION_BG_FILES[pos];
+        if (mapped) names.push(mapped);
+        else names.push(pos, `${pos}empty`);
+    }
+    if (names.indexOf('witnessempty') === -1) names.push('witnessempty');
+    return names;
+}
 
 /** Thin promise wrapper around the one IndexedDB database this file uses.
  * Private to GMLocalContent -- nothing outside this file touches it. */
@@ -247,30 +301,55 @@ class GMLocalContent {
     /**
      * @param {'background'|'char_icon'|'evidence'} kind
      * @param {string} name
+     * @param {{position?: string}} [opts] - `background` only: a preferred
+     *   courtroom position (an area's `pos_lock[0]`) to try before the
+     *   generic `witnessempty` preview -- see gmLcBackgroundCandidateFiles.
      * @returns {Promise<string|null>} an object URL / data URL / plain URL,
      *   or null if nothing resolved anywhere (override, base, server).
      */
-    async resolve(kind, name) {
+    async resolve(kind, name, opts) {
         if (!name) return null;
-        const key = `${kind}:${name}`;
+        const position = (kind === 'background' && opts && opts.position) ? opts.position : null;
+        const key = this._cacheKey(kind, name, position);
         if (this._resolveCache.has(key)) return this._resolveCache.get(key);
-        const promise = this._resolveUncached(kind, name).catch(() => null);
+        const promise = this._resolveUncached(kind, name, position).catch(() => null);
         this._resolveCache.set(key, promise);
         return promise;
     }
 
-    async _resolveUncached(kind, name) {
+    /** Canonical resolve-cache key: always the lowercased name (see the
+     * case-sensitivity doc at the top of this file), plus a lowercased
+     * position suffix for backgrounds so two areas sharing a background
+     * name but differing in pos_lock don't collide on one cached URL. */
+    _cacheKey(kind, name, position) {
+        const key = `${kind}:${String(name).toLowerCase()}`;
+        return position ? `${key}:${String(position).toLowerCase()}` : key;
+    }
+
+    /** Delete every resolve-cache entry for `kind`+`name` regardless of
+     * position suffix (see _cacheKey) -- used by setOverride/clearOverride
+     * so a per-item override change can't leave a stale per-position
+     * background resolution cached under a key it doesn't know the exact
+     * form of. */
+    _invalidateResolveCache(kind, name) {
+        const prefix = `${kind}:${String(name).toLowerCase()}`;
+        Array.from(this._resolveCache.keys()).forEach((k) => {
+            if (k === prefix || k.startsWith(`${prefix}:`)) this._resolveCache.delete(k);
+        });
+    }
+
+    async _resolveUncached(kind, name, position) {
         const override = await this._resolveOverride(kind, name);
         if (override) return override;
 
         if (this._mode === 'folder') {
-            const local = await this._resolveFromFolder(kind, name);
+            const local = await this._resolveFromFolder(kind, name, position);
             if (local) return local;
         } else if (this._mode === 'url') {
-            const local = await this._resolveFromUrl(this._baseUrl, kind, name);
+            const local = await this._resolveFromUrl(this._baseUrl, kind, name, position);
             if (local) return local;
         }
-        return this._resolveFromServer(kind, name);
+        return this._resolveFromServer(kind, name, position);
     }
 
     async _resolveOverride(kind, name) {
@@ -282,7 +361,7 @@ class GMLocalContent {
         }
     }
 
-    async _resolveFromFolder(kind, name) {
+    async _resolveFromFolder(kind, name, position) {
         if (!this._dirHandle) return null;
         if (this._dirPermission !== 'granted') {
             try {
@@ -292,32 +371,42 @@ class GMLocalContent {
             }
             if (this._dirPermission !== 'granted') return null;
         }
+        // Lowercase is the canonical lookup form (see the case-sensitivity
+        // doc at the top of this file); _walkDir/_fileUrl below additionally
+        // match directory entries case-insensitively (a folder handle
+        // carries no way to know its own real on-disk casing up front), so
+        // this is primarily about which candidate string gets tried/logged
+        // first, not a correctness requirement on its own.
+        const lname = String(name).toLowerCase();
         try {
             if (kind === 'background') {
                 // AO asset layout: a folder per background, one image per
-                // courtroom position -- witnessempty.png is the canonical
-                // preview frame. Try it (and its common alt extensions)
-                // first, then fall back to whatever image sorts first.
-                const dir = await this._walkDir(this._dirHandle, ['background', name]);
+                // courtroom position. Try the preferred-position file(s)
+                // first (see gmLcBackgroundCandidateFiles -- always ends in
+                // the universal witnessempty.* fallback), then whatever
+                // image sorts first if none of those exist either.
+                const dir = await this._walkDir(this._dirHandle, ['background', lname]);
                 if (!dir) return null;
-                for (const ext of ['png', 'webp', 'jpg']) {
-                    const direct = await this._fileUrl(dir, `witnessempty.${ext}`);
-                    if (direct) return direct;
+                for (const base of gmLcBackgroundCandidateFiles(position)) {
+                    for (const ext of ['png', 'webp', 'jpg']) {
+                        const direct = await this._fileUrl(dir, `${base}.${ext}`);
+                        if (direct) return direct;
+                    }
                 }
                 return this._firstImageInDir(dir);
             }
             if (kind === 'char_icon') {
-                const dir = await this._walkDir(this._dirHandle, ['characters', name]);
+                const dir = await this._walkDir(this._dirHandle, ['characters', lname]);
                 return dir ? await this._fileUrl(dir, 'char_icon.png') : null;
             }
             if (kind === 'evidence') {
                 const dir = await this._walkDir(this._dirHandle, ['evidence']);
                 if (!dir) return null;
-                const direct = await this._fileUrl(dir, name);
+                const direct = await this._fileUrl(dir, lname);
                 if (direct) return direct;
-                if (!/\.[a-z0-9]{2,5}$/i.test(name)) {
+                if (!/\.[a-z0-9]{2,5}$/i.test(lname)) {
                     for (const ext of GM_LC_IMAGE_EXTS) {
-                        const withExt = await this._fileUrl(dir, name + ext);
+                        const withExt = await this._fileUrl(dir, lname + ext);
                         if (withExt) return withExt;
                     }
                 }
@@ -332,18 +421,53 @@ class GMLocalContent {
     async _walkDir(root, parts) {
         let dir = root;
         for (const part of parts) {
-            try {
-                dir = await dir.getDirectoryHandle(part);
-            } catch (e) {
-                return null;
-            }
+            const next = await this._dirEntryCI(dir, part);
+            if (!next) return null;
+            dir = next;
         }
         return dir;
     }
 
+    /** Case-insensitive `getDirectoryHandle` (see the case-sensitivity doc
+     * at the top of this file): tries the exact name first (the fast path
+     * -- also the only path needed on a case-insensitive host filesystem,
+     * e.g. Windows/macOS), then falls back to scanning entries and
+     * matching lowercased names so a real folder on a case-sensitive
+     * filesystem (Linux) whose on-disk casing doesn't match `name` still
+     * resolves. */
+    async _dirEntryCI(dir, name) {
+        try {
+            return await dir.getDirectoryHandle(name);
+        } catch (e) { /* fall through to a case-insensitive scan */ }
+        if (typeof dir.entries !== 'function') return null;
+        const lower = String(name).toLowerCase();
+        try {
+            for await (const [entryName, handle] of dir.entries()) {
+                if (handle.kind === 'directory' && entryName.toLowerCase() === lower) return handle;
+            }
+        } catch (e) { /* entries() unsupported/denied -- nothing more to try */ }
+        return null;
+    }
+
+    /** Case-insensitive `getFileHandle` counterpart to _dirEntryCI. */
+    async _fileEntryCI(dir, name) {
+        try {
+            return await dir.getFileHandle(name);
+        } catch (e) { /* fall through to a case-insensitive scan */ }
+        if (typeof dir.entries !== 'function') return null;
+        const lower = String(name).toLowerCase();
+        try {
+            for await (const [entryName, handle] of dir.entries()) {
+                if (handle.kind === 'file' && entryName.toLowerCase() === lower) return handle;
+            }
+        } catch (e) { /* entries() unsupported/denied -- nothing more to try */ }
+        return null;
+    }
+
     async _fileUrl(dir, filename) {
         try {
-            const fh = await dir.getFileHandle(filename);
+            const fh = await this._fileEntryCI(dir, filename);
+            if (!fh) return null;
             const file = await fh.getFile();
             return URL.createObjectURL(file);
         } catch (e) {
@@ -369,19 +493,39 @@ class GMLocalContent {
         return this._fileUrl(dir, preferred || names[0]);
     }
 
-    /** Builds the candidate URL for a (base, kind, name) triple. AO asset
-     * layout for backgrounds is a folder per background holding one image
-     * per courtroom position -- witnessempty.png is the canonical preview
-     * frame (background/<name>.png does not exist on a real AO base). */
-    _buildUrlCandidate(base, kind, name) {
-        if (!base) return null;
-        if (kind === 'background') return `${base}/background/${encodeURIComponent(name)}/witnessempty.png`;
-        if (kind === 'char_icon') return `${base}/characters/${encodeURIComponent(name)}/char_icon.png`;
-        if (kind === 'evidence') {
-            const hasExt = /\.[a-z0-9]{2,5}$/i.test(name);
-            return `${base}/evidence/${encodeURIComponent(name)}${hasExt ? '' : '.png'}`;
-        }
-        return null;
+    /**
+     * Builds the ordered list of candidate URLs for a (base, kind, name)
+     * triple, most-preferred first. AO asset layout for backgrounds is a
+     * folder per background holding one image per courtroom position (see
+     * gmLcBackgroundCandidateFiles for the position->file mapping and its
+     * witnessempty fallback; background/<name>.png with no position
+     * subfolder does not exist on a real AO base).
+     *
+     * Case sensitivity (see the doc at the top of this file): the
+     * lowercased `name` is the canonical/primary candidate set; the
+     * original casing is appended as a last-resort extra candidate only
+     * when it actually differs, so it's only ever tried after every
+     * lowercase candidate (all position files, for backgrounds) has
+     * already failed.
+     */
+    _buildUrlCandidates(base, kind, name, position) {
+        if (!base) return [];
+        const lower = String(name).toLowerCase();
+        const variants = lower === name ? [lower] : [lower, name];
+        const out = [];
+        variants.forEach((n) => {
+            if (kind === 'background') {
+                gmLcBackgroundCandidateFiles(position).forEach((file) => {
+                    out.push(`${base}/background/${encodeURIComponent(n)}/${file}.png`);
+                });
+            } else if (kind === 'char_icon') {
+                out.push(`${base}/characters/${encodeURIComponent(n)}/char_icon.png`);
+            } else if (kind === 'evidence') {
+                const hasExt = /\.[a-z0-9]{2,5}$/i.test(n);
+                out.push(`${base}/evidence/${encodeURIComponent(n)}${hasExt ? '' : '.png'}`);
+            }
+        });
+        return out;
     }
 
     /** URL-sourced candidates (a base URL, or the server's asset_url) are
@@ -401,11 +545,12 @@ class GMLocalContent {
         return promise;
     }
 
-    async _resolveFromUrl(base, kind, name) {
-        const url = this._buildUrlCandidate(base, kind, name);
-        if (!url) return null;
-        const reachable = await this._verifyImageUrl(url);
-        return reachable ? url : null;
+    async _resolveFromUrl(base, kind, name, position) {
+        for (const url of this._buildUrlCandidates(base, kind, name, position)) {
+            const reachable = await this._verifyImageUrl(url);
+            if (reachable) return url;
+        }
+        return null;
     }
 
     async _loadServerAssetUrl() {
@@ -422,10 +567,10 @@ class GMLocalContent {
         return this._serverConfigPromise;
     }
 
-    async _resolveFromServer(kind, name) {
+    async _resolveFromServer(kind, name, position) {
         const base = await this._loadServerAssetUrl();
         if (!base) return null;
-        return this._resolveFromUrl(base, kind, name);
+        return this._resolveFromUrl(base, kind, name, position);
     }
 
     // --- per-item overrides -------------------------------------------------
@@ -436,14 +581,18 @@ class GMLocalContent {
         await this._store.set(GM_LC_OVERRIDE_STORE, `${kind}:${name}`, {
             dataUrl, name: file.name || '', storedAt: Date.now(),
         });
-        this._resolveCache.delete(`${kind}:${name}`);
+        // Background resolve-cache keys carry a per-position suffix (see
+        // _cacheKey) that this call site has no way to know in advance --
+        // _invalidateResolveCache clears every entry for this kind+name
+        // regardless of that suffix, not just the no-position one.
+        this._invalidateResolveCache(kind, name);
         this._notifyChange(kind, name);
         return dataUrl;
     }
 
     async clearOverride(kind, name) {
         await this._store.delete(GM_LC_OVERRIDE_STORE, `${kind}:${name}`);
-        this._resolveCache.delete(`${kind}:${name}`);
+        this._invalidateResolveCache(kind, name);
         this._notifyChange(kind, name);
     }
 
