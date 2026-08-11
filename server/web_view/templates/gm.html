@@ -11,6 +11,7 @@
     <h1>GM Control Panel</h1>
     <div class="gm-header-info">
         <span class="gm-identity" id="gmIdentity"></span>
+        <button id="localContentBtn" title="Configure local backgrounds/icons/evidence images and marker colors">Local Content</button>
         <button id="logoutBtn">Logout</button>
     </div>
 </header>
@@ -20,7 +21,7 @@
     <div class="gm-tab" data-tab="clients">Clients</div>
     <div class="gm-tab" data-tab="characters">Characters</div>
     <div class="gm-tab" data-tab="commands">Commands</div>
-    <div class="gm-tab" data-tab="demos">Demos</div>
+    <div class="gm-tab" data-tab="evidence">Evidence</div>
     <span class="gm-conn-status">
         <span class="live-dot" id="wsDot"></span>
         <span id="wsStatus">Connecting…</span>
@@ -55,12 +56,12 @@
             <table class="gm-table" id="clientsTable">
                 <thead>
                     <tr>
-                        <th>ID</th><th>Character</th><th>Showname</th><th>OOC Name</th>
-                        <th>Area</th><th>Status</th><th>Actions</th>
+                        <th>ID</th><th>Icon</th><th>Character</th><th>Showname</th><th>OOC Name</th>
+                        <th>Area</th><th>Status</th><th>Color</th><th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="clientsTbody">
-                    <tr><td colspan="7" class="gm-empty">Loading…</td></tr>
+                    <tr><td colspan="9" class="gm-empty">Loading…</td></tr>
                 </tbody>
             </table>
         </div>
@@ -137,76 +138,112 @@
         </div>
     </section>
 
-    <!-- DEMOS TAB -->
-    <section class="gm-tab-panel" id="tab-demos">
+    <!-- EVIDENCE TAB (was "Demos") -->
+    <section class="gm-tab-panel" id="tab-evidence">
         <div class="gm-toolbar">
-            <span class="hub-label" id="demosAreaLabel">Loading area…</span>
-            <button class="btn-sm" id="demosRefreshBtn">Refresh</button>
-            <button class="btn-sm" id="demoNewBtn">New Demo</button>
-            <button class="btn-sm danger" id="demoStopAllBtn">Stop All (Hub)</button>
-            <button class="btn-sm" id="demoHelpToggleBtn">Instruction Reference</button>
+            <span class="hub-label" id="evidenceAreaLabel">Loading area…</span>
+            <label class="gm-inline-form" style="gap:0.25rem">
+                <span class="dim">Area:</span>
+                <select id="evidenceAreaSelect"></select>
+            </label>
+            <button class="btn-sm" id="evidenceRefreshBtn">Refresh</button>
+            <button class="btn-sm" id="evidenceNewBtn">New Evidence</button>
+            <button class="btn-sm danger" id="evidenceStopAllBtn">Stop All (Hub)</button>
+            <button class="btn-sm" id="evidenceHelpToggleBtn">Instruction Reference</button>
         </div>
-        <div class="gm-split gm-split-demos">
+        <div class="gm-split gm-split-evidence">
             <div class="gm-panel-box gm-demo-list-box">
                 <div class="gm-scroll-area">
-                    <table class="gm-table" id="demosTable">
-                        <thead><tr><th>#</th><th>Name</th><th>Status</th><th></th></tr></thead>
-                        <tbody id="demosTbody"></tbody>
+                    <table class="gm-table" id="evidenceTable">
+                        <thead><tr><th>#</th><th>Icon</th><th>Name</th><th>Status</th><th></th></tr></thead>
+                        <tbody id="evidenceTbody"></tbody>
                     </table>
                 </div>
-                <h4>Demo Packs (evidence lists on disk)</h4>
+                <h4>Evidence Packs (evidence lists on disk)</h4>
                 <div class="gm-toolbar">
-                    <select id="demoPackSelect"></select>
+                    <select id="evidencePackSelect"></select>
                     <label class="gm-inline-form" style="gap:0.25rem">
-                        <input type="checkbox" id="demoPackOverlayCheck"> overlay
+                        <input type="checkbox" id="evidencePackOverlayCheck"> overlay
                     </label>
-                    <button class="btn-sm" id="demoPackLoadBtn">Load</button>
+                    <button class="btn-sm" id="evidencePackLoadBtn">Load</button>
                 </div>
                 <div class="gm-inline-form">
-                    <input type="text" id="demoPackNameInput" placeholder="pack name">
-                    <button class="btn-sm" id="demoPackSaveBtn">Save Current</button>
+                    <input type="text" id="evidencePackNameInput" placeholder="pack name">
+                    <button class="btn-sm" id="evidencePackSaveBtn">Save Current</button>
                 </div>
             </div>
 
             <div class="gm-panel-box gm-demo-editor-box">
                 <div class="gm-inline-form">
-                    <input type="text" id="demoNameInput" placeholder="Demo name">
-                    <input type="text" id="demoImageInput" placeholder="Image (optional)">
+                    <span class="gm-icon-slot gm-icon-slot-lg" id="evidenceIconPreview"><span class="gm-icon-fallback">?</span></span>
+                    <input type="text" id="evidenceNameInput" placeholder="Evidence name">
+                    <input type="text" id="evidenceImageInput" placeholder="Image (optional)">
+                    <button class="btn-sm" id="evidenceIconOverrideBtn" title="Set a local icon override for this image name">Set icon</button>
                 </div>
-                <textarea id="demoScriptEditor" class="gm-script-editor" spellcheck="false"
+                <textarea id="evidenceScriptEditor" class="gm-script-editor" spellcheck="false"
                     placeholder="wait 500&#10;CT#narrator#Hello everyone!%"></textarea>
-                <div id="demoParseWarnings"></div>
+                <div id="evidenceParseWarnings"></div>
                 <div class="gm-toolbar">
-                    <button class="btn-sm" id="demoSaveBtn">Save Script</button>
-                    <button class="btn-sm" id="demoRunBtn">Run</button>
-                    <button class="btn-sm" id="demoStopBtn">Stop</button>
-                    <button class="btn-sm danger" id="demoDeleteBtn">Delete</button>
+                    <button class="btn-sm" id="evidenceSaveBtn">Save</button>
+                    <button class="btn-sm" id="evidenceRunBtn">Run</button>
+                    <button class="btn-sm" id="evidenceStopBtn">Stop</button>
+                    <button class="btn-sm danger" id="evidenceDeleteBtn">Delete</button>
                 </div>
-                <div class="gm-panel-box gm-demo-status" id="demoStatusBox">
-                    <div class="dim">No demo running in this area.</div>
+                <div class="gm-panel-box gm-demo-status" id="evidenceStatusBox">
+                    <div class="dim">No script running in this area.</div>
                 </div>
                 <div class="gm-inline-form">
-                    <input type="text" id="demoEvalInput" placeholder="Eval expression, e.g. client[0].showname">
-                    <button class="btn-sm" id="demoEvalBtn">Eval</button>
-                    <span id="demoEvalResult" class="mono"></span>
+                    <input type="text" id="evidenceEvalInput" placeholder="Eval expression, e.g. client[0].showname">
+                    <button class="btn-sm" id="evidenceEvalBtn">Eval</button>
+                    <span id="evidenceEvalResult" class="mono"></span>
                 </div>
             </div>
 
-            <div class="gm-panel-box gm-demo-help hidden" id="demoHelpBox"></div>
+            <div class="gm-panel-box gm-demo-help hidden" id="evidenceHelpBox"></div>
         </div>
     </section>
 
 </main>
 
+<!-- Local Content settings dialog (GMLocalContent), reachable from the header -->
+<div class="gm-modal-backdrop hidden" id="localContentModal">
+    <div class="gm-modal">
+        <div class="gm-modal-header">
+            <h3>Local Content</h3>
+            <button class="btn-sm" id="lcCloseBtn">Close</button>
+        </div>
+        <div class="gm-modal-body">
+            <p class="dim">
+                Resolve backgrounds, character icons and evidence images from a local
+                folder or URL instead of (or before) the server's asset URL. Per-item
+                overrides always take priority.
+            </p>
+            <div id="lcBaseInfo" class="gm-lc-base-info"></div>
+            <div class="gm-toolbar">
+                <button class="btn-sm" id="lcPickFolderBtn">Pick Folder…</button>
+                <button class="btn-sm hidden" id="lcReconnectFolderBtn">Reconnect Folder</button>
+                <button class="btn-sm danger" id="lcClearBaseBtn">Clear Source</button>
+            </div>
+            <div class="gm-inline-form">
+                <input type="text" id="lcBaseUrlInput" placeholder="https://example.com/base/asset/path">
+                <button class="btn-sm" id="lcSetUrlBtn">Set Base URL</button>
+            </div>
+            <h4>Per-item overrides</h4>
+            <div class="gm-scroll-area gm-lc-overrides" id="lcOverridesList"></div>
+        </div>
+    </div>
+</div>
+
 <script src="/static/js/gm-utils.js"></script>
 <script src="/static/js/gm-api.js"></script>
+<script src="/static/js/gm-local-content.js"></script>
 <script src="/static/js/gm-graph.js"></script>
 <script src="/static/js/gm-tab-base.js"></script>
 <script src="/static/js/gm-areas-tab.js"></script>
 <script src="/static/js/gm-clients-tab.js"></script>
 <script src="/static/js/gm-characters-tab.js"></script>
 <script src="/static/js/gm-commands-tab.js"></script>
-<script src="/static/js/gm-demos-tab.js"></script>
+<script src="/static/js/gm-evidence-tab.js"></script>
 <script src="/static/js/gm-shell.js"></script>
 <script src="/static/js/gm-main.js"></script>
 </body>

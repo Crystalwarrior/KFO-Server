@@ -3,10 +3,20 @@
  * GraphRenderer is a pure rendering component (composed into
  * AreasGraphTab, not inherited) that draws the hub's area graph as
  * hand-rolled SVG: areas are nodes, area links are directed edges. No
- * external graph library -- layout is a small hand-written
- * Fruchterman-Reingold-style force simulation run once per structural
- * change, and movement is animated by walking a token along the
- * matching edge path (or a straight fallback) with requestAnimationFrame.
+ * external graph library.
+ *
+ * Layout: a deterministic left-to-right grid, areas ordered by area id,
+ * wrapping into rows as the container width requires. New areas (which
+ * always sort last by id) therefore always land to the right of / below
+ * existing ones, never to the left. Per-node manual drag offsets are
+ * layered on top of the computed grid position and persisted in
+ * localStorage per hub.
+ *
+ * Viewing: wheel-zoom (centered on the cursor) and click-drag pan are
+ * implemented via a single <g class="gr-viewport"> transform, with
+ * +/-/fit/reset-view/reset-layout controls overlaid on the graph
+ * container. A ResizeObserver keeps the viewBox in sync with the actual
+ * pixel size of the container so layout never misaligns on resize.
  */
 
 const GR_SVG_NS = 'http://www.w3.org/2000/svg';
@@ -29,36 +39,119 @@ class GraphRenderer {
         this._svg = svgElement;
         this._onNodeClick = (options && options.onNodeClick) || (() => {});
         this._thumbBaseUrl = '';
+        this._localContent = null;
+        this._clientFolders = {}; // client_id -> character folder name
 
         this._nodes = new Map();       // area_id -> {area, x, y}
-        this._edgePaths = new Map();   // "from->to" -> <path> element
+        this._baseLayout = new Map();  // area_id -> {x, y} grid position (no manual offset)
+        this._offsets = new Map();     // offsetKey -> {x, y} manual drag offsets
+        this._edgePaths = new Map();   // "from->to" -> <path>/<line> element
+        this._edgesByNode = new Map(); // area_id -> [{el, fromNode, toNode, kind, curve}]
         this._lastIdSet = '';
-        this._lastEdgeSig = '';
+        this._lastAreas = [];
+        this._hubId = null;
 
         this._nodeW = 150;
         this._nodeH = 96;
         this._width = 1000;
         this._height = 640;
 
+        this._zoom = 1;
+        this._panX = 0;
+        this._panY = 0;
+        this._minZoom = 0.25;
+        this._maxZoom = 3;
+
+        this._draggingNode = null;
+        this._panning = null;
+        this._resizeRaf = null;
+
         this._svg.innerHTML = '';
+        this._svg.style.touchAction = 'none';
+        this._svg.style.cursor = 'grab';
         this._buildDefs();
+
+        this._viewport = grEl('g', { class: 'gr-viewport' });
         this._layerEdges = grEl('g', { class: 'gr-edges' });
         this._layerNodes = grEl('g', { class: 'gr-nodes' });
         this._layerTokens = grEl('g', { class: 'gr-tokens' });
-        this._svg.appendChild(this._layerEdges);
-        this._svg.appendChild(this._layerNodes);
-        this._svg.appendChild(this._layerTokens);
+        this._viewport.appendChild(this._layerEdges);
+        this._viewport.appendChild(this._layerNodes);
+        this._viewport.appendChild(this._layerTokens);
+        this._svg.appendChild(this._viewport);
 
+        this._buildControls();
         this._measure();
-        window.addEventListener('resize', () => this._measure());
+
+        if (typeof ResizeObserver !== 'undefined' && this._svg.parentElement) {
+            this._resizeObserver = new ResizeObserver(() => this._onResize());
+            this._resizeObserver.observe(this._svg.parentElement);
+        } else {
+            this._resizeObserver = null;
+            window.addEventListener('resize', () => this._onResize());
+        }
+
+        this._bindPanZoom();
+        this._applyViewportTransform();
     }
 
     setThumbBaseUrl(url) { this._thumbBaseUrl = url || ''; }
+
+    setLocalContent(localContent) { this._localContent = localContent || null; }
+
+    /** client_id -> character folder name map (see gm-areas-tab.js's
+     * _loadClientFolders()). GMLocalContent.getClientColor() is keyed by
+     * folder name (persistent across client-id reuse, matching how the
+     * Clients tab sets colors), not by client id, so this lookup is what
+     * lets a marker here show the same color a GM picked there. */
+    setClientFolders(map) { this._clientFolders = map || {}; }
+
+    // --- overlay controls ------------------------------------------------
+
+    _buildControls() {
+        const wrap = this._svg.parentElement;
+        if (!wrap) return;
+        const controls = document.createElement('div');
+        controls.className = 'gr-controls';
+        const mk = (label, title, fn) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'gr-ctrl-btn';
+            btn.textContent = label;
+            btn.title = title;
+            btn.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+            controls.appendChild(btn);
+            return btn;
+        };
+        mk('+', 'Zoom in', () => this.zoomBy(1.25));
+        mk('−', 'Zoom out', () => this.zoomBy(0.8));
+        mk('⤡', 'Fit graph to view', () => this.fit());
+        mk('⟳', 'Reset zoom & pan', () => this.resetView());
+        mk('✕', 'Reset manual layout for this hub', () => this.resetOffsets());
+        wrap.appendChild(controls);
+        this._controlsEl = controls;
+    }
+
+    // --- measurement / resize ---------------------------------------------
 
     _measure() {
         const rect = this._svg.getBoundingClientRect();
         if (rect.width > 100) this._width = rect.width;
         if (rect.height > 100) this._height = rect.height;
+    }
+
+    _onResize() {
+        if (this._resizeRaf) return;
+        this._resizeRaf = requestAnimationFrame(() => {
+            this._resizeRaf = null;
+            this._measure();
+            if (this._lastAreas && this._lastAreas.length) {
+                this._runLayout(this._lastAreas);
+                this._render(this._lastAreas);
+            } else {
+                this._svg.setAttribute('viewBox', `0 0 ${Math.max(this._width, 300)} ${Math.max(this._height, 300)}`);
+            }
+        });
     }
 
     _buildDefs() {
@@ -72,19 +165,112 @@ class GraphRenderer {
         this._svg.appendChild(defs);
     }
 
+    // --- pan / zoom ---------------------------------------------------------
+
+    _bindPanZoom() {
+        this._svg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = this._svg.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+            this._zoomAt(mx, my, factor);
+        }, { passive: false });
+
+        this._svg.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            if (e.target.closest && e.target.closest('.gr-node')) return;
+            this._panning = {
+                pointerId: e.pointerId,
+                startClientX: e.clientX, startClientY: e.clientY,
+                startPanX: this._panX, startPanY: this._panY,
+            };
+            try { this._svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+            this._svg.classList.add('gr-panning');
+            this._svg.style.cursor = 'grabbing';
+        });
+        this._svg.addEventListener('pointermove', (e) => {
+            if (!this._panning || this._panning.pointerId !== e.pointerId) return;
+            const dx = e.clientX - this._panning.startClientX;
+            const dy = e.clientY - this._panning.startClientY;
+            this._panX = this._panning.startPanX + dx;
+            this._panY = this._panning.startPanY + dy;
+            this._applyViewportTransform();
+        });
+        const endPan = (e) => {
+            if (!this._panning || (e && this._panning.pointerId !== e.pointerId)) return;
+            this._panning = null;
+            this._svg.classList.remove('gr-panning');
+            this._svg.style.cursor = 'grab';
+        };
+        this._svg.addEventListener('pointerup', endPan);
+        this._svg.addEventListener('pointercancel', endPan);
+        this._svg.addEventListener('pointerleave', (e) => { if (this._panning) endPan(e); });
+    }
+
+    _zoomAt(screenX, screenY, factor) {
+        const newZoom = Math.min(this._maxZoom, Math.max(this._minZoom, this._zoom * factor));
+        if (newZoom === this._zoom) return;
+        const contentX = (screenX - this._panX) / this._zoom;
+        const contentY = (screenY - this._panY) / this._zoom;
+        this._panX = screenX - contentX * newZoom;
+        this._panY = screenY - contentY * newZoom;
+        this._zoom = newZoom;
+        this._applyViewportTransform();
+    }
+
+    zoomBy(factor) { this._zoomAt(this._width / 2, this._height / 2, factor); }
+
+    fit() {
+        if (this._nodes.size === 0) { this.resetView(); return; }
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        this._nodes.forEach((node) => {
+            minX = Math.min(minX, node.x - this._nodeW / 2);
+            minY = Math.min(minY, node.y - this._nodeH / 2);
+            maxX = Math.max(maxX, node.x + this._nodeW / 2);
+            maxY = Math.max(maxY, node.y + this._nodeH / 2);
+        });
+        const pad = 40;
+        const bw = Math.max(1, maxX - minX + pad * 2);
+        const bh = Math.max(1, maxY - minY + pad * 2);
+        const zoom = Math.min(this._maxZoom, Math.max(this._minZoom, Math.min(this._width / bw, this._height / bh)));
+        this._zoom = zoom;
+        this._panX = this._width / 2 - ((minX + maxX) / 2) * zoom;
+        this._panY = this._height / 2 - ((minY + maxY) / 2) * zoom;
+        this._applyViewportTransform();
+    }
+
+    resetView() {
+        this._zoom = 1;
+        this._panX = 0;
+        this._panY = 0;
+        this._applyViewportTransform();
+    }
+
+    _applyViewportTransform() {
+        this._viewport.setAttribute('transform', `translate(${this._panX}, ${this._panY}) scale(${this._zoom})`);
+    }
+
+    // --- data -----------------------------------------------------------
+
     /**
      * Push a fresh hub snapshot ({hub_id, hub_name, areas}) from
      * GET /api/gm/areas. Node positions are kept stable across
-     * occupancy-only updates; layout is only recomputed when the set
-     * of area ids or the link topology actually changed.
+     * occupancy-only updates; the grid layout is only recomputed when the
+     * set of area ids actually changed. Zoom/pan/manual offsets and any
+     * in-flight token animation are always preserved across calls.
      */
     setData(hubData) {
         const areas = hubData.areas || [];
+        this._lastAreas = areas;
+
+        if (this._hubId !== hubData.hub_id) {
+            this._loadOffsets(hubData.hub_id);
+        }
+
         const idSet = areas.map((a) => a.id).sort((a, b) => a - b).join(',');
-        const edgeSig = this._edgeSignature(areas);
-        const structuralChange = idSet !== this._lastIdSet || edgeSig !== this._lastEdgeSig;
+        const structuralChange = idSet !== this._lastIdSet;
         this._lastIdSet = idSet;
-        this._lastEdgeSig = edgeSig;
 
         const prevPositions = new Map();
         this._nodes.forEach((node, id) => prevPositions.set(id, { x: node.x, y: node.y }));
@@ -105,116 +291,108 @@ class GraphRenderer {
         this._render(areas);
     }
 
-    _edgeSignature(areas) {
-        const parts = [];
-        areas.forEach((a) => {
-            (a.links || []).forEach((l) => parts.push(`${a.id}>${l.target_id}:${l.locked ? 1 : 0}:${l.hidden ? 1 : 0}`));
-            if (a.fully_connected) parts.push(`${a.id}:*`);
-        });
-        return parts.sort().join('|');
+    // --- offset persistence (per-area manual drag positions) -------------
+
+    _offsetKey(area) {
+        if (area && area.name && String(area.name).trim()) return `n:${area.name}`;
+        return `i:${area ? area.id : ''}`;
     }
 
-    /** Small hand-rolled force-directed layout (Fruchterman-Reingold). */
+    _offsetsStorageKey(hubId) { return `gm-graph-offsets:${hubId}`; }
+
+    _loadOffsets(hubId) {
+        this._hubId = hubId;
+        this._offsets = new Map();
+        try {
+            const raw = localStorage.getItem(this._offsetsStorageKey(hubId));
+            if (raw) {
+                const obj = JSON.parse(raw);
+                Object.keys(obj).forEach((k) => this._offsets.set(k, obj[k]));
+            }
+        } catch (e) { /* corrupt/unavailable storage: start fresh */ }
+    }
+
+    _saveOffsets() {
+        if (this._hubId === null || this._hubId === undefined) return;
+        const obj = {};
+        this._offsets.forEach((v, k) => { obj[k] = v; });
+        try {
+            localStorage.setItem(this._offsetsStorageKey(this._hubId), JSON.stringify(obj));
+        } catch (e) { /* storage full/unavailable: offsets stay in-memory only */ }
+    }
+
+    /** Clear all manually-dragged node positions for the current hub. */
+    resetOffsets() {
+        this._offsets = new Map();
+        try { localStorage.removeItem(this._offsetsStorageKey(this._hubId)); } catch (e) { /* ignore */ }
+        if (this._lastAreas.length) {
+            this._runLayout(this._lastAreas);
+            this._render(this._lastAreas);
+        }
+    }
+
+    // --- layout: deterministic left-to-right grid ------------------------
+
+    /**
+     * Areas are ordered by id ascending and laid into a grid flowing left
+     * to right, wrapping into new rows as needed. Because new areas always
+     * sort to the end of this list, they always land to the right of (or
+     * on the row below) every pre-existing area -- never to the left.
+     * Manual per-node drag offsets (see _offsets) are then layered on top.
+     */
     _runLayout(areas) {
-        const nodes = Array.from(this._nodes.values());
-        const n = nodes.length;
-        if (n === 0) return;
         const w = Math.max(this._width, 300);
         const h = Math.max(this._height, 300);
         const margin = 90;
+        const colSpacing = this._nodeW + 70;
+        const rowSpacing = this._nodeH + 60;
+        const cols = Math.max(1, Math.floor((w - margin * 2) / colSpacing) + 1);
 
-        if (n === 1) {
-            nodes[0].x = w / 2;
-            nodes[0].y = h / 2;
-            return;
-        }
-
-        const idToIdx = new Map();
-        nodes.forEach((node, i) => idToIdx.set(node.area.id, i));
-        const edges = [];
-        areas.forEach((a) => {
-            const i = idToIdx.get(a.id);
-            (a.links || []).forEach((l) => {
-                const j = idToIdx.get(l.target_id);
-                if (j !== undefined && j !== i) edges.push([i, j]);
+        const sorted = areas.slice().sort((a, b) => a.id - b.id);
+        this._baseLayout = new Map();
+        sorted.forEach((area, i) => {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            this._baseLayout.set(area.id, {
+                x: margin + col * colSpacing + this._nodeW / 2,
+                y: margin + row * rowSpacing + this._nodeH / 2,
             });
         });
+        // Grow the canvas height to fit every row so nothing is clipped.
+        const rows = Math.ceil(sorted.length / cols);
+        this._height = Math.max(h, margin * 2 + rows * rowSpacing);
 
-        // Seed on a circle so the simulation starts from a non-degenerate layout.
-        nodes.forEach((node, i) => {
-            const angle = (i / n) * Math.PI * 2;
-            const radius = Math.min(w, h) / 3;
-            node.x = w / 2 + Math.cos(angle) * radius;
-            node.y = h / 2 + Math.sin(angle) * radius;
+        this._nodes.forEach((node, id) => {
+            const base = this._baseLayout.get(id);
+            if (!base) return;
+            const off = this._offsets.get(this._offsetKey(node.area)) || { x: 0, y: 0 };
+            node.x = base.x + off.x;
+            node.y = base.y + off.y;
         });
-
-        const area = w * h;
-        const k = Math.sqrt(area / n) * 0.9;
-        let temperature = Math.max(w, h) / 10;
-        const iterations = 220;
-
-        for (let iter = 0; iter < iterations; iter++) {
-            const disp = nodes.map(() => ({ x: 0, y: 0 }));
-
-            for (let i = 0; i < n; i++) {
-                for (let j = i + 1; j < n; j++) {
-                    const dx = nodes[i].x - nodes[j].x;
-                    const dy = nodes[i].y - nodes[j].y;
-                    const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
-                    const force = (k * k) / dist;
-                    const fx = (dx / dist) * force;
-                    const fy = (dy / dist) * force;
-                    disp[i].x += fx; disp[i].y += fy;
-                    disp[j].x -= fx; disp[j].y -= fy;
-                }
-            }
-
-            edges.forEach(([i, j]) => {
-                const dx = nodes[i].x - nodes[j].x;
-                const dy = nodes[i].y - nodes[j].y;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
-                const force = (dist * dist) / k;
-                const fx = (dx / dist) * force;
-                const fy = (dy / dist) * force;
-                disp[i].x -= fx; disp[i].y -= fy;
-                disp[j].x += fx; disp[j].y += fy;
-            });
-
-            // "Open hub" (fully_connected) areas: mild pull toward the centroid
-            // instead of an O(n^2) explicit edge set.
-            let cx = 0, cy = 0;
-            nodes.forEach((node) => { cx += node.x; cy += node.y; });
-            cx /= n; cy /= n;
-            nodes.forEach((node, i) => {
-                if (node.area.fully_connected) {
-                    disp[i].x += (cx - node.x) * 0.03;
-                    disp[i].y += (cy - node.y) * 0.03;
-                }
-            });
-
-            nodes.forEach((node, i) => {
-                const d = disp[i];
-                const dist = Math.sqrt(d.x * d.x + d.y * d.y) || 0.01;
-                const capped = Math.min(dist, temperature);
-                node.x += (d.x / dist) * capped;
-                node.y += (d.y / dist) * capped;
-                node.x = Math.min(w - margin, Math.max(margin, node.x));
-                node.y = Math.min(h - margin, Math.max(margin, node.y));
-            });
-
-            temperature *= 0.97;
-        }
     }
+
+    // --- rendering --------------------------------------------------------
 
     _render(areas) {
         this._layerNodes.innerHTML = '';
         this._layerEdges.innerHTML = '';
         this._edgePaths = new Map();
+        this._edgesByNode = new Map();
 
         const w = Math.max(this._width, 300);
         const h = Math.max(this._height, 300);
         this._svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
         this._svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+        const addEdgeRef = (fromId, toId, el, kind, curve) => {
+            const entry = { el, fromNode: fromId, toNode: toId, kind, curve };
+            if (!this._edgesByNode.has(fromId)) this._edgesByNode.set(fromId, []);
+            this._edgesByNode.get(fromId).push(entry);
+            if (toId !== fromId) {
+                if (!this._edgesByNode.has(toId)) this._edgesByNode.set(toId, []);
+                this._edgesByNode.get(toId).push(entry);
+            }
+        };
 
         // Faint implicit edges for "open hub" (fully_connected) areas first,
         // drawn once per unordered pair so they don't double up.
@@ -227,14 +405,17 @@ class GraphRenderer {
                 if (a.id > b.id && b.fully_connected) return; // already drawn from the other side
                 const to = this._nodes.get(b.id);
                 if (!to) return;
-                this._layerEdges.appendChild(grEl('line', {
+                const line = grEl('line', {
                     x1: from.x, y1: from.y, x2: to.x, y2: to.y, class: 'gr-edge gr-edge-implicit',
-                }));
+                });
+                this._layerEdges.appendChild(line);
+                addEdgeRef(a.id, b.id, line, 'line');
             });
         });
 
         // Explicit directed links. A mutual pair (A->B and B->A) is drawn as
-        // two independent curved arrows so /onelink asymmetry stays visible.
+        // two independent curved arrows so /onelink asymmetry stays visible,
+        // each carrying its own arrowhead marker showing its direction.
         areas.forEach((a) => {
             const from = this._nodes.get(a.id);
             if (!from) return;
@@ -251,6 +432,7 @@ class GraphRenderer {
                 });
                 this._layerEdges.appendChild(pathEl);
                 this._edgePaths.set(`${a.id}->${link.target_id}`, pathEl);
+                addEdgeRef(a.id, link.target_id, pathEl, 'path', reciprocal);
             });
         });
 
@@ -258,6 +440,28 @@ class GraphRenderer {
             const pos = this._nodes.get(a.id);
             if (!pos) return;
             this._layerNodes.appendChild(this._buildNode(a, pos));
+        });
+    }
+
+    /** Cheap in-place reposition used while dragging: no DOM rebuild, so
+     * pointer capture on the dragged node survives the update. */
+    _updateNodePosition(areaId) {
+        const node = this._nodes.get(areaId);
+        const g = this._layerNodes.querySelector(`[data-area-id="${areaId}"]`);
+        if (node && g) {
+            g.setAttribute('transform', `translate(${node.x - this._nodeW / 2}, ${node.y - this._nodeH / 2})`);
+        }
+        const edges = this._edgesByNode.get(areaId) || [];
+        edges.forEach((e) => {
+            const from = this._nodes.get(e.fromNode);
+            const to = this._nodes.get(e.toNode);
+            if (!from || !to) return;
+            if (e.kind === 'path') {
+                e.el.setAttribute('d', this._edgePathD(from, to, e.curve));
+            } else {
+                e.el.setAttribute('x1', from.x); e.el.setAttribute('y1', from.y);
+                e.el.setAttribute('x2', to.x); e.el.setAttribute('y2', to.y);
+            }
         });
     }
 
@@ -302,23 +506,41 @@ class GraphRenderer {
         const thumbGroup = grEl('g', { 'clip-path': `url(#${clipId})` });
         const fallback = grEl('rect', { width: this._nodeW, height: 44, class: 'gr-thumb-fallback' });
         thumbGroup.appendChild(fallback);
-        if (this._thumbBaseUrl && area.background) {
-            const href = `${this._thumbBaseUrl}${encodeURIComponent(area.background)}.png`;
+        const bgLabel = grEl('text', { x: this._nodeW / 2, y: 26, 'text-anchor': 'middle', class: 'gr-thumb-label' });
+        bgLabel.textContent = area.background || '(no background)';
+        thumbGroup.appendChild(bgLabel);
+
+        const showImage = (href) => {
+            if (!href) return;
             const img = grEl('image', {
                 x: 0, y: 0, width: this._nodeW, height: 44, preserveAspectRatio: 'xMidYMid slice',
             });
             img.setAttributeNS(GR_XLINK_NS, 'href', href);
             img.setAttribute('href', href);
-            fallback.style.display = 'none';
+            img.addEventListener('load', () => {
+                fallback.style.display = 'none';
+                bgLabel.style.display = 'none';
+            });
             img.addEventListener('error', () => {
-                img.style.display = 'none';
-                fallback.style.display = '';
+                if (img.parentNode) img.parentNode.removeChild(img);
             });
             thumbGroup.appendChild(img);
+        };
+
+        if (area.background) {
+            if (this._localContent && typeof this._localContent.resolve === 'function') {
+                this._localContent.resolve('background', area.background)
+                    .then((url) => {
+                        if (url) { showImage(url); return; }
+                        if (this._thumbBaseUrl) showImage(`${this._thumbBaseUrl}${encodeURIComponent(area.background)}.png`);
+                    })
+                    .catch(() => {
+                        if (this._thumbBaseUrl) showImage(`${this._thumbBaseUrl}${encodeURIComponent(area.background)}.png`);
+                    });
+            } else if (this._thumbBaseUrl) {
+                showImage(`${this._thumbBaseUrl}${encodeURIComponent(area.background)}.png`);
+            }
         }
-        const bgLabel = grEl('text', { x: this._nodeW / 2, y: 26, 'text-anchor': 'middle', class: 'gr-thumb-label' });
-        bgLabel.textContent = area.background || '(no background)';
-        thumbGroup.appendChild(bgLabel);
         g.appendChild(thumbGroup);
 
         const nameText = grEl('text', { x: 8, y: 60, class: 'gr-node-name' });
@@ -347,6 +569,11 @@ class GraphRenderer {
             if (isGm) chipClasses.push('gr-chip-gm');
             else if (isCm) chipClasses.push('gr-chip-cm');
             const chip = grEl('circle', { r: 6, cx: i * 15 + 6, cy: 6, class: chipClasses.join(' ') });
+            if (this._localContent && typeof this._localContent.getClientColor === 'function') {
+                const folder = this._clientFolders[cid];
+                const color = this._localContent.getClientColor(folder || String(cid));
+                if (color) chip.setAttribute('fill', color);
+            }
             const title = grEl('title');
             title.textContent = `Client #${cid}`;
             chip.appendChild(title);
@@ -359,8 +586,62 @@ class GraphRenderer {
         }
         g.appendChild(chipsGroup);
 
-        g.addEventListener('click', () => this._onNodeClick(area.id));
+        this._bindNodeDrag(g, area);
         return g;
+    }
+
+    /** Draggable nodes: manual offset is stored keyed by hub id + area name
+     * (falling back to id) and reapplied over the computed grid layout. A
+     * drag that actually moved the node suppresses the trailing click so
+     * dragging never also opens the inspector. */
+    _bindNodeDrag(g, area) {
+        let dragMoved = false;
+
+        g.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            e.stopPropagation();
+            const key = this._offsetKey(area);
+            const existing = this._offsets.get(key) || { x: 0, y: 0 };
+            dragMoved = false;
+            this._draggingNode = {
+                areaId: area.id, key, pointerId: e.pointerId,
+                startClientX: e.clientX, startClientY: e.clientY,
+                startOffsetX: existing.x, startOffsetY: existing.y,
+            };
+            try { g.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        });
+
+        g.addEventListener('pointermove', (e) => {
+            const d = this._draggingNode;
+            if (!d || d.pointerId !== e.pointerId || d.areaId !== area.id) return;
+            const dx = (e.clientX - d.startClientX) / this._zoom;
+            const dy = (e.clientY - d.startClientY) / this._zoom;
+            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved = true;
+            const offX = d.startOffsetX + dx;
+            const offY = d.startOffsetY + dy;
+            this._offsets.set(d.key, { x: offX, y: offY });
+            const base = this._baseLayout.get(d.areaId);
+            const node = this._nodes.get(d.areaId);
+            if (base && node) {
+                node.x = base.x + offX;
+                node.y = base.y + offY;
+                this._updateNodePosition(d.areaId);
+            }
+        });
+
+        const endDrag = (e) => {
+            const d = this._draggingNode;
+            if (!d || d.pointerId !== e.pointerId || d.areaId !== area.id) return;
+            this._draggingNode = null;
+            if (dragMoved) this._saveOffsets();
+        };
+        g.addEventListener('pointerup', endDrag);
+        g.addEventListener('pointercancel', endDrag);
+
+        g.addEventListener('click', () => {
+            if (dragMoved) { dragMoved = false; return; }
+            this._onNodeClick(area.id);
+        });
     }
 
     getNodeCenter(areaId) {
@@ -379,9 +660,10 @@ class GraphRenderer {
     /**
      * Animate a token traveling from one area node to another along the
      * matching edge path, falling back to a straight line between node
-     * centers when no direct edge/path exists. Always shows *some*
-     * movement so the GM can see where a client came from and went, even
-     * for teleports or areas outside the current snapshot.
+     * centers when no direct edge/path exists. Lives in its own layer
+     * inside the pan/zoom viewport, so it survives node/edge re-renders
+     * (which only touch the edges/nodes layers) and pans/zooms along with
+     * everything else.
      */
     animateMovement(clientId, fromAreaId, toAreaId, labelText) {
         const from = fromAreaId !== null && fromAreaId !== undefined ? this.getNodeCenter(fromAreaId) : null;

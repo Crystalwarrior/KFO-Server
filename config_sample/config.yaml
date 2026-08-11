@@ -52,6 +52,10 @@ use_securewebsockets: false
 secure_websocket_port: 443
 
 # WebAO Asset URL for hosting files. Leave blank to use vanilla
+# Also used as the GM panel's server-side fallback for resolving background/
+# character-icon/evidence images (see gm_panel below) when a GM hasn't
+# configured a local content source in the panel -- exposed read-only via
+# GET /api/gm/assets/config.
 asset_url:
 
 # Whether the server should be advertised on the server list.
@@ -252,6 +256,8 @@ gm_panel:
   # folder (e.g. "https://assets.example.com/backgrounds/") so the Areas tab
   # can render real background thumbnails. Leave blank for a safe default
   # (a text-label placeholder tile) that needs no extra asset pipeline.
+  # Reported alongside the top-level `asset_url` (above) via
+  # GET /api/gm/assets/config for the panel's local-content resolver.
   background_thumb_base_url:
 
   # SSL: Option A - Self-signed or custom certificate (serves HTTPS directly)

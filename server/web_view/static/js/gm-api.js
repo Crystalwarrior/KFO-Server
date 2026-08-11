@@ -21,6 +21,7 @@ class ApiClient {
         this._pingTimer = null;
         this._wsHandlers = new Map(); // event type -> Set<handler>
         this._unauthorizedHandlers = new Set();
+        this._pollers = new Map(); // poll name -> interval id
     }
 
     // --- pub/sub for WebSocket events -------------------------------
@@ -130,33 +131,75 @@ class ApiClient {
     saveCharacterDataSnapshot(name) { return this.post('/api/gm/character_data_snapshots/save', { name }); }
     loadCharacterDataSnapshot(name) { return this.post('/api/gm/character_data_snapshots/load', { name }); }
 
-    // --- Demos tab (§3.6) -------------------------------------------------
+    // --- Evidence tab (was "Demos"; §3.6) ----------------------------------
+    // Evidence items double as demo scripts (their `desc` holds the script),
+    // so run/stop/status/eval still drive the real /demo command underneath
+    // -- only the routes and the vocabulary changed.
 
-    getDemos(areaId) {
+    getEvidenceList(areaId) {
         const q = areaId !== undefined && areaId !== null ? `?area_id=${encodeURIComponent(areaId)}` : '';
-        return this.get(`/api/gm/demos${q}`);
+        return this.get(`/api/gm/evidence${q}`);
     }
-    getDemo(areaId, demoId) { return this.get(`/api/gm/demos/${areaId}/${demoId}`); }
-    putDemo(areaId, demoId, fields) { return this.put(`/api/gm/demos/${areaId}/${demoId}`, fields); }
-    newDemo(areaId, fields) { return this.post(`/api/gm/demos/${areaId}/new`, fields); }
-    deleteDemo(areaId, demoId) { return this.del(`/api/gm/demos/${areaId}/${demoId}`); }
+    getEvidenceItem(areaId, evidenceId) { return this.get(`/api/gm/evidence/${areaId}/${evidenceId}`); }
+    putEvidenceItem(areaId, evidenceId, fields) { return this.put(`/api/gm/evidence/${areaId}/${evidenceId}`, fields); }
+    newEvidenceItem(areaId, fields) { return this.post(`/api/gm/evidence/${areaId}/new`, fields); }
+    deleteEvidenceItem(areaId, evidenceId) { return this.del(`/api/gm/evidence/${areaId}/${evidenceId}`); }
 
-    runDemo(areaId, demoId) { return this.post(`/api/gm/demos/${areaId}/${demoId}/run`); }
-    stopDemo(areaId) { return this.post(`/api/gm/demos/${areaId}/stop`); }
-    stopAllDemos(areaId) { return this.post(`/api/gm/demos/${areaId}/stop_all`); }
-    getDemoStatus(areaId) { return this.get(`/api/gm/demos/${areaId}/status`); }
+    runEvidence(areaId, evidenceId) { return this.post(`/api/gm/evidence/${areaId}/${evidenceId}/run`); }
+    stopEvidence(areaId) { return this.post(`/api/gm/evidence/${areaId}/stop`); }
+    stopAllEvidence(areaId) { return this.post(`/api/gm/evidence/${areaId}/stop_all`); }
+    getEvidenceStatus(areaId) { return this.get(`/api/gm/evidence/${areaId}/status`); }
     evalExpression(areaId, expression) {
-        return this.post('/api/gm/demos/eval', { area_id: areaId, expression });
+        return this.post('/api/gm/evidence/eval', { area_id: areaId, expression });
     }
 
-    getDemoPacks() { return this.get('/api/gm/demo_packs'); }
-    loadDemoPack(name, areaId, overlay) {
-        return this.post(`/api/gm/demo_packs/${encodeURIComponent(name)}/load`, {
+    getEvidencePacks() { return this.get('/api/gm/evidence_packs'); }
+    loadEvidencePack(name, areaId, overlay) {
+        return this.post(`/api/gm/evidence_packs/${encodeURIComponent(name)}/load`, {
             area_id: areaId, overlay: !!overlay,
         });
     }
-    saveDemoPack(areaId, name) {
-        return this.post('/api/gm/demo_packs/save', { area_id: areaId, name });
+    saveEvidencePack(areaId, name) {
+        return this.post('/api/gm/evidence_packs/save', { area_id: areaId, name });
+    }
+
+    // --- Local content fallback (§A6) ---------------------------------------
+
+    /** Server-side asset resolution config, used by GMLocalContent as a
+     * fallback when a GM hasn't configured (or is missing an item from)
+     * their own local base folder/URL. */
+    getAssetsConfig() { return this.get('/api/gm/assets/config'); }
+
+    // --- Polling (§C2) -------------------------------------------------------
+    // WS events are the fast path; tabs additionally poll their primary list
+    // on a short interval while active so a missed/late WS event (or state
+    // that changed before this panel connected) never needs a manual reload.
+
+    /** Start (or restart) a named poll: calls `fn` every `intervalMs` ms.
+     * `fn` may return a Promise; poll failures are swallowed so one bad
+     * request doesn't kill future ticks. */
+    startPolling(name, fn, intervalMs) {
+        this.stopPolling(name);
+        const id = setInterval(() => {
+            try {
+                Promise.resolve(fn()).catch(() => { /* transient poll failure */ });
+            } catch (e) { /* transient poll failure */ }
+        }, intervalMs);
+        this._pollers.set(name, id);
+    }
+
+    stopPolling(name) {
+        const id = this._pollers.get(name);
+        if (id !== undefined) {
+            clearInterval(id);
+            this._pollers.delete(name);
+        }
+    }
+
+    /** Stop every active poll (used on logout/teardown). */
+    stopAllPolling() {
+        this._pollers.forEach((id) => clearInterval(id));
+        this._pollers.clear();
     }
 
     // --- WebSocket (§3.7) -------------------------------------------------

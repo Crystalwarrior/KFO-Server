@@ -113,17 +113,13 @@ class AreaSerializer:
         ]
 
     @staticmethod
-    def to_dict(area):
-        real_clients = AreaSerializer._real_clients(area)
-        client_ids = [c.id for c in real_clients]
-        gm_ids = [c.id for c in real_clients if c in area.area_manager.owners]
-        # `area.owners` (per `Area.owners`'s own definition) is
-        # `area_manager.owners | area._owners` -- i.e. it also includes every
-        # hub GM, not just this area's actual CMs. Match `ClientSerializer`'s
-        # `is_area_cm` (which correctly uses `area._owners`) so the roster
-        # doesn't stamp a CM badge on a hub GM who was never made CM here.
-        cm_ids = [c.id for c in real_clients if c in area._owners]
-
+    def links_to_list(area):
+        """
+        Build the JSON link list for `area`, keyed off its own (directed)
+        `links` dict. Shared by `to_dict` (graph snapshot) and
+        `AreaDetailSerializer`/the link-editing endpoints so there is exactly
+        one place that knows the link dict's field names.
+        """
         links = []
         for target_id_str, link in area.links.items():
             try:
@@ -137,7 +133,21 @@ class AreaSerializer:
                 "can_peek": bool(link.get("can_peek", True)),
                 "has_password": bool(link.get("password", "")),
                 "target_pos": link.get("target_pos", ""),
+                "evidence": [int(e) for e in link.get("evidence", [])],
             })
+        return links
+
+    @staticmethod
+    def to_dict(area):
+        real_clients = AreaSerializer._real_clients(area)
+        client_ids = [c.id for c in real_clients]
+        gm_ids = [c.id for c in real_clients if c in area.area_manager.owners]
+        # `area.owners` (per `Area.owners`'s own definition) is
+        # `area_manager.owners | area._owners` -- i.e. it also includes every
+        # hub GM, not just this area's actual CMs. Match `ClientSerializer`'s
+        # `is_area_cm` (which correctly uses `area._owners`) so the roster
+        # doesn't stamp a CM badge on a hub GM who was never made CM here.
+        cm_ids = [c.id for c in real_clients if c in area._owners]
 
         return {
             "id": area.id,
@@ -151,8 +161,105 @@ class AreaSerializer:
             "client_ids": client_ids,
             "gm_client_ids": gm_ids,
             "cm_client_ids": cm_ids,
-            "links": links,
+            "links": AreaSerializer.links_to_list(area),
             "fully_connected": len(area.links) == 0,
+        }
+
+
+# Mirrors `ooc_cmd_area_pref`'s own hardcoded `cm_allowed` list
+# (server/commands/hubs.py) exactly -- this copy is a UI hint only (it
+# decides which prefs the Areas tab badges "[gm]"); the *real* gate is
+# `ooc_cmd_area_pref` re-checking this same list live every time
+# `execute_command_in_area(area, "area_pref", ...)` actually runs.
+AREA_PREF_CM_ALLOWED = frozenset([
+    "showname_changes_allowed",
+    "shouts_allowed",
+    "jukebox",
+    "non_int_pres_only",
+    "blankposting_allowed",
+    "blankposting_forced",
+    "hide_clients",
+    "music_autoplay",
+    "replace_music",
+    "client_music",
+    "can_dj",
+    "music_locked",
+    "hidden",
+    "can_whisper",
+    "can_wtce",
+    "can_spectate",
+    "can_getarea",
+    "can_cross_swords",
+    "can_scrum_debate",
+    "can_panic_talk_action",
+    "bg_lock",
+    "force_sneak",
+    "present_reveals_evidence",
+    "ooc_actions_enabled",
+    "medieval_mode",
+])
+
+
+class AreaDetailSerializer:
+    """
+    Converts a live `Area` into the Areas tab's per-area inspector payload:
+    a small allowlist of command-backed scalar fields, every boolean pref
+    (dynamically enumerated -- see `AREA_PREF_CM_ALLOWED`), and the full
+    directed link list. Like `AreaSerializer`/`ClientSerializer`, this is the
+    only place allowed to turn this slice of `Area` into JSON.
+    """
+
+    # Non-boolean scalar fields safe to expose read-only in the inspector.
+    # Every attribute name here has been verified to exist on `Area`
+    # (server/area.py `Area.__init__`) or as a computed `@property`.
+    _SCALAR_FIELDS = (
+        "name", "background", "background_suffix", "overlay", "dark",
+        "locked", "status", "doc", "desc", "move_delay", "max_players",
+        "evidence_mod", "pos_lock",
+    )
+
+    # Fields from `_SCALAR_FIELDS` that have a real command behind them,
+    # reachable via `AreaRoutes.handle_edit_area`. Everything else in
+    # `_SCALAR_FIELDS` is read-only in the inspector.
+    EDITABLE_FIELDS = frozenset(["name", "desc", "doc", "max_players", "status"])
+
+    @staticmethod
+    def _prefs(area):
+        prefs = []
+        for attr_name in sorted(area.__dict__.keys()):
+            if attr_name.startswith("_"):
+                continue
+            value = area.__dict__[attr_name]
+            if type(value) is not bool:
+                continue
+            prefs.append({
+                "name": attr_name,
+                "value": value,
+                "gm_only": attr_name not in AREA_PREF_CM_ALLOWED,
+            })
+        return prefs
+
+    @staticmethod
+    def to_dict(area):
+        fields = {}
+        for name in AreaDetailSerializer._SCALAR_FIELDS:
+            value = getattr(area, name, None)
+            # `pos_lock` is a list of strings; everything else here is a
+            # str/int. Coerce defensively so a future non-JSON-safe Area
+            # attribute added to `_SCALAR_FIELDS` can't leak an unexpected
+            # type to the browser.
+            if isinstance(value, list):
+                value = [str(v) for v in value]
+            elif not isinstance(value, (str, int, float, bool)) and value is not None:
+                value = str(value)
+            fields[name] = value
+
+        return {
+            "id": area.id,
+            "fields": fields,
+            "editable_fields": sorted(AreaDetailSerializer.EDITABLE_FIELDS),
+            "prefs": AreaDetailSerializer._prefs(area),
+            "links": AreaSerializer.links_to_list(area),
         }
 
 
@@ -197,8 +304,15 @@ class CharacterDataSerializer:
             return "<unserializable>"
 
 
-class DemoSerializer:
-    """Converts an area's evidence/demo entries into the Demos tab's shapes."""
+class EvidenceSerializer:
+    """
+    Converts an area's evidence entries into the Evidence tab's shapes.
+
+    The Evidence tab is, under the hood, an editor for evidence items whose
+    `desc` field holds a demo script (see `docs/demo_scripting.md`); the
+    underlying `/demo` command and `ScriptRunner` machinery are unchanged,
+    only the panel's user-facing vocabulary is "evidence" now.
+    """
 
     @staticmethod
     def _out_of_range_warnings(area, instructions):
@@ -245,7 +359,7 @@ class DemoSerializer:
             "editable": evidence.editable,
             "can_take": evidence.can_take,
             "instruction_count": len(instructions),
-            "parse_warnings": DemoSerializer._out_of_range_warnings(area, instructions),
+            "parse_warnings": EvidenceSerializer._out_of_range_warnings(area, instructions),
             "is_running": is_running,
         }
 
@@ -260,7 +374,7 @@ class DemoSerializer:
             "pos": evidence.pos,
             "editable": evidence.editable,
             "instructions": [list(instr) for instr in instructions],
-            "parse_warnings": DemoSerializer._out_of_range_warnings(area, instructions),
+            "parse_warnings": EvidenceSerializer._out_of_range_warnings(area, instructions),
         }
 
 
@@ -575,6 +689,49 @@ class GMSession:
         finally:
             client.area = original_area
 
+    def execute_command_in_area(self, area, cmd, arg):
+        """
+        Run an OOC command through the bound client with `.area` temporarily
+        shadowed to `area`, capturing its output exactly like
+        `execute_command` -- this is `execute_command` and
+        `_call_on_target_area` combined into one call for commands (area
+        prefs, links, `/desc`, `/doc`, ...) that always act on
+        `client.area` and take no area-id argument of their own, so the
+        only way to target a *different* area through the real command
+        layer is to make it temporarily believe that's where the GM is
+        standing.
+
+        Only ever call this with commands that are fully synchronous (no
+        `await` points) -- every caller in `AreaRoutes` has been checked
+        against its source in `server/commands/hubs.py` and
+        `server/commands/area_access.py` for exactly that property. A
+        command that does yield to the event loop must instead be run via
+        `execute_command` on the client's true current area (or refactored
+        into something else entirely), because a shadowed `.area` would
+        then be visible to other coroutines running on the same loop
+        in-between yields.
+        """
+        if not self.is_valid() or not self._area_in_scope(area):
+            raise SessionInvalid()
+        buffer = []
+
+        def run(client):
+            original_send_ooc = client.send_ooc
+
+            def capture(msg, *a, **kw):
+                buffer.append(msg)
+
+            client.send_ooc = capture
+            try:
+                commands.call(client, cmd, arg)
+            except (ClientError, ArgumentError, AreaError, ServerError) as ex:
+                buffer.append(f"[ERROR] {type(ex).__name__}: {ex}")
+            finally:
+                client.send_ooc = original_send_ooc
+
+        self._call_on_target_area(area, run)
+        return CommandOutputScrubber.scrub(buffer)
+
     def edit_evidence_direct(self, area, demo_id, name, desc, image, pos="*"):
         """
         Edit a demo script's evidence entry directly.
@@ -884,6 +1041,16 @@ class GMPanelBridge:
         data = {"area_id": area.id, "background": area.background, "overlay": area.overlay}
         self._broadcast_to_hub({area.area_manager.id}, "background_changed", data)
 
+    def push_areas_changed(self, hub_id):
+        """
+        Called directly by `AreaRoutes` (not a hook off `area.py`/
+        `area_manager.py` -- those files belong to other packages) after
+        every successful area/pref/link mutation the panel makes, so every
+        open panel on this hub refetches its areas snapshot instead of
+        needing a manual reload.
+        """
+        self._broadcast_to_hub({hub_id}, "areas_changed", {"hub_id": hub_id})
+
 
 # =============================================================================
 # Misc helpers
@@ -1001,19 +1168,62 @@ class AuthRoutes:
 
 
 class AreaRoutes:
-    """Areas tab: hub graph snapshot + background editing."""
+    """
+    Areas tab: hub graph snapshot, per-area inspector (detail/prefs/edit),
+    hub-level area management (create/remove/swap), and link management.
+    """
 
-    def __init__(self, session_manager, server, config):
+    # `AreaDetailSerializer.EDITABLE_FIELDS` -> (command, value -> arg)
+    # mapping for `handle_edit_area`. `name`/`max_players`/`status` pass
+    # the raw value straight through as the command's argument; `desc`/
+    # `doc` need the clear-command substituted when the new value is empty
+    # since `/desc`/`/doc` with no argument only *displays* the current
+    # value instead of clearing it (see `ooc_cmd_desc`/`ooc_cmd_doc`).
+    _LINK_BOOL_PROPS = {
+        "lock": ("link_lock", "link_unlock"),
+        "hide": ("link_hide", "link_unhide"),
+        "peekable": ("link_peekable", "link_unpeekable"),
+    }
+
+    def __init__(self, session_manager, server, config, bridge=None):
         self._session_manager = session_manager
         self._server = server
         self._config = config
+        self._bridge = bridge
+
+    # -- shared helpers -----------------------------------------------
+
+    def _areas_snapshot(self, hub):
+        return [AreaSerializer.to_dict(area) for area in hub.areas]
+
+    def _area_from_request(self, session, request, key="area_id"):
+        """Resolve `{area_id}` from the URL against the session's current hub."""
+        try:
+            area_id = int(request.match_info[key])
+        except (KeyError, ValueError):
+            return None
+        hub = session.current_hub()
+        if area_id < 0 or area_id >= len(hub.areas):
+            return None
+        return hub.areas[area_id]
+
+    def _push_areas_changed(self, session):
+        if self._bridge is None:
+            return
+        try:
+            hub_id = session.current_hub().id
+        except Exception:
+            return
+        self._bridge.push_areas_changed(hub_id)
+
+    # -- graph snapshot / background (existing) ------------------------
 
     async def handle_list_areas(self, request):
         session = request["gm_session"]
         if not session.is_valid():
             return web.json_response({"error": "session_invalid"}, status=401)
         hub = session.current_hub()
-        areas = [AreaSerializer.to_dict(area) for area in hub.areas]
+        areas = self._areas_snapshot(hub)
         return web.json_response({"hub_id": hub.id, "hub_name": hub.name, "areas": areas})
 
     async def handle_set_background(self, request):
@@ -1037,11 +1247,291 @@ class AreaRoutes:
             output = session.execute_command("gm_set_bg", arg)
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
+        if _command_ok(output):
+            self._push_areas_changed(session)
         return _command_response(output)
 
     async def handle_background_thumb_base_url(self, request):
         base_url = self._config.get("background_thumb_base_url", "")
         return web.json_response({"base_url": base_url})
+
+    # -- A2: area detail + editing --------------------------------------
+
+    async def handle_area_detail(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        area = self._area_from_request(session, request)
+        if area is None:
+            return web.json_response({"error": "area_not_found"}, status=404)
+        return web.json_response({"ok": True, "area": AreaDetailSerializer.to_dict(area)})
+
+    async def handle_set_pref(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        area = self._area_from_request(session, request)
+        if area is None:
+            return web.json_response({"ok": False, "output": ["[ERROR] Area not found."]}, status=404)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        pref = str(data.get("pref", "")).strip()
+        value = bool(data.get("value", False))
+
+        # `ooc_cmd_area_pref` does `getattr(client.area, cmd)` with no
+        # default and only catches `ValueError`/`AreaError`/`ClientError`
+        # -- an unknown attribute name would raise a bare `AttributeError`
+        # straight through `execute_command_in_area`. Verify it's a real,
+        # currently-boolean attribute ourselves first so a bad `pref` comes
+        # back as a clean 400 instead of a 500.
+        current = area.__dict__.get(pref)
+        if pref.startswith("_") or type(current) is not bool:
+            return web.json_response(
+                {"ok": False, "output": [f"[ERROR] Unknown preference: {pref}"]}, status=400
+            )
+
+        arg = f"{pref} {'on' if value else 'off'}"
+        try:
+            output = session.execute_command_in_area(area, "area_pref", arg)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return _command_response(output)
+
+    async def handle_edit_area(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        area = self._area_from_request(session, request)
+        if area is None:
+            return web.json_response({"ok": False, "output": ["[ERROR] Area not found."]}, status=404)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        field = str(data.get("field", ""))
+        value = str(data.get("value", ""))
+
+        if field not in AreaDetailSerializer.EDITABLE_FIELDS:
+            return web.json_response(
+                {"ok": False, "output": [f"[ERROR] Unsupported field: {field}"]}, status=400
+            )
+
+        try:
+            if field == "name":
+                # `/area_rename` supports an explicit `[aid]` prefix, so we
+                # can target this area directly without shadowing
+                # `client.area` at all -- and doing it this way sidesteps
+                # `ooc_cmd_area_rename`'s own "does the name start with a
+                # number?" sniffing (it would otherwise mistake a name like
+                # "5 Guard Posts" for an area-id prefix).
+                output = session.execute_command("area_rename", f"{area.id} {value}")
+            elif field == "desc":
+                cmd, arg = ("desc_clear", "") if value == "" else ("desc", value)
+                output = session.execute_command_in_area(area, cmd, arg)
+            elif field == "doc":
+                cmd, arg = ("cleardoc", "") if value == "" else ("doc", value)
+                output = session.execute_command_in_area(area, cmd, arg)
+            elif field == "max_players":
+                output = session.execute_command_in_area(area, "max_players", value)
+            else:  # "status"
+                output = session.execute_command_in_area(area, "status", value)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return _command_response(output)
+
+    # -- A3: hub-level area management -----------------------------------
+
+    async def handle_create_area(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        name = str(data.get("name", ""))
+        insert_at = data.get("insert_at")
+
+        try:
+            output = session.execute_command("area_create", name)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        if not _command_ok(output):
+            return _command_response(output)
+
+        hub = session.current_hub()
+        # `/area_create` always appends, so the new area is the last one.
+        if insert_at is not None:
+            try:
+                target = int(insert_at)
+            except (TypeError, ValueError):
+                target = None
+            if target is not None:
+                idx = len(hub.areas) - 1
+                target = max(0, min(target, idx))
+                while idx > target:
+                    swap_output = session.execute_command("area_swap", f"{idx} {idx - 1}")
+                    output = output + swap_output
+                    if not _command_ok(swap_output):
+                        break
+                    idx -= 1
+
+        self._push_areas_changed(session)
+        return web.json_response({
+            "ok": True, "output": output,
+            "hub_id": hub.id, "hub_name": hub.name, "areas": self._areas_snapshot(hub),
+        })
+
+    async def handle_remove_area(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        try:
+            area_id = int(request.match_info["area_id"])
+        except ValueError:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid area id."]}, status=400
+            )
+        try:
+            output = session.execute_command("area_remove", str(area_id))
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+
+        hub = session.current_hub()
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return web.json_response({
+            "ok": _command_ok(output), "output": output,
+            "hub_id": hub.id, "hub_name": hub.name, "areas": self._areas_snapshot(hub),
+        })
+
+    async def handle_swap_areas(self, request):
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        try:
+            a = int(data.get("a"))
+            b = int(data.get("b"))
+        except (TypeError, ValueError):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] 'a' and 'b' must be area ids."]}, status=400
+            )
+        try:
+            output = session.execute_command("area_swap", f"{a} {b}")
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+
+        hub = session.current_hub()
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return web.json_response({
+            "ok": _command_ok(output), "output": output,
+            "hub_id": hub.id, "hub_name": hub.name, "areas": self._areas_snapshot(hub),
+        })
+
+    # -- A4: link management ---------------------------------------------
+
+    async def _link_mutation(self, request, arg_builder):
+        """
+        Shared body for the `/links/*` endpoints: resolve the source area,
+        parse `target_id`, run `cmd` through `execute_command_in_area`, and
+        return the updated link list.
+        """
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        area = self._area_from_request(session, request)
+        if area is None:
+            return web.json_response({"ok": False, "output": ["[ERROR] Area not found."]}, status=404)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
+            )
+        try:
+            target_id = int(data.get("target_id"))
+        except (TypeError, ValueError):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] 'target_id' must be an area id."]}, status=400
+            )
+
+        try:
+            resolved_cmd, arg = arg_builder(data, target_id)
+        except ValueError as ex:
+            return web.json_response({"ok": False, "output": [f"[ERROR] {ex}"]}, status=400)
+
+        try:
+            output = session.execute_command_in_area(area, resolved_cmd, arg)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        if _command_ok(output):
+            self._push_areas_changed(session)
+        return web.json_response({
+            "ok": _command_ok(output), "output": output,
+            "area_id": area.id, "links": AreaSerializer.links_to_list(area),
+        })
+
+    async def handle_link_add(self, request):
+        return await self._link_mutation(
+            request, lambda data, target_id: ("link", str(target_id))
+        )
+
+    async def handle_link_remove(self, request):
+        return await self._link_mutation(
+            request, lambda data, target_id: ("unlink", str(target_id))
+        )
+
+    async def handle_link_set(self, request):
+        def build(data, target_id):
+            prop = str(data.get("prop", ""))
+            if prop in self._LINK_BOOL_PROPS:
+                on_cmd, off_cmd = self._LINK_BOOL_PROPS[prop]
+                cmd = on_cmd if bool(data.get("value")) else off_cmd
+                return cmd, str(target_id)
+            if prop == "pos":
+                pos = str(data.get("value", ""))
+                return "link_pos", f"{target_id} {pos}".rstrip()
+            if prop == "evidence":
+                # `value` is a list of 0-indexed evidence ids -- the same
+                # numbering `EvidenceSerializer`'s `id` field uses -- for
+                # consistency with the rest of the panel's evidence
+                # endpoints. `/link_evidence` itself is 1-indexed on the
+                # wire (it displays/parses evidence *numbers*), so we
+                # translate here rather than exposing that command-layer
+                # quirk to the frontend.
+                raw = data.get("value") or []
+                if not isinstance(raw, list):
+                    raise ValueError("'value' must be a list of evidence ids for prop=evidence.")
+                try:
+                    evi_ids = [str(int(v) + 1) for v in raw]
+                except (TypeError, ValueError):
+                    raise ValueError("Evidence ids must be numbers.")
+                if not evi_ids:
+                    return "unlink_evidence", str(target_id)
+                return "link_evidence", f"{target_id} " + " ".join(evi_ids)
+            raise ValueError(f"Unsupported link property: {prop}")
+
+        return await self._link_mutation(request, build)
 
 
 class ClientRoutes:
@@ -1218,8 +1708,14 @@ class CharacterRoutes:
         return _command_response(output)
 
 
-class DemoRoutes:
-    """Demos / Automation tab."""
+class EvidenceRoutes:
+    """
+    Evidence tab (formerly "Demos"): CRUD over an area's evidence items --
+    each item's `desc` field doubles as a demo script -- plus the
+    run/stop/status/eval endpoints that drive the real `/demo` command.
+    User-facing vocabulary is "evidence" throughout; the demo-script
+    coupling is an internal implementation detail explained inline.
+    """
 
     def __init__(self, session_manager, server):
         self._session_manager = session_manager
@@ -1232,20 +1728,20 @@ class DemoRoutes:
         return hub.areas[area_id]
 
     def _resolve(self, session, request):
-        """Resolve `{area_id}/{demo_id}` from the URL, or an error response."""
+        """Resolve `{area_id}/{evidence_id}` from the URL, or an error response."""
         try:
             area_id = int(request.match_info["area_id"])
-            demo_id = int(request.match_info["demo_id"])
+            evidence_id = int(request.match_info["evidence_id"])
         except (KeyError, ValueError):
             return None, None, web.json_response({"error": "invalid_id"}, status=400)
         area = self._get_area(session, area_id)
         if area is None:
             return None, None, web.json_response({"error": "area_not_found"}, status=404)
-        if demo_id < 0 or demo_id >= len(area.evi_list.evidences):
-            return None, None, web.json_response({"error": "demo_not_found"}, status=404)
-        return area, demo_id, None
+        if evidence_id < 0 or evidence_id >= len(area.evi_list.evidences):
+            return None, None, web.json_response({"error": "evidence_not_found"}, status=404)
+        return area, evidence_id, None
 
-    async def handle_list_demos(self, request):
+    async def handle_list_evidence(self, request):
         session = request["gm_session"]
         if not session.is_valid():
             return web.json_response({"error": "session_invalid"}, status=401)
@@ -1262,25 +1758,25 @@ class DemoRoutes:
         else:
             area = session.current_area()
 
-        demos = [
-            DemoSerializer.to_list_item(i, evi, area)
+        evidence = [
+            EvidenceSerializer.to_list_item(i, evi, area)
             for i, evi in enumerate(area.evi_list.evidences)
         ]
-        return web.json_response({"area_id": area.id, "area_name": area.name, "demos": demos})
+        return web.json_response({"area_id": area.id, "area_name": area.name, "evidence": evidence})
 
-    async def handle_get_demo(self, request):
+    async def handle_get_evidence(self, request):
         session = request["gm_session"]
         if not session.is_valid():
             return web.json_response({"error": "session_invalid"}, status=401)
-        area, demo_id, err = self._resolve(session, request)
+        area, evidence_id, err = self._resolve(session, request)
         if err is not None:
             return err
-        evi = area.evi_list.evidences[demo_id]
-        return web.json_response(DemoSerializer.to_detail(demo_id, evi, area))
+        evi = area.evi_list.evidences[evidence_id]
+        return web.json_response(EvidenceSerializer.to_detail(evidence_id, evi, area))
 
-    async def handle_put_demo(self, request):
+    async def handle_put_evidence(self, request):
         session = request["gm_session"]
-        area, demo_id, err = self._resolve(session, request)
+        area, evidence_id, err = self._resolve(session, request)
         if err is not None:
             return err
         try:
@@ -1291,14 +1787,14 @@ class DemoRoutes:
         desc = str(data.get("desc", "*"))
         image = str(data.get("image", "*"))
         try:
-            ok = session.edit_evidence_direct(area, demo_id, name, desc, image)
+            ok = session.edit_evidence_direct(area, evidence_id, name, desc, image)
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         if not ok:
             return web.json_response({"ok": False, "error": "not_authorized_or_invalid"}, status=403)
         return web.json_response({"ok": True})
 
-    async def handle_new_demo(self, request):
+    async def handle_new_evidence(self, request):
         session = request["gm_session"]
         try:
             area_id = int(request.match_info["area_id"])
@@ -1321,29 +1817,29 @@ class DemoRoutes:
         if not ok:
             return web.json_response({"ok": False, "error": "not_authorized_or_invalid"}, status=403)
         # `add_evidence` always appends, so the new entry's id is the last
-        # index. The frontend (DemosTab._saveScript) uses this to
-        # immediately open the demo it just created.
+        # index. The frontend Evidence tab uses this to immediately open
+        # the evidence item it just created.
         new_id = len(area.evi_list.evidences) - 1
         return web.json_response({"ok": True, "id": new_id})
 
-    async def handle_delete_demo(self, request):
+    async def handle_delete_evidence(self, request):
         session = request["gm_session"]
-        area, demo_id, err = self._resolve(session, request)
+        area, evidence_id, err = self._resolve(session, request)
         if err is not None:
             return err
         try:
-            ok = session.del_evidence_direct(area, demo_id)
+            ok = session.del_evidence_direct(area, evidence_id)
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         if not ok:
             return web.json_response({"ok": False, "error": "not_authorized_or_invalid"}, status=403)
         return web.json_response({"ok": True})
 
-    async def handle_run_demo(self, request):
+    async def handle_run_evidence(self, request):
         session = request["gm_session"]
         try:
             area_id = int(request.match_info["area_id"])
-            demo_id = int(request.match_info["demo_id"])
+            evidence_id = int(request.match_info["evidence_id"])
         except ValueError:
             return web.json_response({"ok": False, "output": ["[ERROR] Invalid id."]}, status=400)
         area = self._get_area(session, area_id)
@@ -1363,7 +1859,7 @@ class DemoRoutes:
         except AttributeError:
             return web.json_response({"error": "session_invalid"}, status=401)
         try:
-            output = session.execute_command("demo", str(demo_id + 1))
+            output = session.execute_command("demo", str(evidence_id + 1))
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         ok = _command_ok(output)
@@ -1371,17 +1867,17 @@ class DemoRoutes:
             # Dynamic attribute stamp (mirrors the `_gm_bind_key` pattern) so
             # the panel can report which evidence entry is currently running
             # -- `ScriptRunner` itself has no notion of "which evidence".
-            area.demo_runner.gm_panel_demo_id = demo_id
+            area.demo_runner.gm_panel_demo_id = evidence_id
         return web.json_response({"ok": ok, "output": output})
 
-    async def handle_stop_demo(self, request):
+    async def handle_stop_evidence(self, request):
         session = request["gm_session"]
         try:
             area_id = int(request.match_info["area_id"])
         except ValueError:
             return web.json_response({"ok": False, "output": ["[ERROR] Invalid area id."]}, status=400)
         # `ooc_cmd_stop_demo` always operates on `client.area` -- see the
-        # comment in handle_run_demo.
+        # comment in handle_run_evidence.
         try:
             if area_id != session.current_area().id:
                 return web.json_response(
@@ -1396,14 +1892,14 @@ class DemoRoutes:
             return web.json_response({"error": "session_invalid"}, status=401)
         return _command_response(output)
 
-    async def handle_stop_all_demos(self, request):
+    async def handle_stop_all_evidence(self, request):
         session = request["gm_session"]
         try:
             area_id = int(request.match_info["area_id"])
         except ValueError:
             return web.json_response({"ok": False, "output": ["[ERROR] Invalid area id."]}, status=400)
         # Hub-wide stop still only makes sense relative to the GM's live
-        # current area/hub -- same reasoning as handle_stop_demo.
+        # current area/hub -- same reasoning as handle_stop_evidence.
         try:
             if area_id != session.current_area().id:
                 return web.json_response(
@@ -1538,6 +2034,27 @@ class DemoRoutes:
         return _command_response(output)
 
 
+class AssetRoutes:
+    """
+    A6: exposes the server's static-asset resolution config so the frontend
+    (`GMLocalContent`, Package C) can fall back to server-hosted assets
+    (backgrounds, char icons, evidence images) when no local base
+    folder/URL is configured or an item is missing from it.
+    """
+
+    def __init__(self, server, config):
+        self._server = server
+        self._config = config
+
+    async def handle_config(self, request):
+        server_config = getattr(self._server, "config", None) or {}
+        asset_url = str(server_config.get("asset_url", "") or "")
+        bg_thumb_base = str(self._config.get("background_thumb_base_url", "") or "")
+        return web.json_response({
+            "ok": True, "asset_url": asset_url, "bg_thumb_base": bg_thumb_base,
+        })
+
+
 # =============================================================================
 # App shell
 # =============================================================================
@@ -1577,11 +2094,12 @@ class GMPanelApp:
             self._session_manager, self._server, self.bridge,
             self._gm_html, self._gm_login_html,
         )
-        area_routes = AreaRoutes(self._session_manager, self._server, self._config)
+        area_routes = AreaRoutes(self._session_manager, self._server, self._config, self.bridge)
         client_routes = ClientRoutes(self._session_manager, self._server)
         command_routes = CommandRoutes(self._session_manager, self._server)
         character_routes = CharacterRoutes(self._session_manager, self._server)
-        demo_routes = DemoRoutes(self._session_manager, self._server)
+        evidence_routes = EvidenceRoutes(self._session_manager, self._server)
+        asset_routes = AssetRoutes(self._server, self._config)
 
         require = self._session_manager.require
 
@@ -1596,7 +2114,9 @@ class GMPanelApp:
         app.router.add_post("/api/gm/logout", require(auth_routes.handle_logout))
         app.router.add_get("/ws/gm/live", require(auth_routes.handle_ws_live))
 
-        # Areas tab
+        # Areas tab -- literal/collection routes ("hub/areas/...") registered
+        # separately from the per-area "{area_id}/..." routes; none of these
+        # collide since aiohttp matches on full path shape.
         app.router.add_get("/api/gm/areas", require(area_routes.handle_list_areas))
         app.router.add_get(
             "/api/gm/areas/background_thumb_base_url",
@@ -1605,6 +2125,39 @@ class GMPanelApp:
         app.router.add_post(
             "/api/gm/areas/{area_id}/background", require(area_routes.handle_set_background)
         )
+        app.router.add_get(
+            "/api/gm/areas/{area_id}/detail", require(area_routes.handle_area_detail)
+        )
+        app.router.add_post(
+            "/api/gm/areas/{area_id}/pref", require(area_routes.handle_set_pref)
+        )
+        app.router.add_post(
+            "/api/gm/areas/{area_id}/edit", require(area_routes.handle_edit_area)
+        )
+        app.router.add_post(
+            "/api/gm/areas/{area_id}/links/add", require(area_routes.handle_link_add)
+        )
+        app.router.add_post(
+            "/api/gm/areas/{area_id}/links/remove", require(area_routes.handle_link_remove)
+        )
+        app.router.add_post(
+            "/api/gm/areas/{area_id}/links/set", require(area_routes.handle_link_set)
+        )
+
+        # Hub-level area management (create/remove/swap) -- distinct prefix
+        # from the per-area routes above since these act on the whole hub.
+        app.router.add_post(
+            "/api/gm/hub/areas/create", require(area_routes.handle_create_area)
+        )
+        app.router.add_post(
+            "/api/gm/hub/areas/swap", require(area_routes.handle_swap_areas)
+        )
+        app.router.add_post(
+            "/api/gm/hub/areas/{area_id}/remove", require(area_routes.handle_remove_area)
+        )
+
+        # Shared local-content resolution config (Package C's GMLocalContent).
+        app.router.add_get("/api/gm/assets/config", require(asset_routes.handle_config))
 
         # Clients tab
         app.router.add_get("/api/gm/clients", require(client_routes.handle_list_clients))
@@ -1654,32 +2207,44 @@ class GMPanelApp:
             require(character_routes.handle_character_data_one),
         )
 
-        # Demos tab -- literal routes registered before the dynamic
-        # {demo_id} route so e.g. "status" isn't swallowed as a demo id.
-        app.router.add_get("/api/gm/demos", require(demo_routes.handle_list_demos))
-        app.router.add_post("/api/gm/demos/eval", require(demo_routes.handle_eval))
-        app.router.add_get("/api/gm/demo_packs", require(demo_routes.handle_list_packs))
-        app.router.add_post("/api/gm/demo_packs/save", require(demo_routes.handle_save_pack))
+        # Evidence tab (formerly "Demos") -- literal routes registered
+        # before the dynamic {evidence_id} route so e.g. "status" isn't
+        # swallowed as an evidence id.
+        app.router.add_get("/api/gm/evidence", require(evidence_routes.handle_list_evidence))
+        app.router.add_post("/api/gm/evidence/eval", require(evidence_routes.handle_eval))
+        app.router.add_get("/api/gm/evidence_packs", require(evidence_routes.handle_list_packs))
         app.router.add_post(
-            "/api/gm/demo_packs/{name}/load", require(demo_routes.handle_load_pack)
+            "/api/gm/evidence_packs/save", require(evidence_routes.handle_save_pack)
         )
-        app.router.add_get("/api/gm/demos/{area_id}/status", require(demo_routes.handle_status))
-        app.router.add_post("/api/gm/demos/{area_id}/new", require(demo_routes.handle_new_demo))
         app.router.add_post(
-            "/api/gm/demos/{area_id}/stop_all", require(demo_routes.handle_stop_all_demos)
-        )
-        app.router.add_post("/api/gm/demos/{area_id}/stop", require(demo_routes.handle_stop_demo))
-        app.router.add_post(
-            "/api/gm/demos/{area_id}/{demo_id}/run", require(demo_routes.handle_run_demo)
+            "/api/gm/evidence_packs/{name}/load", require(evidence_routes.handle_load_pack)
         )
         app.router.add_get(
-            "/api/gm/demos/{area_id}/{demo_id}", require(demo_routes.handle_get_demo)
+            "/api/gm/evidence/{area_id}/status", require(evidence_routes.handle_status)
+        )
+        app.router.add_post(
+            "/api/gm/evidence/{area_id}/new", require(evidence_routes.handle_new_evidence)
+        )
+        app.router.add_post(
+            "/api/gm/evidence/{area_id}/stop_all",
+            require(evidence_routes.handle_stop_all_evidence),
+        )
+        app.router.add_post(
+            "/api/gm/evidence/{area_id}/stop", require(evidence_routes.handle_stop_evidence)
+        )
+        app.router.add_post(
+            "/api/gm/evidence/{area_id}/{evidence_id}/run",
+            require(evidence_routes.handle_run_evidence),
+        )
+        app.router.add_get(
+            "/api/gm/evidence/{area_id}/{evidence_id}", require(evidence_routes.handle_get_evidence)
         )
         app.router.add_put(
-            "/api/gm/demos/{area_id}/{demo_id}", require(demo_routes.handle_put_demo)
+            "/api/gm/evidence/{area_id}/{evidence_id}", require(evidence_routes.handle_put_evidence)
         )
         app.router.add_delete(
-            "/api/gm/demos/{area_id}/{demo_id}", require(demo_routes.handle_delete_demo)
+            "/api/gm/evidence/{area_id}/{evidence_id}",
+            require(evidence_routes.handle_delete_evidence),
         )
 
         # Static assets -- same physical folder as admin_panel.py's, served
