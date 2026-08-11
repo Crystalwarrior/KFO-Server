@@ -553,16 +553,33 @@ class GMLocalContent {
         return null;
     }
 
+    /** Memoizes a SUCCESSFUL /api/gm/assets/config fetch for the rest of
+     * the session (it's effectively static config, and this is the
+     * fallback every background/char_icon/evidence resolution funnels
+     * through -- see _resolveFromServer -- so it would otherwise be
+     * refetched constantly). A failed fetch (one transient network
+     * hiccup, a momentary 5xx) must NOT be memoized the same way: doing so
+     * would permanently poison every asset resolution for the rest of the
+     * session with no way to recover short of a full page reload, which is
+     * exactly the kind of one-failure-poisons-everything caching this class
+     * must avoid (a session-scoped negative cache on an individual
+     * resolved name is fine -- see `_resolveCache` -- but this is the
+     * single shared gate every one of those goes through, so caching ITS
+     * failure is a different, much bigger blast radius). So on failure the
+     * memoized promise is cleared, letting the next resolve() call retry
+     * the fetch instead of forever answering "no server asset url" here. */
     async _loadServerAssetUrl() {
         if (this._serverConfigPromise) return this._serverConfigPromise;
         this._serverConfigPromise = (async () => {
             try {
                 const data = await this.api.getAssetsConfig();
                 this._serverAssetUrl = (data && data.asset_url) || '';
+                return this._serverAssetUrl;
             } catch (e) {
+                this._serverConfigPromise = null;
                 this._serverAssetUrl = '';
+                return '';
             }
-            return this._serverAssetUrl;
         })();
         return this._serverConfigPromise;
     }

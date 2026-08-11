@@ -100,6 +100,21 @@ class GraphRenderer {
         this._panning = null;
         this._resizeRaf = null;
 
+        // Drag/pan-desync fix (see _bindNodeDrag / _bindNodeDragMove docs
+        // below, ROOT CAUSE A): while a node drag or a pan gesture is in
+        // flight, setData()/other _render()-triggering calls must not tear
+        // down and rebuild the node/edge DOM out from under the gesture --
+        // they instead stash their latest snapshot here and _endGesture()
+        // applies it once the gesture actually ends.
+        this._pendingRender = null;
+        // Set by a node drag's pointerup/cancel handler right as it ends
+        // (only when the drag actually moved the node), so a render that
+        // was deferred during that same drag can re-anchor the just-
+        // dragged area's manual offset against its own possibly-reflowed
+        // base layout instead of visibly teleporting it -- see
+        // _applySnapshot().
+        this._lastDragRelease = null;
+
         this._svg.innerHTML = '';
         this._svg.style.touchAction = 'none';
         this._svg.style.cursor = 'grab';
@@ -126,6 +141,7 @@ class GraphRenderer {
         }
 
         this._bindPanZoom();
+        this._bindNodeDragMove();
         this._applyViewportTransform();
     }
 
@@ -140,7 +156,7 @@ class GraphRenderer {
         this._thumbBaseUrl = next;
         this._bgImageCache.clear();
         this._bgImagePending.clear();
-        if (this._lastAreas.length) this._render(this._lastAreas);
+        if (this._lastAreas.length) this._scheduleSnapshot(this._lastAreas, false);
     }
 
     setLocalContent(localContent) {
@@ -176,7 +192,7 @@ class GraphRenderer {
             this._charIconCache.clear();
             this._charIconPending.clear();
         }
-        if (this._lastAreas.length) this._render(this._lastAreas);
+        if (this._lastAreas.length) this._scheduleSnapshot(this._lastAreas, false);
     }
 
     /** Invalidate one (or, when `bgNameOrNull` is falsy, every) cached
@@ -218,7 +234,7 @@ class GraphRenderer {
             this._bgImageCache.clear();
             this._bgImagePending.clear();
         }
-        if (this._lastAreas.length) this._render(this._lastAreas);
+        if (this._lastAreas.length) this._scheduleSnapshot(this._lastAreas, false);
     }
 
     /** Cached, deduped char_icon lookup keyed by character folder name
@@ -533,10 +549,7 @@ class GraphRenderer {
         this._panY = snapshot.view.panY;
         this._saveOffsets();
         this._applyViewportTransform();
-        if (this._lastAreas.length) {
-            this._runLayout(this._lastAreas);
-            this._render(this._lastAreas);
-        }
+        if (this._lastAreas.length) this._scheduleSnapshot(this._lastAreas, true);
         return true;
     }
 
@@ -605,8 +618,7 @@ class GraphRenderer {
             this._resizeRaf = null;
             this._measure();
             if (this._lastAreas && this._lastAreas.length) {
-                this._runLayout(this._lastAreas);
-                this._render(this._lastAreas);
+                this._scheduleSnapshot(this._lastAreas, true);
             } else {
                 this._svg.setAttribute('viewBox', `0 0 ${Math.max(this._width, 300)} ${Math.max(this._height, 300)}`);
             }
@@ -730,9 +742,22 @@ class GraphRenderer {
             this._panning = null;
             this._svg.classList.remove('gr-panning');
             this._svg.style.cursor = 'grab';
+            this._endGesture();
         };
         this._svg.addEventListener('pointerup', endPan);
         this._svg.addEventListener('pointercancel', endPan);
+        // Audited alongside the drag-desync fix (ROOT CAUSE A/pan lifecycle
+        // item): pan's pointerdown already takes setPointerCapture() on
+        // this._svg (above), so pointerup/pointercancel alone are enough to
+        // end the gesture correctly even if the release happens outside the
+        // element's box -- capture re-targets those events to this._svg
+        // regardless of where the cursor physically is. This pointerleave
+        // listener is therefore a belt-and-suspenders fallback (some
+        // embedding contexts/older engines have been inconsistent about
+        // still firing leave events on a capturing element), not the
+        // primary gesture-end path -- kept because it's strictly extra
+        // safety with no downside (endPan() is idempotent/pointerId-
+        // checked), not because pan depends on it.
         this._svg.addEventListener('pointerleave', (e) => { if (this._panning) endPan(e); });
     }
 
@@ -804,6 +829,42 @@ class GraphRenderer {
         const structuralChange = idSet !== this._lastIdSet;
         this._lastIdSet = idSet;
 
+        // This is the poll (every 4s, see _startPolling in gm-areas-tab.js)
+        // and every WS-driven reload's entry point into a DOM rebuild --
+        // route it through the same drag/pan-aware gate every other
+        // _render()-triggering call uses (see _scheduleSnapshot's doc,
+        // ROOT CAUSE A) instead of rebuilding unconditionally.
+        this._scheduleSnapshot(areas, structuralChange);
+    }
+
+    /** Applies (or, mid-gesture, defers -- see _endGesture) a fresh areas
+     * snapshot: recomputes `_nodes` from the previous positions (carrying
+     * a dragged/panned node's live position forward untouched), optionally
+     * reruns the grid layout, and rebuilds the node/edge DOM. This is the
+     * single choke point every _render()-triggering call in this class
+     * goes through (setData's poll/WS path, Save/Load/Import/Export/Reset
+     * layout, background-thumb-base and char-icon-cache invalidation,
+     * ResizeObserver) so a re-render landing mid-drag or mid-pan can never
+     * tear out the DOM the gesture depends on (ROOT CAUSE A in the v5
+     * brief: _bindNodeDrag/_bindNodeDragMove used to attach pointer
+     * capture directly to the per-node <g> that _render() tears down and
+     * rebuilds on every one of these calls, silently killing any drag in
+     * progress when a poll tick landed mid-gesture). */
+    _scheduleSnapshot(areas, forceLayout) {
+        if (this._draggingNode || this._panning) {
+            // Only the freshest pending snapshot matters (an older one is
+            // strictly superseded); `forceLayout` must stay sticky across
+            // however many snapshots get coalesced while the gesture runs,
+            // since even one structural change among them means the final
+            // applied layout needs recomputing.
+            const stickyForceLayout = !!(this._pendingRender && this._pendingRender.forceLayout);
+            this._pendingRender = { areas, forceLayout: !!forceLayout || stickyForceLayout };
+            return;
+        }
+        this._applySnapshot(areas, !!forceLayout);
+    }
+
+    _applySnapshot(areas, forceLayout) {
         const prevPositions = new Map();
         this._nodes.forEach((node, id) => prevPositions.set(id, { x: node.x, y: node.y }));
 
@@ -817,10 +878,45 @@ class GraphRenderer {
             });
         });
 
-        if (structuralChange || prevPositions.size === 0) {
+        if (forceLayout || prevPositions.size === 0) {
             this._runLayout(areas);
         }
+
+        // A node drag that just ended while this exact snapshot was
+        // deferred (see _scheduleSnapshot) may have had its area's grid
+        // position reflow under `_runLayout` above (areas added/removed
+        // while dragging). Re-derive that area's manual offset against the
+        // FRESH base layout from the world position the user actually left
+        // it at, so it reappears exactly there instead of jumping to
+        // wherever the stale offset + new base now computes to.
+        if (this._lastDragRelease) {
+            const { areaId, key, world } = this._lastDragRelease;
+            this._lastDragRelease = null;
+            const base = this._baseLayout.get(areaId);
+            const node = this._nodes.get(areaId);
+            if (base && node) {
+                const offX = world.x - base.x;
+                const offY = world.y - base.y;
+                this._offsets.set(key, { x: offX, y: offY });
+                node.x = base.x + offX;
+                node.y = base.y + offY;
+                this._saveOffsets();
+            }
+        }
+
         this._render(areas);
+    }
+
+    /** Called once a node drag or a pan fully ends (both must be clear --
+     * see the callers in _bindPanZoom/_bindNodeDragMove). Applies whatever
+     * snapshot got deferred (see _scheduleSnapshot) while the gesture was
+     * running, if any. */
+    _endGesture() {
+        if (this._draggingNode || this._panning) return;
+        if (!this._pendingRender) return;
+        const { areas, forceLayout } = this._pendingRender;
+        this._pendingRender = null;
+        this._applySnapshot(areas, forceLayout);
     }
 
     // --- offset persistence (per-area manual drag positions) -------------
@@ -857,10 +953,7 @@ class GraphRenderer {
     resetOffsets() {
         this._offsets = new Map();
         try { localStorage.removeItem(this._offsetsStorageKey(this._hubId)); } catch (e) { /* ignore */ }
-        if (this._lastAreas.length) {
-            this._runLayout(this._lastAreas);
-            this._render(this._lastAreas);
-        }
+        if (this._lastAreas.length) this._scheduleSnapshot(this._lastAreas, true);
     }
 
     // --- layout: deterministic left-to-right grid ------------------------
@@ -1219,73 +1312,130 @@ class GraphRenderer {
         return g;
     }
 
-    /** Draggable nodes: manual offset is stored keyed by hub id + area name
-     * (falling back to id) and reapplied over the computed grid layout,
-     * always in WORLD coordinates (see _screenDeltaToWorld) so a saved
-     * offset means the same physical position on the canvas regardless of
-     * what zoom level it was dragged at or is later viewed from -- the
-     * persisted localStorage offsets therefore survive zoom changes
-     * unchanged. A drag that actually moved the node suppresses the
-     * trailing click so dragging never also opens the inspector. */
+    /** Draggable nodes -- pointerdown ONLY (thin: just records gesture
+     * state on the renderer). ROOT CAUSE A (v5 brief): this handler used to
+     * also own pointermove/pointerup/pointercancel and setPointerCapture,
+     * all on this per-node <g> -- but _render() (called by the 4s poll and
+     * every WS event via setData(), see _scheduleSnapshot above) tears down
+     * and rebuilds every node <g> from scratch. A re-render landing mid-
+     * drag destroyed the captured element out from under the gesture: it
+     * died silently, `_draggingNode` stayed set, and every subsequent
+     * pointer event fell through to whatever was under the cursor instead
+     * (the "starts triggering other elements' events mid-drag" symptom).
+     * The move/up/cancel handlers and the actual setPointerCapture() call
+     * now live on `this._svg` (see _bindNodeDragMove below), which is
+     * built once in the constructor and never rebuilt -- so they survive
+     * any number of re-renders for the gesture's whole lifetime, and
+     * _scheduleSnapshot additionally defers those re-renders outright
+     * while a drag is in flight so the dragged <g> itself is never even
+     * replaced mid-gesture. */
     _bindNodeDrag(g, area) {
-        let dragMoved = false;
-
         g.addEventListener('pointerdown', (e) => {
             if (e.button !== 0) return;
             e.stopPropagation();
             // Same rationale as the pan handler above: a node drag that
             // starts on a label must not turn into a text selection.
             e.preventDefault();
-            const key = this._offsetKey(area);
-            const existing = this._offsets.get(key) || { x: 0, y: 0 };
-            dragMoved = false;
+            const node = this._nodes.get(area.id);
+            const base = this._baseLayout.get(area.id);
+            const nodeWorld = node || base || { x: 0, y: 0 };
+            // Absolute-anchor drag model (ROOT CAUSE B fix): record the
+            // fixed WORLD-space offset from "cursor" to "node center" once,
+            // at grab time. Every subsequent pointermove recomputes the
+            // node's target WORLD position fresh from the CURRENT view
+            // state (cursorWorld + grabOffsetWorld) instead of accumulating
+            // a start-delta divided by whatever zoom happens to be active
+            // right now -- so it stays correct-by-construction even if
+            // zoom/pan changes mid-drag (e.g. wheel-zoom while the button
+            // is still held), with no re-derivation needed anywhere else.
+            const grabWorld = this._screenToWorld(e.clientX, e.clientY);
             this._draggingNode = {
-                areaId: area.id, key, pointerId: e.pointerId,
-                startClientX: e.clientX, startClientY: e.clientY,
-                startOffsetX: existing.x, startOffsetY: existing.y,
+                areaId: area.id,
+                key: this._offsetKey(area),
+                pointerId: e.pointerId,
+                grabOffsetWorld: { x: nodeWorld.x - grabWorld.x, y: nodeWorld.y - grabWorld.y },
+                startClientX: e.clientX,
+                startClientY: e.clientY,
+                moved: false,
             };
-            try { g.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+            // Capture on the persistent <svg> root, NOT this per-node <g>
+            // -- see this method's doc block above (ROOT CAUSE A).
+            try { this._svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         });
+    }
 
-        g.addEventListener('pointermove', (e) => {
+    /** The other half of node dragging (see _bindNodeDrag's doc block):
+     * pointermove/up/cancel, deliberately bound once here to the
+     * persistent `this._svg` root rather than per-node, so they keep
+     * receiving the gesture's events for as long as it runs no matter how
+     * many re-renders land (which _scheduleSnapshot defers anyway while
+     * `_draggingNode` is set, but this is what makes that safe to rely on
+     * in the first place -- the listeners themselves must survive, not
+     * just the DOM they'd otherwise be destroyed along with). */
+    _bindNodeDragMove() {
+        this._svg.addEventListener('pointermove', (e) => {
             const d = this._draggingNode;
-            if (!d || d.pointerId !== e.pointerId || d.areaId !== area.id) return;
-            // Screen-space delta drives the "did this actually turn into a
-            // drag" threshold (a constant N screen pixels, independent of
-            // zoom, so the click-vs-drag feel doesn't get twitchier the
-            // further zoomed out you are); the WORLD-space delta (divided
-            // by zoom via the shared helper) is what actually moves the
-            // node, which is what keeps the exact point of the node grabbed
-            // under the cursor at every zoom level.
+            if (!d || d.pointerId !== e.pointerId) return;
+            // Screen-space delta drives the click-vs-drag threshold only (a
+            // constant N screen pixels, independent of zoom, so the
+            // click-vs-drag feel doesn't get twitchier the further zoomed
+            // out you are). The node's actual position is the absolute-
+            // anchor recomputation described in _bindNodeDrag.
             const dxScreen = e.clientX - d.startClientX;
             const dyScreen = e.clientY - d.startClientY;
-            if (Math.abs(dxScreen) > 2 || Math.abs(dyScreen) > 2) dragMoved = true;
-            const worldDelta = this._screenDeltaToWorld(dxScreen, dyScreen);
-            const offX = d.startOffsetX + worldDelta.x;
-            const offY = d.startOffsetY + worldDelta.y;
-            this._offsets.set(d.key, { x: offX, y: offY });
+            if (!d.moved && (Math.abs(dxScreen) > 2 || Math.abs(dyScreen) > 2)) d.moved = true;
+            const cursorWorld = this._screenToWorld(e.clientX, e.clientY);
             const base = this._baseLayout.get(d.areaId);
             const node = this._nodes.get(d.areaId);
-            if (base && node) {
-                node.x = base.x + offX;
-                node.y = base.y + offY;
-                this._updateNodePosition(d.areaId);
-            }
+            if (!base || !node) return;
+            const nodeWorldX = cursorWorld.x + d.grabOffsetWorld.x;
+            const nodeWorldY = cursorWorld.y + d.grabOffsetWorld.y;
+            const offX = nodeWorldX - base.x;
+            const offY = nodeWorldY - base.y;
+            this._offsets.set(d.key, { x: offX, y: offY });
+            node.x = base.x + offX;
+            node.y = base.y + offY;
+            // Cheap in-place reposition, not a full _render() -- see its
+            // own doc block: this is what keeps pointer capture (and every
+            // other node's untouched DOM) intact for the rest of the drag.
+            this._updateNodePosition(d.areaId);
         });
 
-        const endDrag = (e) => {
+        const endNodeDrag = (e) => {
             const d = this._draggingNode;
-            if (!d || d.pointerId !== e.pointerId || d.areaId !== area.id) return;
+            if (!d || (e && d.pointerId !== e.pointerId)) return;
             this._draggingNode = null;
-            if (dragMoved) this._saveOffsets();
+            try { this._svg.releasePointerCapture(d.pointerId); } catch (err) { /* ignore */ }
+            if (d.moved) {
+                this._saveOffsets();
+                // Only stash a re-anchor hint when a render actually got
+                // deferred during this drag (this._pendingRender is set) --
+                // otherwise _lastDragRelease would linger unconsumed and
+                // could wrongly hijack a later, completely unrelated
+                // _applySnapshot call (e.g. a Load Layout click) into
+                // clobbering ITS freshly-set offset for this area with this
+                // drag's now-stale world position. When it IS set, remember
+                // exactly where this node was left, in world space, so
+                // _applySnapshot can re-anchor this area's offset against
+                // its own possibly-reflowed base layout instead of
+                // teleporting the node once that deferred snapshot lands.
+                if (this._pendingRender) {
+                    const node = this._nodes.get(d.areaId);
+                    if (node) this._lastDragRelease = { areaId: d.areaId, key: d.key, world: { x: node.x, y: node.y } };
+                }
+            } else {
+                // No movement past the threshold -- this was a click, not a
+                // drag. Handled here (rather than a native 'click' listener
+                // on the per-node <g>) because pointer capture retargets
+                // compatibility mouse events too, so a 'click' fired from
+                // this._svg's capture would no longer reliably land on the
+                // <g> the gesture started on.
+                this._onNodeClick(d.areaId);
+            }
+            this._endGesture();
         };
-        g.addEventListener('pointerup', endDrag);
-        g.addEventListener('pointercancel', endDrag);
-
-        g.addEventListener('click', () => {
-            if (dragMoved) { dragMoved = false; return; }
-            this._onNodeClick(area.id);
-        });
+        this._svg.addEventListener('pointerup', endNodeDrag);
+        this._svg.addEventListener('pointercancel', endNodeDrag);
     }
 
     getNodeCenter(areaId) {

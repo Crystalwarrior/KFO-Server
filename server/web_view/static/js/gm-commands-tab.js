@@ -80,6 +80,10 @@ class CommandsTab extends TabBase {
                 <h3>Command Cookbook</h3>
                 <input type="text" id="commandsCatalogSearch" class="gm-cookbook-search"
                        placeholder="Search commands…" autocomplete="off" spellcheck="false">
+                <div class="gm-cookbook-collapse-btns">
+                    <button type="button" id="commandsExpandAllBtn" class="btn-sm gm-cookbook-btn">Expand all</button>
+                    <button type="button" id="commandsCollapseAllBtn" class="btn-sm gm-cookbook-btn">Collapse all</button>
+                </div>
                 <a href="${esc(this._docsUrl)}" target="_blank" rel="noopener noreferrer" class="gm-docs-link">Full command reference ↗</a>
             </div>
             <p class="dim gm-cookbook-hint">Click a command to prefill the console -- this is a reference, not a gate. Any command can be run free-form; the server enforces real permissions.</p>
@@ -92,6 +96,8 @@ class CommandsTab extends TabBase {
             this._searchQuery = searchInput.value;
             this._renderCatalogList();
         });
+        this._catalogEl.querySelector('#commandsExpandAllBtn').addEventListener('click', () => this._setAllGroupsCollapsed(false));
+        this._catalogEl.querySelector('#commandsCollapseAllBtn').addEventListener('click', () => this._setAllGroupsCollapsed(true));
         this._groupsEl.addEventListener('click', (e) => this._onCatalogClick(e));
         this._groupsEl.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -108,6 +114,21 @@ class CommandsTab extends TabBase {
             else this._collapsedModules.add(module);
         }, true);
 
+        this._renderCatalogList();
+    }
+
+    /** "Expand all" / "Collapse all" header buttons: act on every module
+     * group at once by bulk-editing the same `_collapsedModules` set a
+     * manual per-group toggle uses, then re-rendering -- so the result
+     * persists across re-renders exactly like a manual collapse does, and
+     * search's own force-open-on-match logic in _renderCatalogList()
+     * (unchanged) still overrides it while a query is active. */
+    _setAllGroupsCollapsed(collapsed) {
+        if (collapsed) {
+            this._groups.forEach((g) => this._collapsedModules.add(g.module));
+        } else {
+            this._collapsedModules.clear();
+        }
         this._renderCatalogList();
     }
 
@@ -232,6 +253,8 @@ class CommandsTab extends TabBase {
             .gm-command-cookbook-head { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
             .gm-command-cookbook-head h3 { margin: 0; margin-right: auto; }
             .gm-cookbook-search { flex: 1 1 12rem; min-width: 8rem; }
+            .gm-cookbook-collapse-btns { display: flex; gap: 0.35rem; flex-wrap: nowrap; }
+            .gm-cookbook-btn { white-space: nowrap; }
             .gm-docs-link { white-space: nowrap; }
             .gm-cookbook-hint { margin: 0.25rem 0 0.5rem; }
             .gm-command-cookbook-groups { display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; }
