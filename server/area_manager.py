@@ -462,6 +462,10 @@ class AreaManager:
         )
         client.hide(True)
 
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_hub_gm_roster_changed(self)
+
     def real_owners(self):
         """
         GMs that are real players, excluding system executors (RemoteClient).
@@ -492,6 +496,10 @@ class AreaManager:
             f"[{client.id}] {client.showname} ({client.name}) is no longer GM in this hub."
         )
         client.hide(False)
+
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_hub_gm_roster_changed(self)
 
     def get_gms(self):
         """

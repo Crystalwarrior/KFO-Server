@@ -1074,6 +1074,10 @@ class ClientManager:
             else:
                 self.server.player_state_observer.notify_area_id_changed(self)
 
+            bridge = getattr(self.server, "gm_panel_bridge", None)
+            if bridge is not None:
+                bridge.on_client_moved(self, old_area, self.area)
+
             for hub in self.server.hub_manager.hubs:
                 count = 0
                 for c in hub.clients:

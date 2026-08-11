@@ -44,6 +44,7 @@ __all__ = [
     "ooc_cmd_unfollow",
     "ooc_cmd_info",
     "ooc_cmd_gm",
+    "ooc_cmd_gmpanel",
     "ooc_cmd_ungm",
     "ooc_cmd_broadcast",
     "ooc_cmd_clear_broadcast",
@@ -990,6 +991,23 @@ def ooc_cmd_gm(client, arg):
         raise ClientError("You must be authorized to do that.")
 
 
+def ooc_cmd_gmpanel(client, arg):
+    """
+    Generate a one-time link to open the web GM Control Panel bound to you.
+    Usage: /gmpanel
+    """
+    bridge = getattr(client.server, "gm_panel_bridge", None)
+    if bridge is None:
+        raise ClientError("The GM panel is not enabled on this server.")
+    if not client.is_mod and client not in client.area.area_manager.owners:
+        raise ClientError("You must be a GM to open the panel.")
+    token = bridge.session_manager.mint_login_token(client)
+    url = bridge.public_url_for_token(token)
+    client.send_ooc(
+        f"GM Panel link (expires in {bridge.login_token_ttl}s, single use): {url}"
+    )
+
+
 @mod_only(hub_owners=True)
 def ooc_cmd_ungm(client, arg):
     """
@@ -1081,7 +1099,7 @@ def ooc_cmd_hpset(client, arg):
             "Invalid position. Use \"pro\" or \"def\"")
 
     area_list = [client.area]
-    if len(args > 2):
+    if len(args) > 2:
         area_list = client.area.area_manager.get_areas_by_args(args[1:])
     for area in area_list:
         area.change_hp(side, int(args[1]))

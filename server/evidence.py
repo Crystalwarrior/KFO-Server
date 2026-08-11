@@ -395,6 +395,8 @@ class EvidenceList:
                 desc = evi.desc
             if image == "*":
                 image = evi.image
+            if pos == "*":
+                pos = evi.pos
 
             if client.area.evidence_mod == "HiddenCM":
                 if self.correct_format(client, desc):

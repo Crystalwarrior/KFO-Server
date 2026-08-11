@@ -10,6 +10,7 @@ __all__ = [
     "ooc_cmd_overlay",
     "ooc_cmd_overlay_clear",
     "ooc_cmd_bg",
+    "ooc_cmd_gm_set_bg",
     "ooc_cmd_bg_suffix",
     "ooc_cmd_bgs",
     "ooc_cmd_status",
@@ -133,6 +134,28 @@ def ooc_cmd_bg(client, arg):
     client.area.broadcast_ooc(
         f"{client.showname} changed the background to {arg}.")
     database.log_area("bg", client, client.area, message=arg)
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_gm_set_bg(client, arg):
+    """
+    Change the background of any area in your current hub (hub GMs only).
+    Usage: /gm_set_bg <area_id> <background> [overlay]
+    """
+    args = arg.split(" ", 2)
+    if len(args) < 2:
+        raise ArgumentError("Usage: /gm_set_bg <area_id> <background> [overlay]")
+    try:
+        area_id = int(args[0])
+    except ValueError:
+        raise ArgumentError("area_id must be a number.")
+    hub = client.area.area_manager
+    if area_id < 0 or area_id >= len(hub.areas):
+        raise ArgumentError("No such area in your hub.")
+    target = hub.areas[area_id]
+    overlay = args[2] if len(args) > 2 else target.overlay
+    target.change_background(args[1], overlay)
+    client.send_ooc(f"Set area {area_id}'s background to {args[1]}.")
 
 
 @mod_only(area_owners=True)
