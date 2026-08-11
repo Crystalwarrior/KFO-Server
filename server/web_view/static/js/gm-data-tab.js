@@ -25,6 +25,14 @@ const GM_DATA_KIND_LOAD_HINTS = {
     musiclists: 'Apply this music list to the hub',
 };
 
+/** localStorage key remembering the hub names this browser's GM has saved
+ * or imported before. The server now lists ONLY the public read-only hubs
+ * (see gm_panel.py's DATA_KIND_LIST_PUBLIC_ONLY -- editable hub names must
+ * not leak to every GM with a session), so the Hub Saves list re-adds
+ * these known names client-side: they are the one set of editable hubs a
+ * GM can verifiably claim to know about (they typed/saved them here). */
+const GM_DATA_KNOWN_HUBS_KEY = 'gmDataTab.knownHubs';
+
 /** Matches the backend's single-segment name regex exactly (gm_panel.py's
  * HubDataRoutes) -- 1-64 letters/digits/spaces/underscore/hyphen. */
 const GM_DATA_SEGMENT_RE = /^[A-Za-z0-9 _-]{1,64}$/;
@@ -144,6 +152,9 @@ class GMDataTab extends TabBase {
             .gm-data-folder-prefix {
                 width: 9rem; min-width: 6rem;
             }
+            .badge.gm-data-known {
+                background: rgba(79,209,197,0.12); color: var(--gm-accent2); border: 1px solid #2b5a52;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -249,10 +260,50 @@ class GMDataTab extends TabBase {
 
     // --- Hub layout: save_hub / load_hub --------------------------------
 
+    /** Hub names this browser's GM has saved/imported before (see
+     * GM_DATA_KNOWN_HUBS_KEY). Untrusted, possibly-corrupt storage is
+     * tolerated defensively -- a bad payload just yields no known hubs. */
+    _knownHubNames() {
+        try {
+            const raw = JSON.parse(localStorage.getItem(GM_DATA_KNOWN_HUBS_KEY) || '[]');
+            if (!Array.isArray(raw)) return [];
+            return raw.filter((n) => typeof n === 'string' && n.length > 0);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /** Records `name` so the Hub Saves list keeps showing this editable hub
+     * even though the server only lists read-only hubs (see
+     * GM_DATA_KNOWN_HUBS_KEY). Call sites remember ONLY on success -- a
+     * failed save/import proves nothing about who owns that name. */
+    _rememberHub(name) {
+        try {
+            const known = new Set(this._knownHubNames());
+            known.add(name);
+            localStorage.setItem(GM_DATA_KNOWN_HUBS_KEY, JSON.stringify([...known]));
+        } catch (e) { /* storage full/unavailable: known-hubs list stays in-memory only */ }
+    }
+
     async _loadHubSaves() {
         try {
             const data = await this.api.getHubSaves();
-            this._hubSaves = data.files || [];
+            // The server returns only public read_only hubs. Merge in the
+            // editable hubs this GM verifiably knows about (its own prior
+            // saves/imports) so its own layouts still appear -- everything
+            // else stays hidden.
+            const byName = new Map();
+            (data.files || []).forEach((f) => {
+                byName.set(f.name, { name: f.name, read_only: !!f.read_only, known: !f.read_only });
+            });
+            this._knownHubNames().forEach((name) => {
+                if (!byName.has(name)) byName.set(name, { name, read_only: false, known: true });
+            });
+            const sortByName = (a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+            this._hubSaves = [
+                ...[...byName.values()].filter((f) => f.read_only).sort(sortByName),
+                ...[...byName.values()].filter((f) => !f.read_only).sort(sortByName),
+            ];
             this._renderHubSaves();
         } catch (e) {
             this._hubSavesTbody.innerHTML = `<tr><td colspan="3" class="gm-empty">Failed to load: ${esc(e.message)}</td></tr>`;
@@ -261,12 +312,12 @@ class GMDataTab extends TabBase {
 
     _renderHubSaves() {
         if (!this._hubSaves.length) {
-            this._hubSavesTbody.innerHTML = '<tr><td colspan="3" class="gm-empty">No saved hubs yet.</td></tr>';
+            this._hubSavesTbody.innerHTML = '<tr><td colspan="3" class="gm-empty">No hubs to show. Shared read-only hubs and hubs you\'ve saved before appear here.</td></tr>';
             return;
         }
         this._hubSavesTbody.innerHTML = this._hubSaves.map((f) => `
             <tr>
-                <td>${esc(f.name)}${f.read_only ? ' <span class="badge readonly">read-only</span>' : ''}</td>
+                <td>${esc(f.name)}${f.read_only ? ' <span class="badge readonly">read-only</span>' : ' <span class="badge gm-data-known">yours</span>'}</td>
                 <td><button class="btn-sm" data-action="load" data-name="${esc(f.name)}">Load</button></td>
                 <td><button class="btn-sm" data-action="export" data-name="${esc(f.name)}">Export</button></td>
             </tr>`).join('');
@@ -288,6 +339,7 @@ class GMDataTab extends TabBase {
             const result = await this.api.saveHub(name);
             this._printOutput(result.output, result.ok);
             this.shell.toast(`Hub saved as "${name}".`, result.ok === false ? 'error' : 'success');
+            if (result.ok !== false) this._rememberHub(name);
             this._hubSaveNameInput.value = '';
             await this._loadHubSaves();
         } catch (e) {
@@ -305,6 +357,7 @@ class GMDataTab extends TabBase {
             const file = await this.api.getDataFile('hubs', name);
             this.api.downloadText(`${name.replace(/\//g, '_')}.yaml`, file.content || '');
             this.shell.toast(`Hub saved as "${name}" and downloaded.`, 'success');
+            if (result.ok !== false) this._rememberHub(name);
             this._hubSaveNameInput.value = '';
             await this._loadHubSaves();
         } catch (e) {
@@ -349,6 +402,7 @@ class GMDataTab extends TabBase {
         try {
             const content = await file.text();
             await this.api.putDataFile('hubs', name, content);
+            this._rememberHub(name);
             this.shell.toast(`Hub file imported as "${name}".`, 'success');
             this._hubImportFile.value = '';
             if (this._hubImportFolderInput) this._hubImportFolderInput.value = '';

@@ -1338,6 +1338,19 @@ DATA_KIND_DIRS = {
 # `read_only` path).
 DATA_KIND_READONLY_SUBDIR = frozenset(["hubs", "musiclists"])
 
+# Kinds whose editable files are private to the GMs who created them and must
+# NOT be listed to every GM with a session. In current KFO the hub-permission
+# model is deliberately lax (any GM can in principle reach any hub file by
+# name), but that laxness is not a license to publish every hub's NAME in the
+# shared Hub Saves list -- GMs routinely hide work-in-progress/secret hubs from
+# their peers. Only the server-curated `read_only/` layouts are public; the
+# panel's frontend re-adds the editable hubs a GM verifiably knows about (their
+# own saves, remembered client-side) to the local list, so this filter only
+# ever hides hubs the GM should not be able to discover in the first place.
+# Name-addressed GET/PUT/load are unaffected -- knowing a name already implies
+# knowledge the list would otherwise have leaked.
+DATA_KIND_LIST_PUBLIC_ONLY = frozenset(["hubs"])
+
 # Deliberately NOT `derelative()` (which only strips `../`/`..\\` substrings
 # and is easy to reason past) -- a strict allowlist of the characters a
 # panel-submitted file name SEGMENT may contain. Every `/api/gm/data/...`
@@ -1497,6 +1510,21 @@ def _list_data_files(kind):
             for n in _list_yaml_names(os.path.join(base, "read_only"))
         ]
     files.sort(key=lambda f: (f["read_only"], f["name"].lower()))
+    return files
+
+
+def _public_data_files(kind):
+    """
+    Like `_list_data_files`, but for kinds in `DATA_KIND_LIST_PUBLIC_ONLY`
+    (hubs) only the `read_only` files are returned -- see that constant's
+    docstring for the security rationale. All other kinds are returned
+    unfiltered. Returns `None` for an unknown `kind`.
+    """
+    files = _list_data_files(kind)
+    if files is None:
+        return None
+    if kind in DATA_KIND_LIST_PUBLIC_ONLY:
+        return [f for f in files if f["read_only"]]
     return files
 
 
@@ -2729,7 +2757,11 @@ class HubDataRoutes:
         session, err = self._require_session_and_gate(request)
         if err is not None:
             return err
-        return web.json_response({"ok": True, "files": _list_data_files("hubs")})
+        # Only the public read_only hubs are listed -- editable hubs are
+        # private to the GMs who saved them (see
+        # DATA_KIND_LIST_PUBLIC_ONLY). The frontend merges the hubs this GM
+        # verifiably knows about (its own saves) back into the local list.
+        return web.json_response({"ok": True, "files": _public_data_files("hubs")})
 
     async def handle_hub_save(self, request):
         session, err = self._require_session_and_gate(request)
@@ -2875,7 +2907,7 @@ class HubDataRoutes:
         if err is not None:
             return err
         kind = request.match_info.get("kind", "")
-        files = _list_data_files(kind)
+        files = _public_data_files(kind)
         if files is None:
             return web.json_response({"ok": False, "error": "unknown_kind"}, status=400)
         return web.json_response({"ok": True, "files": files})
