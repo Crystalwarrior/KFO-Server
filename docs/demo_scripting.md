@@ -32,7 +32,7 @@ A script is a list of lines. How a line ends depends on what it is:
   ```
   CT#narrator#Hello..
   there..
-  everyone!!!%
+  everyone!!!#0%
   ```
 
 - **Everything else ends with `%` *or* a newline.**
@@ -43,13 +43,13 @@ A script is a list of lines. How a line ends depends on what it is:
   label loop
   set count count-1
   if count > 0 loop
-  CT#narrator#Blastoff!%
+  CT#narrator#Blastoff!#0%
   ```
 
   This is the same script but written using % as a one-liner:
 
   ```
-  set count 5%label loop%set count count-1%if count > 0 loop%CT#narrator#Blastoff!%
+  set count 5%label loop%set count count-1%if count > 0 loop%CT#narrator#Blastoff!#0%
   ```
 
   Mix and match however you like. `%` is only *required* when you want several
@@ -70,7 +70,7 @@ put it in quotes: `set greeting "Hello there"`.
 **To pause, use** `wait <milliseconds>`, so one second is 1000 milliseconds.
 
 ```
-CT#narrator#Scene change incoming!%
+CT#narrator#Scene change incoming!#0%
 wait 3000
 BN#BOTC-TownSquare%
 ```
@@ -81,7 +81,7 @@ Any `/` command works, exactly as if a User typed it. ([Command Reference](https
 commands need their `%`:
 
 ```
-/say Welcome to the roleplay!%
+CT#narrator#Welcome to the roleplay!#0%
 /timer 0 60s start%
 /pos_lock wit%
 ```
@@ -94,7 +94,7 @@ broadcast these headers: `MS`, `CT`, `MC`, `BN`, `HP`, `RT`, `JD`, `GM`, `ST`.
 (if choosing between "Client" and "Server" version of the packet, use the "Server" packet)
 
 ```
-CT#narrator#Hello everyone!%
+CT#narrator#Hello everyone!#0%
 MC#~stop.mp3#-1##1#0#5%
 BN#BOTC-TownSquare%
 ```
@@ -153,12 +153,12 @@ set name "Alice"                  // The name we're gonna use here
 if name == "Alice" greet          // if name equals to Alice, go to the greet label
 if name != "Bob" nogreet          // if name isn't Bob, go to the nogreet label
 label greet
-CT#narrator#Hello, <!name>!%      // Hello, Alice!
+CT#narrator#Hello, <!name>!#0%      // Hello, Alice!
 goto finish                       // Skip ahead so we don't say Goodbye by accident
 label nogreet
-CT#narrator#Goodbye, <!name>!%    // Goodbye, Bob!
+CT#narrator#Goodbye, <!name>!#0%    // Goodbye, Bob!
 label finish
-CT#narrator#I eat boogers!%
+CT#narrator#I eat boogers!#0%
 ```
 
 Ordering comparisons (`==` equal to, `!=` not equal to, `<` less than, `>` greater than, `<=` less or equal to, `>=` greater or equal to) need both sides to be the same
@@ -171,9 +171,9 @@ script with an error.
 
 ```
 set count 5
-CT#narrator#Only <!count> more minutes!%
+CT#narrator#Only <!count> more minutes!#0%
 set score 10
-/say The score is <!score>%
+CT#narrator#The score is <!score>#0%
 ```
 
 You can also drop live state straight in - see below - so `<!players>` works
@@ -186,7 +186,7 @@ From then on you can use that variable anywhere in the script:
 
 ```
 get total players
-CT#narrator#There are <!total> players here!%
+CT#narrator#There are <!total> players here!#0%
 ```
 
 A few handy values are always available without any setup:
@@ -305,10 +305,10 @@ own - the same numbers `/timer` shows.
 ```
 get left timer[3].remaining_ms
 if left == 0 timeout
-CT#narrator#<!left> ms left on the deliberation timer!%
+CT#narrator#<!left> ms left on the deliberation timer!#0%
 return
 label timeout
-CT#narrator#Time's up!%
+CT#narrator#Time's up!#0%
 ```
 
 ### Evidence
@@ -333,7 +333,7 @@ set i 0
 label loop
 if i >= count done
 get item evidence[i].name
-CT#narrator#Evidence <!i>: <!item>%
+CT#narrator#Evidence <!i>: <!item>#0%
 set i i+1
 goto loop
 label done
@@ -362,10 +362,10 @@ if i >= count done
 get target links[i].target
 get locked links[i].locked
 if locked == 1 blocked
-CT#narrator#To area <!target>: open%
+CT#narrator#To area <!target>: open#0%
 goto next
 label blocked
-CT#narrator#To area <!target>: locked%
+CT#narrator#To area <!target>: locked#0%
 label next
 set i i+1
 goto loop
@@ -511,7 +511,7 @@ not the client/user id) or a quoted folder name (`char["Phoenix"]`):
 
 ```
 get title char["Phoenix"].title
-CT#narrator#Hello, <!title>!%
+CT#narrator#Hello, <!title>!#0%
 ```
 
 The special keys `.count` (how many keys that character has) and `.fields`
@@ -561,7 +561,7 @@ names:
 set list ""
 concat list "Miles"
 concat list "Apollo" ", "     // list is now "Miles, Apollo"
-CT#narrator#Players here: <!list>%
+CT#narrator#Players here: <!list>#0%
 ```
 
 The third part is the separator, and it only appears *between* items - so the
@@ -574,7 +574,7 @@ included:
 
 ```
 rand roll 1 6
-CT#narrator#You rolled a <!roll>!%
+CT#narrator#You rolled a <!roll>!#0%
 ```
 
 The bounds can be numbers, expressions, or variables. If `min` is bigger than
@@ -587,10 +587,10 @@ The bounds can be numbers, expressions, or variables. If `min` is bigger than
 ```
 get total players
 if total >= 5 full
-CT#narrator#Room's not full yet!%
+CT#narrator#Room's not full yet!#0%
 return
 label full
-CT#narrator#Room's full!%
+CT#narrator#Room's full!#0%
 ```
 
 The comparisons use the usual symbols: `==` equal, `!=` not equal, `<` less
@@ -602,13 +602,13 @@ set count 3
 set name "Miles"
 if count == 3 three
 if name != "Alice" stranger
-CT#narrator#Checking done!%
+CT#narrator#Checking done!#0%
 return
 label three
-CT#narrator#Count is three!%
+CT#narrator#Count is three!#0%
 return
 label stranger
-CT#narrator#A stranger!%
+CT#narrator#A stranger!#0%
 ```
 
 Both sides can be numbers, strings, variables, or live paths - anything a value
@@ -621,11 +621,11 @@ can be.
 ```
 set count 5
 label loop
-CT#narrator#<!count>!%
+CT#narrator#<!count>!#0%
 wait 1000
 set count count-1
 if count > 0 loop
-CT#narrator#Blastoff!%
+CT#narrator#Blastoff!#0%
 ```
 
 turns into: 5! 4! 3! 2! 1! Blastoff!
@@ -639,7 +639,7 @@ goto roll_for_damage
 return
 label roll_for_damage
 rand dmg 1 8
-CT#narrator#You dealt <!dmg> damage!%
+CT#narrator#You dealt <!dmg> damage!#0%
 return
 ```
 
@@ -670,7 +670,7 @@ Your script reads timers through the live paths from the table above:
 
 ```
 get left timer[3].remaining_ms
-CT#narrator#<!left> ms left on the deliberation timer!%
+CT#narrator#<!left> ms left on the deliberation timer!#0%
 ```
 
 ### Run a script when the timer expires
@@ -731,7 +731,7 @@ So demo 2 could greet the person who triggered it:
 ```
 
 ```
-CT#narrator#Welcome to the area, <!trigger_showname>!%
+CT#narrator#Welcome to the area, <!trigger_showname>!#0%
 ```
 
 The values stay until the next trigger fires (or a script overwrites them), so
@@ -750,10 +750,10 @@ When the timer later runs its /demo 1 command, that script can check the note:
 
 ```
 if door_open == 1 open_the_door
-CT#narrator#The door stays shut.%
+CT#narrator#The door stays shut.#0%
 return
 label open_the_door
-CT#narrator#The door is open!%
+CT#narrator#The door is open!#0%
 ```
 
 The note is still there even though the demo that wrote it has finished.
@@ -800,5 +800,5 @@ label skip
 set i i+1
 goto loop
 label done
-CT#narrator#Players here: <!list>%
+CT#narrator#Players here: <!list>#0%
 ```
