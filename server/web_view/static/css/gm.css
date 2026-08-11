@@ -291,10 +291,15 @@ body {
 }
 .gm-evidence-prop input[type="checkbox"] { accent-color: var(--gm-accent); }
 .gm-evidence-prop-pos { grid-column: 1 / -1; }
-.gm-evidence-prop-pos input[type="text"] {
+.gm-evidence-pos-row { display: flex; flex: 1; gap: 0.4rem; min-width: 120px; align-items: center; }
+.gm-evidence-pos-row input[type="text"] {
     flex: 1; min-width: 120px; background: var(--gm-panel); color: var(--gm-text);
     border: 1px solid var(--gm-border); border-radius: 4px;
     padding: 0.28rem 0.5rem; font-size: 0.78rem;
+}
+.gm-evidence-pos-row select {
+    background: var(--gm-panel); color: var(--gm-text); border: 1px solid var(--gm-border);
+    border-radius: 4px; padding: 0.28rem 0.4rem; font-size: 0.78rem; flex: none;
 }
 .gm-evidence-prop-triggers { grid-column: 1 / -1; flex-direction: column; align-items: stretch; gap: 0.3rem; }
 .gm-evidence-prop-triggers textarea {

@@ -27,8 +27,8 @@ const GR_XLINK_NS = 'http://www.w3.org/1999/xlink';
 // size is a panel-wide preference, not something worth re-picking per hub
 // -- so it lives under one flat localStorage key rather than the
 // per-hub-keyed offsets/layouts above it.
-const GR_ICON_SCALE_MIN = 0.5;
-const GR_ICON_SCALE_MAX = 2.0;
+const GR_ICON_SCALE_MIN = 1;   // the default: never smaller than normal
+const GR_ICON_SCALE_MAX = 4;   // 4x the default (GR_ICON_SCALE_DEFAULT)
 const GR_ICON_SCALE_DEFAULT = 1;
 const GR_ICON_SCALE_STORAGE_KEY = 'gm-graph-icon-scale';
 
@@ -57,6 +57,7 @@ class GraphRenderer {
         this._thumbBaseUrl = '';
         this._localContent = null;
         this._clientFolders = {}; // client_id -> character folder name
+        this._clientsById = {};   // client_id -> full ClientSerializer record (tooltips)
 
         // Per-character-folder icon resolution cache (B3): resolving an
         // icon goes through GMLocalContent (IndexedDB lookups / Image()
@@ -95,8 +96,8 @@ class GraphRenderer {
         this._lastAreas = [];
         this._hubId = null;
 
-        this._nodeW = 150;
-        this._nodeH = 96;
+        this._nodeW = 280;   // wide enough for 8 doubled-size chips side by side
+        this._nodeH = 106;   // tall enough to contain the chip row below the status text
         this._width = 1000;
         this._height = 640;
 
@@ -353,6 +354,33 @@ class GraphRenderer {
      * lets a marker here show the same color a GM picked there. */
     setClientFolders(map) { this._clientFolders = map || {}; }
 
+    /** client_id -> full client record (ClientSerializer-shaped: id,
+     * char_name, iniswap, showname, pos, is_mod, is_hub_gm, is_area_cm).
+     * Feeds the chip hover tooltips; accepts a Map or a plain object. */
+    setClients(map) { this._clientsById = map || {}; }
+
+    /** Plain-text label for a chip's `<title>` tooltip, e.g.
+     * "[GM][0] 999/Ninth: 999/Ninth" -- same role-badge + id + folder +
+     * <pos> + ": showname" shape as buildClientLabel() in gm-utils.js, but
+     * as one flat string (set via textContent, so no escaping needed). */
+    _chipTooltip(cid) {
+        const client = (this._clientsById instanceof Map) ? this._clientsById.get(cid) : this._clientsById[cid];
+        if (!client) return `Client #${cid}`;
+        let badges = '';
+        if (client.is_mod) badges += '[MOD]';
+        if (client.is_hub_gm) badges += '[GM]';
+        if (client.is_area_cm) badges += '[CM]';
+        const idStr = (client.id !== undefined && client.id !== null) ? `[${client.id}]` : '';
+        const base = client.char_name || '';
+        const folder = client.iniswap ? `${base}/${client.iniswap}` : base;
+        const pos = client.pos ? ` <${client.pos}>` : '';
+        const showname = client.showname ? `: ${client.showname}` : '';
+        let text = `${badges}${idStr}`;
+        if (folder) text += ` ${folder}`;
+        text += pos + showname;
+        return text || `Client #${cid}`;
+    }
+
     // --- marker/chip size (ITEM 1, v6 brief) ------------------------------
 
     _clampIconScale(n) {
@@ -368,16 +396,18 @@ class GraphRenderer {
         return GR_ICON_SCALE_DEFAULT;
     }
 
-    /** `translate(8, 80)` is the chips group's fixed anchor point inside a
+    /** `translate(8, 76)` is the chips group's fixed anchor point inside a
      * node (see _buildNode) -- appending `scale(iconScale)` after it grows
      * every chip (dot + embedded char icon + the "+N" overflow count text,
      * all children of this one group) away from that same anchor, with no
      * change to any chip's own local geometry (cx/cy/r/image size all stay
      * exactly as _buildNode wrote them). Node name/status/"N here" count
      * text are siblings of this group, not children of it, so they're
-     * untouched by design -- label text stays fixed per the brief. */
+     * untouched by design -- label text stays fixed per the brief. The
+     * anchor sits low in the card so the (doubled) chips clear the
+     * status/count text row above them. */
     _chipsGroupTransform() {
-        return `translate(8, 80) scale(${this._iconScale})`;
+        return `translate(8, 76) scale(${this._iconScale})`;
     }
 
     /** Cheap in-place geometry update: re-stamps the transform on every
@@ -1361,9 +1391,41 @@ class GraphRenderer {
         // ITEM 1 (v6 brief): class 'gr-chips' is how _applyIconScale()
         // finds every rendered node's chips group to live-update its scale
         // without a full re-render -- see that method's doc.
+        // Chips were doubled to 2x (r 6->12, pitch 15->30) and the cards
+        // widened so 8 fit side by side (this._nodeW). Past that, chips
+        // wrap into extra rows that stay clipped away until hovered.
+        const chipsPerRow = 8;
+        const rows = Math.ceil(ids.length / chipsPerRow);
         const chipsGroup = grEl('g', { class: 'gr-chips', transform: this._chipsGroupTransform() });
-        const maxChips = 8;
-        ids.slice(0, maxChips).forEach((cid, i) => {
+        const chipClip = { overflow: ids.length > chipsPerRow, clipRect: null };
+        if (chipClip.overflow) {
+            // Every wrapped chip below the first row stays clipped away;
+            // hovering the row expands the clip to reveal them all. The clip
+            // rect lives in the chips group's own (scaled) coordinate space,
+            // so it always shows exactly the first row no matter what the
+            // icon-scale slider is set to.
+            const clipId = `gr-chips-clip-${area.id}`;
+            chipClip.collapsedHeight = 24;
+            chipClip.expandedHeight = 24 + (rows - 1) * 30;
+            chipClip.clipRect = grEl('rect', { x: 0, y: 0, width: this._nodeW - 8, height: chipClip.collapsedHeight });
+            const clipPath = grEl('clipPath', { id: clipId });
+            clipPath.appendChild(chipClip.clipRect);
+            g.appendChild(clipPath);
+            chipsGroup.setAttribute('clip-path', `url(#${clipId})`);
+            // Invisible hover target covering the full (possibly expanded)
+            // area -- it's what makes the row hoverable in the gaps between
+            // chips, and only its clipped-visible slice is hit-testable
+            // while collapsed. Appended FIRST so it sits behind the chips
+            // and never blocks their <title> tooltips or the marker click.
+            const hoverRect = grEl('rect', {
+                x: 0, y: 0, width: this._nodeW - 8, height: chipClip.expandedHeight,
+                fill: 'transparent', class: 'gr-chips-hover',
+            });
+            chipsGroup.appendChild(hoverRect);
+        }
+        ids.forEach((cid, i) => {
+            const row = Math.floor(i / chipsPerRow);
+            const col = i % chipsPerRow;
             const isGm = (area.gm_client_ids || []).includes(cid);
             const isCm = (area.cm_client_ids || []).includes(cid);
             // Keyed by character folder (falling back to the client id when
@@ -1372,7 +1434,7 @@ class GraphRenderer {
             // what makes a color a GM sets on one tab show up here too.
             const folder = this._clientFolders[cid] || '';
             const colorKey = folder || String(cid);
-            const cx = i * 15 + 6, cy = 6, r = 6;
+            const cx = col * 30 + 12, cy = 12 + row * 30, r = 12;
             const chipClasses = ['gr-chip'];
             if (isGm) chipClasses.push('gr-chip-gm');
             else if (isCm) chipClasses.push('gr-chip-cm');
@@ -1427,14 +1489,23 @@ class GraphRenderer {
             }
 
             const title = grEl('title');
-            title.textContent = `Client #${cid}`;
+            title.textContent = this._chipTooltip(cid);
             chipG.appendChild(title);
             chipsGroup.appendChild(chipG);
         });
-        if (ids.length > maxChips) {
-            const more = grEl('text', { x: maxChips * 15 + 8, y: 10, class: 'gr-chip-more' });
-            more.textContent = `+${ids.length - maxChips}`;
+
+        // Overflow affordance: a "+N" marker at the end of the first row,
+        // plus the hover handlers that expand/collapse the clip.
+        if (chipClip.overflow) {
+            const more = grEl('text', { x: chipsPerRow * 30 + 12, y: 16, class: 'gr-chip-more' });
+            more.textContent = `+${ids.length - chipsPerRow}`;
             chipsGroup.appendChild(more);
+            chipsGroup.addEventListener('mouseenter', () => {
+                chipClip.clipRect.setAttribute('height', String(chipClip.expandedHeight));
+            });
+            chipsGroup.addEventListener('mouseleave', () => {
+                chipClip.clipRect.setAttribute('height', String(chipClip.collapsedHeight));
+            });
         }
         g.appendChild(chipsGroup);
 

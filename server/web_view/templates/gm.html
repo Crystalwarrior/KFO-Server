@@ -187,7 +187,13 @@
                 <div class="gm-evidence-props">
                     <label class="gm-evidence-prop gm-evidence-prop-pos" title="The &lt;owner=...&gt; positions where this evidence shows: 'all', 'hidden', or comma-separated pos names">
                         <span>Pos (owner positions):</span>
-                        <input type="text" id="evidencePosInput" placeholder="all, hidden, or pos1, pos2">
+                        <div class="gm-evidence-pos-row">
+                            <input type="text" id="evidencePosInput" list="evidencePosOptions" placeholder="all, hidden, or pos1, pos2">
+                            <select id="evidencePosAddSelect" title="Pick a position to append from this area's options">
+                                <option value="">Add pos…</option>
+                            </select>
+                            <datalist id="evidencePosOptions"></datalist>
+                        </div>
                     </label>
                     <label class="gm-evidence-prop">
                         <span>Show in dark:</span>

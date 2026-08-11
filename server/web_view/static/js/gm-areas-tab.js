@@ -71,11 +71,23 @@ class AreasGraphTab extends TabBase {
         this._buildManagementBar();
 
         root.querySelector('#areasRefreshBtn').addEventListener('click', () => this.reload());
+        document.addEventListener('mousedown', (e) => {
+            this._inspectorPressInside = this._popover.contains(e.target);
+        });
+        document.addEventListener('mouseup', (e) => {
+            this._inspectorReleaseInside = this._popover.contains(e.target);
+        });
         document.addEventListener('click', (e) => {
             if (this._selectedAreaId === null) return;
             if (this._popover.contains(e.target)) return;
             if (this._svg.contains(e.target)) return;
             if (this._mgmtBar && this._mgmtBar.contains(e.target)) return;
+            // A `click` fires on the common ancestor of where the press and
+            // release happened, so dragging from inside the inspector frame
+            // to outside would otherwise look like an "outside click" and
+            // wrongly close it. Only close when both press and release
+            // landed outside the inspector.
+            if (this._inspectorPressInside || this._inspectorReleaseInside) return;
             this._closeInspector();
         });
     }
@@ -172,6 +184,7 @@ class AreasGraphTab extends TabBase {
             const clients = await this._loadClientsData();
             this._clientsById = new Map(clients.map((c) => [c.id, c]));
             this._renderer.setClientFolders(this._clientFoldersMap(clients));
+            this._renderer.setClients(this._clientsById);
             this._renderer.setData(data);
             this._populateCreatePositionSelect();
             if (this._selectedAreaId !== null) {
@@ -410,6 +423,16 @@ class AreasGraphTab extends TabBase {
     }
 
     _renderInspector(area) {
+        // The 4s poll (and every WS-driven reload) rebuilds this whole frame
+        // via innerHTML, which resets the frame's own scroll to the top --
+        // the same familiar failure as the link-pos editor, just for the
+        // scrollbar instead of an in-progress text edit. Capture the frame's
+        // scroll position before the rebuild and restore it after so a GM
+        // reading the lower Links/Management sections isn't jumped to the
+        // top every poll. When the inspector was just opened the previous
+        // scroll is 0 (short loading stub / empty after close), so a fresh
+        // open still starts at the top.
+        const prevScrollTop = this._popover.scrollTop;
         // 'overlay' is edited via the dedicated background/overlay form
         // below, not the generic fields list; 'pos_lock' gets its own
         // dedicated list+editor section too (ITEM 2, v4 brief) -- it's a
@@ -614,6 +637,7 @@ class AreasGraphTab extends TabBase {
                 <button class="btn-sm danger" id="inspectorRemoveBtn" style="width:100%;margin-top:0.35rem">Remove This Area</button>
             </div>
         `;
+        this._popover.scrollTop = prevScrollTop;
 
         this._wireInspector(area);
         this._loadRosterIcons(clientIds);
@@ -1011,7 +1035,11 @@ class AreasGraphTab extends TabBase {
                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
             }
 
-            .gm-pref-list { display: flex; flex-direction: column; gap: 0.25rem; max-height: 220px; overflow-y: auto; }
+            /* No nested scrollbar: the preferences list grows in place and
+             * the inspector frame itself scrolls, so a 4s poll refresh can't
+             * yank the list's scroll position (see _renderInspector's
+             * scroll-top preservation). */
+            .gm-pref-list { display: flex; flex-direction: column; gap: 0.25rem; }
             .gm-pref-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; cursor: pointer; }
             .gm-pref-toggle span { flex: 1; }
             .gm-pref-toggle input[type=checkbox] { accent-color: var(--gm-accent); width: 14px; height: 14px; }

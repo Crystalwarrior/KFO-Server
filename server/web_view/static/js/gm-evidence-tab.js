@@ -13,6 +13,11 @@
  * injected GMLocalContent.
  */
 
+/** The standard AO courtroom positions, used to populate the Pos dropdown
+ * when the area's `pos_lock` is empty (no locked positions = any position
+ * is meaningful, so offer the well-known ones). */
+const EVIDENCE_DEFAULT_POS = ['all', 'hidden', 'wit', 'def', 'pro', 'hlp', 'hld', 'jud', 'sea', 'jur'];
+
 /** Static instruction cheat-sheet, mirroring docs/demo_scripting.md. The
  * scripting language and the underlying `/demo` command are unchanged by
  * the Evidence rename -- this reference still describes them exactly. */
@@ -123,6 +128,9 @@ class EvidenceTab extends TabBase {
         this._editor = root.querySelector('#evidenceScriptEditor');
         this._warningsEl = root.querySelector('#evidenceParseWarnings');
         this._posInput = root.querySelector('#evidencePosInput');
+        this._posAddSelect = root.querySelector('#evidencePosAddSelect');
+        this._posOptions = root.querySelector('#evidencePosOptions');
+        this._posPool = [];
         this._showInDarkSelect = root.querySelector('#evidenceShowInDarkSelect');
         this._canHideInCheck = root.querySelector('#evidenceCanHideInCheck');
         this._canTakeCheck = root.querySelector('#evidenceCanTakeCheck');
@@ -152,6 +160,7 @@ class EvidenceTab extends TabBase {
         root.querySelector('#evidenceHelpToggleBtn').addEventListener('click', () => this._toggleHelp());
         this._iconOverrideBtn.addEventListener('click', () => this._promptIconOverride());
         this._tbody.addEventListener('click', (e) => this._onTableClick(e));
+        this._posAddSelect.addEventListener('change', () => this._onPosAdd());
 
         this._helpBox.innerHTML = EVIDENCE_HELP_HTML;
     }
@@ -218,6 +227,7 @@ class EvidenceTab extends TabBase {
             if (this._areaId !== null && this._hubAreas.some((a) => a.id === this._areaId)) {
                 this._areaSelect.value = String(this._areaId);
             }
+            this._refreshPosOptions();
         } catch (e) {
             // non-fatal: picker just stays as-is
         }
@@ -242,6 +252,7 @@ class EvidenceTab extends TabBase {
             if (this._hubAreas.some((a) => a.id === this._areaId)) {
                 this._areaSelect.value = String(this._areaId);
             }
+            this._refreshPosOptions();
             this._renderList();
             this._updateRunStopState();
             if (this._selectedEvidenceId !== null && !this._evidenceList.some((d) => d.id === this._selectedEvidenceId)) {
@@ -357,6 +368,53 @@ class EvidenceTab extends TabBase {
         input.click();
     }
 
+    /** Refresh the "Add pos…" dropdown: always 'all' and 'hidden', then the
+     * picked area's `pos_lock` names (falling back to the common courtroom
+     * positions when the area has no locked positions). Deduped
+     * case-insensitively, keeping first-seen order. */
+    _refreshPosOptions() {
+        const area = this._hubAreas.find((a) => a.id === this._areaId);
+        const locked = (area && Array.isArray(area.pos_lock) ? area.pos_lock : []).map((p) => String(p));
+        const pool = locked.length ? ['all', 'hidden', ...locked] : EVIDENCE_DEFAULT_POS;
+        const seen = new Set();
+        this._posPool = [];
+        for (const p of pool) {
+            const key = p.trim().toLowerCase();
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            this._posPool.push(p.trim());
+        }
+        if (this._posAddSelect) {
+            this._posAddSelect.innerHTML = '<option value="">Add pos…</option>'
+                + this._posPool.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+        }
+        // The datalist offers the same suggestions inline while typing.
+        if (this._posOptions) {
+            this._posOptions.innerHTML = this._posPool
+                .map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+        }
+    }
+
+    /** The "Add pos…" dropdown appends a position to the comma-separated
+     * text field instead of replacing it (so hlp, def, pro… can be built up
+     * pick by pick). 'all' and 'hidden' are terminal -- they replace. */
+    _onPosAdd() {
+        const picked = this._posAddSelect.value;
+        if (!picked) return;
+        this._posAddSelect.value = '';
+        if (picked === 'all' || picked === 'hidden') {
+            this._posInput.value = picked;
+            return;
+        }
+        const current = this._posInput.value.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+        if (current.some((p) => p.toLowerCase() === picked.toLowerCase())) {
+            this.shell.toast(`Pos "${picked}" is already in the list.`, 'info');
+            return;
+        }
+        current.push(picked);
+        this._posInput.value = current.join(', ');
+    }
+
     _clearEditor() {
         this._nameInput.value = '';
         this._imageInput.value = '';
@@ -365,6 +423,7 @@ class EvidenceTab extends TabBase {
         this._warningsEl.innerHTML = '';
         this._iconPreview.innerHTML = '<span class="gm-icon-fallback">?</span>';
         this._posInput.value = 'all';
+        this._posAddSelect.value = '';
         this._showInDarkSelect.value = '0';
         this._canHideInCheck.checked = false;
         this._canTakeCheck.checked = true;
