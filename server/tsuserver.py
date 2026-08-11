@@ -23,6 +23,7 @@ from server.network.aoprotocol_ws import new_websocket_client
 from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.web_view.admin_panel import create_admin_app
+from server.web_view.gm_panel import GMPanelApp
 from server.constants import remove_URL, dezalgo
 from server.medieval_parser import MedievalParser
 
@@ -77,6 +78,8 @@ class TsuServer3:
             "video_support",
         ]
         self.command_aliases = {}
+        self.gm_panel_bridge = None
+        self.gm_panel_app_obj = None
 
         try:
             self.geoIpReader = geoip2.database.Reader(
@@ -186,7 +189,26 @@ class TsuServer3:
                 logger.info("Admin panel listening on %s://%s:%s", proto, admin_host, admin_port)
             except Exception as e:
                 logger.error("Failed to start admin panel: %s", e)
-            
+
+        # Start GM panel web server if configured
+        self.gm_runner = None
+        gm_cfg = self.config.get("gm_panel", {})
+        if gm_cfg.get("enabled", False):
+            try:
+                self.gm_panel_app_obj = GMPanelApp(self, gm_cfg)
+                gm_app, gm_ssl = self.gm_panel_app_obj.build()
+                self.gm_panel_bridge = self.gm_panel_app_obj.bridge
+                gm_port = gm_cfg.get("port", 27018)
+                gm_host = gm_cfg.get("host", "0.0.0.0")
+                self.gm_runner = web.AppRunner(gm_app)
+                loop.run_until_complete(self.gm_runner.setup())
+                site = web.TCPSite(self.gm_runner, gm_host, gm_port, ssl_context=gm_ssl)
+                loop.run_until_complete(site.start())
+                proto = "HTTPS" if gm_ssl else "HTTP"
+                logger.info("GM panel listening on %s://%s:%s", proto, gm_host, gm_port)
+            except Exception as e:
+                logger.error("Failed to start GM panel: %s", e)
+
         asyncio.ensure_future(self.schedule_unbans())
         asyncio.ensure_future(self.schedule_wal_checkpoint())
 
@@ -207,6 +229,8 @@ class TsuServer3:
 
         if self.admin_runner:
             loop.run_until_complete(self.admin_runner.cleanup())
+        if self.gm_runner:
+            loop.run_until_complete(self.gm_runner.cleanup())
 
         loop.close()
 
@@ -271,6 +295,9 @@ class TsuServer3:
         :param client: client object
 
         """
+        bridge = getattr(self, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_client_disconnected(client)
         if client.area:
             area = client.area
             if (

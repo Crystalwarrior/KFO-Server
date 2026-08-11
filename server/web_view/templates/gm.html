@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GM Control Panel</title>
+<link rel="stylesheet" href="/static/css/gm.css">
+</head>
+<body>
+<header class="gm-header">
+    <h1>GM Control Panel</h1>
+    <div class="gm-header-info">
+        <span class="gm-identity" id="gmIdentity"></span>
+        <button id="logoutBtn">Logout</button>
+    </div>
+</header>
+
+<nav class="gm-tab-bar" id="tabBar">
+    <div class="gm-tab active" data-tab="areas">Areas</div>
+    <div class="gm-tab" data-tab="clients">Clients</div>
+    <div class="gm-tab" data-tab="characters">Characters</div>
+    <div class="gm-tab" data-tab="commands">Commands</div>
+    <div class="gm-tab" data-tab="demos">Demos</div>
+    <span class="gm-conn-status">
+        <span class="live-dot" id="wsDot"></span>
+        <span id="wsStatus">Connecting…</span>
+    </span>
+</nav>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<main class="gm-content" id="gmContent">
+
+    <!-- AREAS TAB -->
+    <section class="gm-tab-panel active" id="tab-areas">
+        <div class="gm-toolbar">
+            <span class="hub-label" id="areasHubLabel">Loading hub…</span>
+            <button class="btn-sm" id="areasRefreshBtn">Refresh</button>
+            <span class="gm-toolbar-hint">Click a node to view its roster and change its background.</span>
+        </div>
+        <div class="graph-wrap">
+            <svg id="areaGraph" class="area-graph"></svg>
+            <div class="area-popover hidden" id="areaPopover"></div>
+        </div>
+    </section>
+
+    <!-- CLIENTS TAB -->
+    <section class="gm-tab-panel" id="tab-clients">
+        <div class="gm-toolbar">
+            <span class="hub-label" id="clientsHubLabel">Loading hub…</span>
+            <button class="btn-sm" id="clientsRefreshBtn">Refresh</button>
+            <span class="gm-count-badge" id="clientsCount"></span>
+        </div>
+        <div class="gm-scroll-area">
+            <table class="gm-table" id="clientsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Character</th><th>Showname</th><th>OOC Name</th>
+                        <th>Area</th><th>Status</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="clientsTbody">
+                    <tr><td colspan="7" class="gm-empty">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- CHARACTERS TAB -->
+    <section class="gm-tab-panel" id="tab-characters">
+        <div class="gm-split">
+            <div class="gm-panel-box">
+                <h3>Character List</h3>
+                <div class="gm-toolbar">
+                    <span class="hub-label" id="charListRef">Loading…</span>
+                </div>
+                <div class="gm-toolbar">
+                    <select id="charlistSelect"></select>
+                    <button class="btn-sm" id="charlistApplyBtn">Apply</button>
+                </div>
+                <div class="gm-scroll-area">
+                    <table class="gm-table" id="charSlotsTable">
+                        <thead><tr><th>#</th><th>Folder</th><th>Occupied By</th></tr></thead>
+                        <tbody id="charSlotsTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="gm-panel-box">
+                <h3>Character Data</h3>
+                <div class="gm-toolbar">
+                    <select id="charDataFolderSelect"></select>
+                    <button class="btn-sm" id="charDataRefreshBtn">Refresh</button>
+                </div>
+                <div class="gm-scroll-area">
+                    <table class="gm-table" id="charDataTable">
+                        <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
+                        <tbody id="charDataTbody"></tbody>
+                    </table>
+                </div>
+                <div class="gm-inline-form">
+                    <input type="text" id="charDataKeyInput" placeholder="key">
+                    <input type="text" id="charDataValueInput" placeholder="value (blank = delete key)">
+                    <button class="btn-sm" id="charDataSetBtn">Set</button>
+                </div>
+            </div>
+
+            <div class="gm-panel-box">
+                <h3>Snapshots</h3>
+                <div class="gm-toolbar">
+                    <select id="snapshotSelect"></select>
+                    <button class="btn-sm" id="snapshotLoadBtn">Load</button>
+                </div>
+                <div class="gm-inline-form">
+                    <input type="text" id="snapshotNameInput" placeholder="snapshot name">
+                    <button class="btn-sm" id="snapshotSaveBtn">Save Current</button>
+                </div>
+                <div class="gm-output" id="charactersOutput"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- COMMANDS TAB -->
+    <section class="gm-tab-panel" id="tab-commands">
+        <div class="gm-split gm-split-commands">
+            <div class="gm-panel-box" id="commandCatalog">
+                <div class="gm-empty">Loading command catalog…</div>
+            </div>
+            <div class="gm-panel-box gm-command-console">
+                <h3>Console</h3>
+                <div class="gm-output" id="commandsOutput"></div>
+                <div class="gm-input-bar">
+                    <input type="text" id="commandsRawInput" placeholder="/cmd arg  (must be in the catalog on the left)" autocomplete="off" spellcheck="false">
+                    <button id="commandsRunBtn">Run</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DEMOS TAB -->
+    <section class="gm-tab-panel" id="tab-demos">
+        <div class="gm-toolbar">
+            <span class="hub-label" id="demosAreaLabel">Loading area…</span>
+            <button class="btn-sm" id="demosRefreshBtn">Refresh</button>
+            <button class="btn-sm" id="demoNewBtn">New Demo</button>
+            <button class="btn-sm danger" id="demoStopAllBtn">Stop All (Hub)</button>
+            <button class="btn-sm" id="demoHelpToggleBtn">Instruction Reference</button>
+        </div>
+        <div class="gm-split gm-split-demos">
+            <div class="gm-panel-box gm-demo-list-box">
+                <div class="gm-scroll-area">
+                    <table class="gm-table" id="demosTable">
+                        <thead><tr><th>#</th><th>Name</th><th>Status</th><th></th></tr></thead>
+                        <tbody id="demosTbody"></tbody>
+                    </table>
+                </div>
+                <h4>Demo Packs (evidence lists on disk)</h4>
+                <div class="gm-toolbar">
+                    <select id="demoPackSelect"></select>
+                    <label class="gm-inline-form" style="gap:0.25rem">
+                        <input type="checkbox" id="demoPackOverlayCheck"> overlay
+                    </label>
+                    <button class="btn-sm" id="demoPackLoadBtn">Load</button>
+                </div>
+                <div class="gm-inline-form">
+                    <input type="text" id="demoPackNameInput" placeholder="pack name">
+                    <button class="btn-sm" id="demoPackSaveBtn">Save Current</button>
+                </div>
+            </div>
+
+            <div class="gm-panel-box gm-demo-editor-box">
+                <div class="gm-inline-form">
+                    <input type="text" id="demoNameInput" placeholder="Demo name">
+                    <input type="text" id="demoImageInput" placeholder="Image (optional)">
+                </div>
+                <textarea id="demoScriptEditor" class="gm-script-editor" spellcheck="false"
+                    placeholder="wait 500&#10;CT#narrator#Hello everyone!%"></textarea>
+                <div id="demoParseWarnings"></div>
+                <div class="gm-toolbar">
+                    <button class="btn-sm" id="demoSaveBtn">Save Script</button>
+                    <button class="btn-sm" id="demoRunBtn">Run</button>
+                    <button class="btn-sm" id="demoStopBtn">Stop</button>
+                    <button class="btn-sm danger" id="demoDeleteBtn">Delete</button>
+                </div>
+                <div class="gm-panel-box gm-demo-status" id="demoStatusBox">
+                    <div class="dim">No demo running in this area.</div>
+                </div>
+                <div class="gm-inline-form">
+                    <input type="text" id="demoEvalInput" placeholder="Eval expression, e.g. client[0].showname">
+                    <button class="btn-sm" id="demoEvalBtn">Eval</button>
+                    <span id="demoEvalResult" class="mono"></span>
+                </div>
+            </div>
+
+            <div class="gm-panel-box gm-demo-help hidden" id="demoHelpBox"></div>
+        </div>
+    </section>
+
+</main>
+
+<script src="/static/js/gm-utils.js"></script>
+<script src="/static/js/gm-api.js"></script>
+<script src="/static/js/gm-graph.js"></script>
+<script src="/static/js/gm-tab-base.js"></script>
+<script src="/static/js/gm-areas-tab.js"></script>
+<script src="/static/js/gm-clients-tab.js"></script>
+<script src="/static/js/gm-characters-tab.js"></script>
+<script src="/static/js/gm-commands-tab.js"></script>
+<script src="/static/js/gm-demos-tab.js"></script>
+<script src="/static/js/gm-shell.js"></script>
+<script src="/static/js/gm-main.js"></script>
+</body>
+</html>

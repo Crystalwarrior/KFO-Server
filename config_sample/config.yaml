@@ -234,3 +234,44 @@ admin_panel:
     max_attempts: 5        # Max failed login attempts before lockout
     window_seconds: 300    # Time window in seconds (5 minutes)
     lockout_seconds: 300   # Lockout duration in seconds (5 minutes)
+
+# GM Control Panel: lets an in-game GM micromanage their hub from a browser
+# (areas as a graph, who's present, characters, GM-scoped OOC commands, and
+# the Automation Demos system). Unlike admin_panel, there are no standing
+# usernames/passwords -- a GM binds the panel to their live client by
+# running /gmpanel in-game, which mints a one-time login link. GMs never
+# have access to ipid/hdid/IP; that stays moderator-only.
+gm_panel:
+  enabled: false
+  port: 27018
+  host: "0.0.0.0"
+  session_ttl_seconds: 28800        # 8h, matches admin_panel's cookie lifetime
+  login_token_ttl_seconds: 60       # one-time /gmpanel link expires fast
+
+  # Optional: point this at a static image host mirroring your backgrounds/
+  # folder (e.g. "https://assets.example.com/backgrounds/") so the Areas tab
+  # can render real background thumbnails. Leave blank for a safe default
+  # (a text-label placeholder tile) that needs no extra asset pipeline.
+  background_thumb_base_url:
+
+  # SSL: Option A - Self-signed or custom certificate (serves HTTPS directly)
+  # Generate a self-signed cert:
+  #   openssl req -x509 -newkey rsa:2048 -keyout config/gm_key.pem -out config/gm_cert.pem -days 3650 -nodes
+  ssl_cert:  # e.g. "config/gm_cert.pem"
+  ssl_key:   # e.g. "config/gm_key.pem"
+
+  # SSL: Option B - Let's Encrypt via Caddy reverse proxy (requires a domain)
+  # Set up a DNS A record pointing to this server, then create a Caddyfile:
+  #   gm.yourserver.com {
+  #       reverse_proxy localhost:27018
+  #   }
+  # Then run: caddy run
+  domain:  # e.g. "gm.yourserver.com"
+
+  # Rate limiting is not needed for login (there's no password to brute
+  # force -- one-time tokens are high-entropy and single-use), but is kept
+  # here for parity/documentation with admin_panel's shape.
+  rate_limit:
+    max_attempts: 10
+    window_seconds: 300
+    lockout_seconds: 300

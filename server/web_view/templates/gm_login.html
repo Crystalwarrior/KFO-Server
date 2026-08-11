@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GM Control Panel - Sign In</title>
+<link rel="stylesheet" href="/static/css/gm.css">
+<style>
+    body { justify-content: center; align-items: center; }
+    .gm-login-box {
+        background: var(--gm-panel); border: 1px solid var(--gm-border); padding: 2rem;
+        border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); width: 380px; max-width: 90vw;
+    }
+    .gm-login-box h1 { text-align: center; margin-bottom: 0.4rem; color: var(--gm-accent); font-size: 1.3rem; }
+    .gm-login-box p.hint { text-align: center; color: var(--gm-text-dim); font-size: 0.82rem; margin-bottom: 1.3rem; }
+    .gm-login-box label { display: block; margin-bottom: 0.3rem; font-size: 0.85rem; color: var(--gm-text-dim); }
+    .gm-login-box input[type="text"] {
+        width: 100%; padding: 0.6rem; margin-bottom: 1rem; border: 1px solid var(--gm-border);
+        border-radius: 4px; background: var(--gm-panel-alt); color: var(--gm-text); font-size: 0.9rem;
+    }
+    .gm-login-box button {
+        width: 100%; padding: 0.7rem; background: var(--gm-accent); color: #1a1206; border: none;
+        border-radius: 4px; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    }
+    .gm-login-box button:hover { background: var(--gm-accent-dark); }
+    .gm-login-box button:disabled { opacity: 0.5; cursor: default; }
+    .gm-login-error {
+        color: var(--gm-danger); text-align: center; margin-top: 0.9rem; font-size: 0.82rem; min-height: 1.2rem;
+    }
+</style>
+</head>
+<body>
+<div class="gm-login-box">
+    <h1>GM Control Panel</h1>
+    <p class="hint">Run <code>/gmpanel</code> in-game as a GM, then paste the one-time link or token it gives you below.</p>
+    <form id="gmLoginForm">
+        <label for="gmTokenInput">Login link or token</label>
+        <input type="text" id="gmTokenInput" name="token" autocomplete="off" autofocus
+               placeholder="https://.../?token=... or the raw token">
+        <button type="submit" id="gmLoginSubmit">Open Panel</button>
+    </form>
+    <div class="gm-login-error" id="gmLoginError"></div>
+</div>
+<script>
+(function () {
+    function extractToken(raw) {
+        raw = (raw || '').trim();
+        if (!raw) return '';
+        try {
+            if (raw.indexOf('://') !== -1) {
+                var url = new URL(raw);
+                var fromQuery = url.searchParams.get('token');
+                if (fromQuery) return fromQuery;
+            }
+        } catch (e) { /* not a URL, fall through */ }
+        var match = raw.match(/token=([^&\s]+)/);
+        if (match) {
+            try { return decodeURIComponent(match[1]); } catch (e) { return match[1]; }
+        }
+        return raw;
+    }
+
+    var form = document.getElementById('gmLoginForm');
+    var input = document.getElementById('gmTokenInput');
+    var errorEl = document.getElementById('gmLoginError');
+    var submitBtn = document.getElementById('gmLoginSubmit');
+
+    async function submitToken(rawValue) {
+        var token = extractToken(rawValue);
+        if (!token) {
+            errorEl.textContent = 'Paste your one-time GM panel link or token first.';
+            return;
+        }
+        submitBtn.disabled = true;
+        errorEl.textContent = '';
+        try {
+            var resp = await fetch('/api/gm/session/exchange', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ token: token }),
+            });
+            var data = await resp.json();
+            if (resp.ok && data.ok) {
+                window.location.href = '/';
+                return;
+            }
+            errorEl.textContent = (data && data.error) || 'That link has expired or was already used. Run /gmpanel again in-game.';
+        } catch (err) {
+            errorEl.textContent = 'Request failed: ' + err.message;
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitToken(input.value);
+    });
+
+    var params = new URLSearchParams(window.location.search);
+    var prefill = params.get('token');
+    if (prefill) {
+        input.value = prefill;
+        submitToken(prefill);
+    }
+})();
+</script>
+</body>
+</html>

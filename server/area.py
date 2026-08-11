@@ -709,6 +709,9 @@ class Area:
             return
         database.log_area("area.join", client, self)
         self.update_client(client)
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_client_present(client, self)
 
     def update_client(self, client):
         """Update the client with the relevant information about the area. Does not care if the client loaded in yet or not."""
@@ -833,6 +836,10 @@ class Area:
         # Commented out due to potentially causing clientside lag...
         # self.send_command('CharsCheck',
         #                     *client.get_available_char_list())
+
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_client_absent(client, self)
 
     def unlock(self):
         """Mark the area as unlocked."""
@@ -1823,6 +1830,9 @@ class Area:
         self.background_suffix = bg_suffix
         for client in self.clients:
             client.send_command("BN", self.background, client.pos, self.overlay, mode)
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_area_background_changed(self)
 
     def change_background(self, bg, overlay="", mode=1):
         """
@@ -1881,6 +1891,10 @@ class Area:
 
         for client in self.clients:
             client.send_command("BN", client.area.background, client.pos, self.overlay, mode)
+
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_area_background_changed(self)
 
     def change_status(self, value):
         """
@@ -1996,6 +2010,10 @@ class Area:
 
         self.broadcast_ooc(f"{client.showname} [{client.id}] is CM in this area now.")
 
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_area_cm_roster_changed(self)
+
     def remove_owner(self, client, dc=False):
         """
         Remove a CM from the area.
@@ -2030,6 +2048,10 @@ class Area:
             self.update_judge_buttons(client)
 
         self.broadcast_ooc(f"{client.showname} [{client.id}] is no longer CM in this area.")
+
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is not None:
+            bridge.on_area_cm_roster_changed(self)
 
     def broadcast_area_list(self, client=None, refresh=False):
         """
