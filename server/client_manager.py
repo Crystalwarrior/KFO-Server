@@ -4,6 +4,7 @@ import time
 import math
 import os
 import arrow
+import asyncio
 from heapq import heappop, heappush
 
 
@@ -55,6 +56,14 @@ class ClientManager:
 
             self.first_joined = True
             self.joined = False
+
+            # Reconnect/ghost state. A "ghost" is a client whose transport
+            # dropped but whose session is kept alive for a grace period so a
+            # reconnecting client can resume it.
+            self.is_ghost = False
+            self.ghost_since = 0
+            self.reconnect_grace_timer = None
+            self.protocol = None
 
             # Pairing character ID
             self.charid_pair = -1
@@ -210,6 +219,10 @@ class ClientManager:
             Send a raw packet over TCP.
             :param msg: string to send
             """
+            # Ghost clients have a dead transport; drop anything we'd send them
+            # while they wait for a reconnect to resume their session.
+            if self.is_ghost:
+                return
             self.transport.write(msg.encode("utf-8"))
 
         def send_command(self, command, *args):
@@ -449,6 +462,138 @@ class ClientManager:
         def disconnect(self):
             """Disconnect the client gracefully."""
             self.transport.close()
+
+        def mark_ghost(self, grace_time=None):
+            """Keep the client's session alive as a ghost for a grace period.
+
+            The character stays in its area but any outgoing packets are
+            suppressed. If a client with the same (ipid, hdid) reconnects
+            within the grace window it will resume this session; otherwise the
+            client is cleaned up normally once the timer expires.
+
+            :param grace_time: grace period in seconds (defaults to the
+                configured ``reconnect_grace_time``)
+            """
+            if self.is_ghost or self.char_id is None or not self.joined:
+                self._finalize_ghost()
+                return
+            if grace_time is None:
+                grace_time = self.server.config.get("reconnect_grace_time", 20)
+            self.is_ghost = True
+            self.ghost_since = time.time()
+            loop = asyncio.get_running_loop()
+            self.reconnect_grace_timer = loop.call_later(
+                grace_time, self._finalize_ghost
+            )
+            self.area.broadcast_ooc(
+                f"[{self.id}] {self.showname} has lost connection, waiting for them to reconnect..."
+            )
+
+        def cancel_grace_timer(self):
+            """Cancel the pending ghost cleanup timer."""
+            if self.reconnect_grace_timer is not None:
+                self.reconnect_grace_timer.cancel()
+                self.reconnect_grace_timer = None
+
+        def _finalize_ghost(self):
+            """Clean up a ghost whose grace period has expired (or that never
+            qualified for one). Removes it from the server like a normal
+            disconnection."""
+            self.cancel_grace_timer()
+            if self.is_ghost:
+                self.is_ghost = False
+                self.area.broadcast_ooc(
+                    f"[{self.id}] {self.showname} did not reconnect, and has "
+                    "thus been disconnected."
+                )
+            self.server.remove_client(self)
+
+        def resume_from_ghost(self, protocol, transport, hdid):
+            """Hand a reconnecting client back a ghost's live session state.
+
+            Reuses this client object (preserving id, area, char, evidence,
+            keys, owner status, battle state, etc.), points it at the new
+            transport/protocol, and pushes the current session state to the
+            client.
+
+            :param protocol: the new AOProtocol instance
+            :param transport: the new transport
+            :param hdid: the client's HDID (already set on the ghost)
+            """
+            self.cancel_grace_timer()
+            self.is_ghost = False
+            self.ghost_since = 0
+            self.protocol = protocol
+            self.set_transport(transport)
+            protocol.client = self
+            if hdid:
+                self.hdid = hdid
+            self.resync_session()
+
+        def set_transport(self, transport):
+            """Replace the client's transport (used on reconnect)."""
+            self.transport = transport
+
+        def resync_session(self):
+            """Re-push the current session state to a reconnected client.
+
+            Called after resume_from_ghost. The client has already been
+            through its handshake, so this pushes the full area/session state
+            without re-running the join handshake or changing the character.
+            """
+            area = self.area
+
+            # Re-select our character so the client returns to the courtroom
+            # view and refreshes its UI for the restored character. (PV, not
+            # char_select(), because we must not reset char_id here.)
+            self.send_command("PV", self.id, "CID", self.char_id)
+
+            area.update_judge_buttons(self)
+            # Def/Pro HP bars
+            self.send_command("HP", 1, area.hp_def)
+            self.send_command("HP", 2, area.hp_pro)
+            # Background / pos / overlay (immediate mode)
+            self.send_command(
+                "BN", area.background, self.pos, area.overlay, 1
+            )
+            if len(area.pos_lock) > 0:
+                self.send_command("SD", "*".join(area.pos_lock))
+            # Evidence and inventory
+            self.update_evidence_list()
+            # Timers
+            area.update_timers(self, running_only=True)
+            # Ambience + current music. Ambience is handled by
+            # play_client_ambience; music follows the same autoplay rule as a
+            # fresh area join (update_client), so we don't replay a song the
+            # client is already set to.
+            area.play_client_ambience(self)
+            if area.music_autoplay and area.music != self.playing_audio[0]:
+                self.send_command(
+                    "MC", area.music, -1, "", area.music_looping, 0,
+                    area.music_effects,
+                )
+            # Subtheme + player list + area description
+            area.area_manager.update_subtheme(self)
+            if not self.hidden and not self.sneaking:
+                area.broadcast_player_list()
+            else:
+                area.broadcast_player_list_to_target(self)
+            area.broadcast_area_desc_to_target(self)
+            # Current area, its evidence, HP bars and judge from ARUP
+            area.broadcast_area_list(self)
+            # Refresh the available A/M lists (these go through FA/FM so the
+            # client processes them even when it's already loaded)
+            self.local_area_list = self.get_area_list(
+                self.is_mod or self in area.owners,
+                self.is_mod or self in area.owners,
+            )
+            self.reload_area_list(self.local_area_list)
+            self.reload_music_list(self.construct_music_list())
+            self.area.area_manager.send_arup_players([self])
+            self.area.area_manager.send_arup_status([self])
+            self.area.area_manager.send_arup_cms([self])
+            self.area.area_manager.send_arup_lock([self])
+            self.send_player_count()
 
         def record_latest_area(self):
             """Record the client character's latest area if not in lobby, if not spectator and not GM/mod."""
@@ -2438,6 +2583,65 @@ class ClientManager:
                         ],
                     ],
                 )
+
+    def find_ghost(self, client):
+        """
+        Find a ghost client that a given client should be resumed from.
+
+        A matching ghost must share the same IPID and HDID (our identity for
+        resumption), must actually be in ghost state and must have finished
+        choosing a character.
+        :param client: client looking to resume
+        :returns: matching ghost client, or None
+        """
+        if client.hdid == "":
+            return None
+        for c in self.clients:
+            if (
+                c is not client
+                and c.is_ghost
+                and c.ipid == client.ipid
+                and c.hdid != ""
+                and c.hdid == client.hdid
+                and c.char_id is not None
+            ):
+                return c
+        return None
+
+    def try_resume(self, client, protocol, hdid):
+        """
+        Attempt to resume a ghost session for a freshly-connected client.
+
+        If a matching ghost is found, the fresh client object is discarded and
+        the ghost's live session is handed over to the new connection.
+        :param client: the brand new client object (not yet joined)
+        :param protocol: the AOProtocol instance handling this connection
+        :param hdid: the client's hardware ID
+        :returns: the resumed client, or None if there was nothing to resume
+        """
+        ghost = self.find_ghost(client)
+        if ghost is None:
+            return None
+        # Discard the fresh client and free its assigned ID / slot so the
+        # manager's counts stay accurate, then hand the ghost session over to
+        # the new connection.
+        self._discard_new_client(client)
+        ghost.resume_from_ghost(protocol, client.transport, hdid)
+        return ghost
+
+    def _discard_new_client(self, client):
+        """
+        Remove a fresh, never-joined client (the stand-in created before a
+        ghost session is resumed) so its ID/slot is returned.
+        """
+        heappush(self.cur_id, client.id)
+        temp_ipid = client.ipid
+        for c in self.server.client_manager.clients:
+            if c.ipid == temp_ipid:
+                c.clientscon -= 1
+        if client in client.area.clients:
+            client.area.clients.discard(client)
+        self.clients.discard(client)
 
     def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
         """
