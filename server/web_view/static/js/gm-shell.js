@@ -80,6 +80,15 @@ class GMPanelShell {
         });
     }
 
+    /** The Admin tab (log viewer + admin console) is only for admin-role
+     * sessions. Hide it for everyone else -- live GMs and remote GMs. */
+    _hideAdminTab() {
+        const nav = this._navEl.querySelector('.gm-tab[data-tab="admin"]');
+        if (nav) nav.remove();
+        const panel = this.root.querySelector('#tab-admin');
+        if (panel) panel.remove();
+        this.tabs.delete('admin');
+    }
     _setIdentity(gm) {
         this.gmIdentity = gm || null;
         this._renderIdentity();
