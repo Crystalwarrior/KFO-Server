@@ -720,7 +720,7 @@ class AreasGraphTab extends TabBase {
             </div>
 
             <div class="gm-inspector-section">
-                <label>Background (this area only)</label>
+                <label>Background</label>
                 <div class="gm-inline-form">
                     <input type="text" id="inspectorBgInput" value="${esc(area.background || '')}" placeholder="background name">
                     <input type="text" id="inspectorBgSuffixInput" value="${esc(area.background_suffix || '')}" placeholder="suffix">
