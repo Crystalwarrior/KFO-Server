@@ -550,13 +550,14 @@ class Area:
         if "links" in area and len(area["links"]) > 0:
             self.links.clear()
             for key, value in area["links"].items():
-                locked, hidden, target_pos, can_peek, evidence, password = (
+                locked, hidden, target_pos, can_peek, evidence, password, seethrough = (
                     False,
                     False,
                     "",
                     True,
                     [],
                     "",
+                    False,
                 )
                 if "locked" in value:
                     locked = value["locked"]
@@ -570,7 +571,9 @@ class Area:
                     evidence = value["evidence"]
                 if "password" in value:
                     password = value["password"]
-                self.link(key, locked, hidden, target_pos, can_peek, evidence, password)
+                if "seethrough" in value:
+                    seethrough = value["seethrough"]
+                self.link(key, locked, hidden, target_pos, can_peek, evidence, password, seethrough)
 
         # Update the clients in that area
         if self.dark:
@@ -872,6 +875,7 @@ class Area:
         can_peek=True,
         evidence=[],
         password="",
+        seethrough=False,
     ):
         """
         Sets up a one-way connection between this area and targeted area.
@@ -883,6 +887,7 @@ class Area:
         :param can_peek: can you peek through this path?
         :param evidence: a list of evidence from which this link will be accessible when you hide in it
         :param password: the password you need to input to pass through this link
+        :param seethrough: do clients in this area automatically see the target area's presence and passing messages?
 
         """
         link = {
@@ -892,9 +897,39 @@ class Area:
             "can_peek": can_peek,
             "evidence": evidence,
             "password": password,
+            "seethrough": seethrough,
         }
         self.links[str(target)] = link
         return link
+
+    def send_seethrough_presence(self, client):
+        """
+        Send `client` an automatic presence peek for every area its
+        see-through links point to. Runs when the client arrives in this area;
+        shows who is in the target areas (presence only, no IC relay).
+        """
+        if client.blinded:
+            return
+        for target_id, link in self.links.items():
+            if not link.get("seethrough", False):
+                continue
+            try:
+                target = self.area_manager.get_area_by_id(int(target_id))
+            except (ValueError, AreaError):
+                continue
+            if target == self or target.dark or not target.can_getarea:
+                continue
+            present = sorted(
+                (c.showname for c in target.clients if not c.hidden and c not in target.owners and not c.is_mod),
+                key=lambda s: s.lower(),
+            )
+            if len(present) == 0:
+                presence = "There's nobody."
+            elif len(present) == 1:
+                presence = f"There's {present[0]}."
+            else:
+                presence = "There's " + ", ".join(present[:-1]) + f" and {present[-1]}."
+            client.send_ooc(f"👁 [{target.id}] {target.name}: {presence}")
 
     def unlink(self, target):
         try:
@@ -957,7 +992,7 @@ class Area:
         for c in self.clients:
             c.send_timer_set_time(timer_id, new_time, start)
 
-    def broadcast_ooc(self, msg, exclude_list=[]):
+    def broadcast_ooc(self, msg, exclude_list=[], relay_seethrough=False, exclude_seethrough_area=None):
         """
         Broadcast an OOC message to all clients in the area.
         :param msg: message
@@ -967,6 +1002,23 @@ class Area:
                 continue
             c.send_command("CT", self.server.config["hostname"], msg, "1")
         self.send_owner_command("CT", f"[{self.id}]" + self.server.config["hostname"], msg, "1")
+        if relay_seethrough:
+            # Clients in areas with a see-through link to this area watch its
+            # passing (presence) messages without being in it. The area on the
+            # other side of the move is skipped: its users just saw the mover
+            # leave/arrive, so the relayed message is redundant for them.
+            for area in self.area_manager.areas:
+                if area is exclude_seethrough_area:
+                    continue
+                link = area.links.get(str(self.id))
+                if link is not None and link.get("seethrough", False):
+                    for c in area.clients:
+                        if c in exclude_list:
+                            continue
+                        # already remote listening, prevents spam
+                        if c in area.owners and (c.remote_listen == 3 or c.remote_listen == 2):
+                            continue
+                        c.send_command("CT", f"[{self.id}] {self.name}:", msg, "1")
         # Discord Bridgebot
         if (
             "bridgebot" in self.server.config
@@ -1040,6 +1092,8 @@ class Area:
         third_offset="",
         third_flip=0,
         video="",
+        relay_seethrough=False,
+        exclude_seethrough_area=None,
     ):
         """
         Send an IC message from a client to all applicable clients in the area.
@@ -1209,10 +1263,23 @@ class Area:
                 database.log_area("chat.ic", client, client.area, message=msg)
 
         if targets is None:
-            targets = self.clients
+            targets = set(self.clients)
             # add all targets of the broadcasted areas as well
             for area in self.broadcast_list:
-                targets = set(list(targets) + list(area.clients))
+                targets.update(area.clients)
+        if relay_seethrough:
+            # Clients in areas with a see-through link to this area watch its
+            # passing (presence) messages without being in it. The area on the
+            # other side of the move is skipped: its users just saw the mover
+            # leave/arrive, so the relayed message is redundant for them.
+            if not isinstance(targets, set):
+                targets = set(targets)
+            for area in self.area_manager.areas:
+                if area is exclude_seethrough_area:
+                    continue
+                link = area.links.get(str(self.id))
+                if link is not None and link.get("seethrough", False):
+                    targets.update(area.clients)
         for c in targets:
             # Blinded clients don't receive IC messages
             if c.blinded:

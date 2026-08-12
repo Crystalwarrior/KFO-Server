@@ -356,6 +356,7 @@ _LINK_FIELDS = {
     "hidden": lambda l: int(l.get("hidden", False)),
     "target_pos": lambda l: l.get("target_pos", ""),
     "can_peek": lambda l: int(l.get("can_peek", True)),
+    "seethrough": lambda l: int(l.get("seethrough", False)),
     "evidence": lambda l: " ".join(str(e) for e in l.get("evidence", ())),
     "password": lambda l: l.get("password", ""),
 }

@@ -71,7 +71,7 @@ Write <code>&lt;num&gt;</code>, <code>&lt;and&gt;</code>, <code>&lt;percent&gt;<
 <tr><td><code>afk[i].&lt;field&gt;</code></td><td>Same fields, only AFK-marked people</td></tr>
 <tr><td><code>timer[i].&lt;field&gt;</code></td><td><code>timer[0]</code> is hub-wide, 1-20 are the area's own (remaining_ms, static_ms, set, started)</td></tr>
 <tr><td><code>evidence[i].&lt;field&gt;</code></td><td>name, desc, image, pos, show_in_dark, hiding, can_hide_in, can_take, editable</td></tr>
-<tr><td><code>links[i].&lt;field&gt;</code></td><td>target, target_pos, evidence, password, locked, hidden, can_peek</td></tr>
+<tr><td><code>links[i].&lt;field&gt;</code></td><td>target, target_pos, evidence, password, locked, hidden, can_peek, seethrough</td></tr>
 <tr><td><code>area.&lt;field&gt;</code></td><td>Everything about the current area (name, background, locked, evidence_mod, hp_def, hp_pro, music, ...)</td></tr>
 <tr><td><code>hub.&lt;field&gt;</code></td><td>The hub (name, char_list_ref, move_delay, can_gm, ...)</td></tr>
 <tr><td><code>char[&lt;name&gt;].&lt;key&gt;</code></td><td>A character's saved Character Data (id or quoted folder name)</td></tr>

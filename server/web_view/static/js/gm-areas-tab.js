@@ -650,6 +650,7 @@ class AreasGraphTab extends TabBase {
                         <label><input type="checkbox" data-prop="lock" ${l.locked ? 'checked' : ''}> Locked</label>
                         <label><input type="checkbox" data-prop="hide" ${l.hidden ? 'checked' : ''}> Hidden</label>
                         <label><input type="checkbox" data-prop="peekable" ${peekable ? 'checked' : ''}> Peekable</label>
+                        <label><input type="checkbox" data-prop="seethrough" ${l.seethrough ? 'checked' : ''}> Seethrough</label>
                     </div>
                     <div class="gm-link-pos-row">
                         <label>Pos <input type="text" class="gm-link-pos-input" value="${esc(posVal)}" placeholder="(none)" title="Enter to apply; blank clears the pos"></label>

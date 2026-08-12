@@ -22,6 +22,8 @@ __all__ = [
     "ooc_cmd_link_pos",
     "ooc_cmd_link_peekable",
     "ooc_cmd_link_unpeekable",
+    "ooc_cmd_link_seethrough",
+    "ooc_cmd_link_unseethrough",
     "ooc_cmd_link_evidence",
     "ooc_cmd_unlink_evidence",
     "ooc_cmd_pw",
@@ -348,10 +350,14 @@ def ooc_cmd_links(client, arg):
         if value["password"] != "":
             locked = "🔑"
 
+        seethrough = ""
+        if value.get("seethrough", False) is True:
+            seethrough = "👁️"
+
         target_pos = value["target_pos"]
         if target_pos != "":
             target_pos = f", pos: {target_pos}"
-        links += f"\n!{key}{area_name}{locked}{hidden}{target_pos}"
+        links += f"\n!{key}{area_name}{locked}{hidden}{seethrough}{target_pos}"
 
     client.send_ooc(f"Current area links are: {links}")
 
@@ -662,6 +668,68 @@ def ooc_cmd_link_unpeekable(client, arg):
             links = ", ".join(str(link) for link in links)
             client.send_ooc(
                 f"Area {client.area.name} links {links} are no longer peekable."
+            )
+    except (ValueError, KeyError):
+        raise ArgumentError("Area ID must be a number or abbreviation.")
+    except (AreaError, ClientError):
+        raise
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_link_seethrough(client, arg):
+    """
+    Make the path(s) leading to target area(s) see-through. Clients in this
+    area automatically see the target's presence and passing messages.
+    Usage:  /link_seethrough <id(s)>
+    """
+    args = arg.split()
+    if len(args) <= 0:
+        raise ArgumentError("Invalid number of arguments. Use /link_seethrough <aid>")
+    try:
+        links = []
+        for aid in args:
+            try:
+                target_id = client.area.area_manager.get_area_by_abbreviation(
+                    aid).id
+            except Exception:
+                target_id = int(aid)
+
+            client.area.links[str(target_id)]["seethrough"] = True
+            links.append(target_id)
+        if len(links) > 0:
+            links = ", ".join(str(link) for link in links)
+            client.send_ooc(
+                f"Area {client.area.name} links {links} are now see-through.")
+    except (ValueError, KeyError):
+        raise ArgumentError("Area ID must be a number or abbreviation.")
+    except (AreaError, ClientError):
+        raise
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_link_unseethrough(client, arg):
+    """
+    Make the path(s) leading to target area(s) no longer see-through.
+    Usage:  /link_unseethrough <id(s)>
+    """
+    args = arg.split()
+    if len(args) <= 0:
+        raise ArgumentError("Invalid number of arguments. Use /link_unseethrough <aid>")
+    try:
+        links = []
+        for aid in args:
+            try:
+                target_id = client.area.area_manager.get_area_by_abbreviation(
+                    aid).id
+            except Exception:
+                target_id = int(aid)
+
+            client.area.links[str(target_id)]["seethrough"] = False
+            links.append(target_id)
+        if len(links) > 0:
+            links = ", ".join(str(link) for link in links)
+            client.send_ooc(
+                f"Area {client.area.name} links {links} are no longer see-through."
             )
     except (ValueError, KeyError):
         raise ArgumentError("Area ID must be a number or abbreviation.")

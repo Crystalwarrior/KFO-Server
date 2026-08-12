@@ -139,6 +139,7 @@ class AreaSerializer:
                 "locked": bool(link.get("locked", False)),
                 "hidden": bool(link.get("hidden", False)),
                 "can_peek": bool(link.get("can_peek", True)),
+                "seethrough": bool(link.get("seethrough", False)),
                 "has_password": bool(link.get("password", "")),
                 "target_pos": link.get("target_pos", ""),
                 "evidence": [int(e) for e in link.get("evidence", [])],
@@ -1731,6 +1732,7 @@ class AreaRoutes:
         "lock": ("link_lock", "link_unlock"),
         "hide": ("link_hide", "link_unhide"),
         "peekable": ("link_peekable", "link_unpeekable"),
+        "seethrough": ("link_seethrough", "link_unseethrough"),
     }
 
     def __init__(self, session_manager, server, config, bridge=None):
