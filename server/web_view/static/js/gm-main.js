@@ -17,6 +17,7 @@
         shell.registerTab('commands', new CommandsTab(shell, api, document.getElementById('tab-commands')));
         shell.registerTab('evidence', new EvidenceTab(shell, api, document.getElementById('tab-evidence'), shell.localContent));
         shell.registerTab('data', new GMDataTab(shell, api, document.getElementById('tab-data')));
+        shell.registerTab('admin', new AdminTab(shell, api, document.getElementById('tab-admin')));
 
         shell.start();
     }

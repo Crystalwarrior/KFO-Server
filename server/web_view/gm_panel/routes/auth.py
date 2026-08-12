@@ -50,6 +50,37 @@ class AuthRoutes:
         )
         return response
 
+    async def handle_login(self, request):
+        """Username/password login for remote admin / remote GM access."""
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "error": "invalid_request"}, status=400)
+
+        username = str(data.get("username", ""))
+        password = str(data.get("password", ""))
+        ip = request.remote
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            ip = forwarded.split(",")[0].strip() or ip
+
+        token, session, error = self._session_manager.login(username, password, ip)
+        if session is None:
+            status = {"invalid_credentials": 401, "rate_limited": 429, "login_disabled": 403}
+            return web.json_response(
+                {"ok": False, "error": error or "login_failed"},
+                status=status.get(error, 401),
+            )
+
+        response = web.json_response({"ok": True, "gm": session.summary()})
+        gm_cfg = request.app["config"]
+        has_ssl = bool(gm_cfg.get("ssl_cert") and gm_cfg.get("ssl_key"))
+        response.set_cookie(
+            "gm_session", token, httponly=True, samesite="Lax",
+            secure=has_ssl, max_age=self._session_manager.session_ttl,
+        )
+        return response
+
     async def handle_session_get(self, request):
         session = request["gm_session"]
         return web.json_response({"ok": True, "gm": session.summary()})

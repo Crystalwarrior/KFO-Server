@@ -53,6 +53,7 @@ class GMPanelShell {
             // handle_session_get returns {ok, gm: {...}} -- the GM identity
             // lives under `.gm`, not on the envelope itself.
             this._setIdentity(session.gm);
+            if (!session.gm || session.gm.role !== 'admin') this._hideAdminTab();
         } catch (e) {
             window.location.href = '/';
             return;

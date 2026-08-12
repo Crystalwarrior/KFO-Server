@@ -29,6 +29,7 @@ from server.web_view.gm_panel.routes.clients import ClientRoutes
 from server.web_view.gm_panel.routes.commands import CommandRoutes
 from server.web_view.gm_panel.routes.evidence import EvidenceRoutes
 from server.web_view.gm_panel.routes.hub_data import HubDataRoutes
+from server.web_view.gm_panel.routes.moderator import ModeratorRoutes
 
 logger = logging.getLogger("gm_panel")
 
@@ -73,6 +74,7 @@ class GMPanelApp:
         hub_data_routes = HubDataRoutes(self._session_manager, self._server, self.bridge)
         evidence_routes = EvidenceRoutes(self._session_manager, self._server)
         asset_routes = AssetRoutes(self._server, self._config)
+        moderator_routes = ModeratorRoutes(self._session_manager, self._server)
 
         require = self._session_manager.require
 
@@ -86,6 +88,22 @@ class GMPanelApp:
         app.router.add_get("/api/gm/session", require(auth_routes.handle_session_get))
         app.router.add_post("/api/gm/logout", require(auth_routes.handle_logout))
         app.router.add_get("/ws/gm/live", require(auth_routes.handle_ws_live))
+
+        # Password login (NOT behind require -- this is what establishes the session).
+        app.router.add_post("/api/gm/login", auth_routes.handle_login)
+
+        # Admin-only moderator routes (log viewer + console + monitors + live WS).
+        app.router.add_get("/api/gm/logs/hubs", require(moderator_routes.handle_api_hubs))
+        app.router.add_get("/api/gm/logs/areas", require(moderator_routes.handle_api_areas))
+        app.router.add_get("/api/gm/logs/event_types", require(moderator_routes.handle_api_event_types))
+        app.router.add_get("/api/gm/logs/area_events", require(moderator_routes.handle_api_area_events))
+        app.router.add_get("/api/gm/logs/connect_events", require(moderator_routes.handle_api_connect_events))
+        app.router.add_get("/api/gm/logs/misc_events", require(moderator_routes.handle_api_misc_events))
+        app.router.add_get("/api/gm/admin/players", require(moderator_routes.handle_api_players))
+        app.router.add_post("/api/gm/admin/command", require(moderator_routes.handle_api_command))
+        app.router.add_post("/api/gm/admin/ooc_monitor", require(moderator_routes.handle_api_ooc_monitor))
+        app.router.add_post("/api/gm/admin/ic_monitor", require(moderator_routes.handle_api_ic_monitor))
+        app.router.add_get("/ws/gm/admin_live", require(moderator_routes.handle_admin_ws_live))
 
         # Areas tab -- literal/collection routes ("hub/areas/...") registered
         # separately from the per-area "{area_id}/..." routes.

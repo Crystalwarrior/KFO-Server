@@ -91,6 +91,30 @@ class ApiClient {
     getSession() { return this.get('/api/gm/session'); }
     logout() { return this.post('/api/gm/logout'); }
 
+    // --- Admin / moderator (log viewer + console + monitors) ----------
+    // These endpoints are only reachable by admin-role sessions; gm/live
+    // sessions get a 403 from the server.
+    login(username, password) { return this.post('/api/gm/login', { username, password }); }
+    getLogHubs() { return this.get('/api/gm/logs/hubs'); }
+    getLogEventTypes(category) { return this.get('/api/gm/logs/event_types?category=' + encodeURIComponent(category || 'area')); }
+    getAreaEvents(params) { return this.get('/api/gm/logs/area_events?' + this._qs(params)); }
+    getConnectEvents(params) { return this.get('/api/gm/logs/connect_events?' + this._qs(params)); }
+    getMiscEvents(params) { return this.get('/api/gm/logs/misc_events?' + this._qs(params)); }
+    getPlayers() { return this.get('/api/gm/admin/players'); }
+    runAdminCommand(cmd, arg) { return this.post('/api/gm/admin/command', { cmd, arg }); }
+    setOocMonitor(enabled) { return this.post('/api/gm/admin/ooc_monitor', { enabled }); }
+    setIcMonitor(enabled) { return this.post('/api/gm/admin/ic_monitor', { enabled }); }
+
+    _qs(params) {
+        const q = [];
+        for (const k of Object.keys(params || {})) {
+            const v = params[k];
+            if (v === undefined || v === null || v === '') continue;
+            q.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+        }
+        return q.join('&');
+    }
+
     // --- Areas tab (§3.2) ------------------------------------------------
 
     getAreas() { return this.get('/api/gm/areas'); }

@@ -18,6 +18,7 @@ from server import commands
 from server.exceptions import ClientError, ArgumentError, AreaError, ServerError
 
 from server.web_view.gm_panel.commands_meta import CommandOutputScrubber
+from server.remote_client import RemoteClient
 
 
 class SessionInvalid(Exception):
@@ -65,6 +66,21 @@ class GMSession:
     def created_at(self):
         return self._created_at
 
+    @property
+    def role(self):
+        """The session access tier: "gm" (live client) or a remote role."""
+        return "gm"
+
+    @property
+    def is_admin(self):
+        """True only for password-login sessions of role == "admin"."""
+        return False
+
+    @property
+    def user(self):
+        """The login username (None for live-client /gmpanel sessions)."""
+        return None
+
     def is_valid(self):
         """
         Re-check GM privilege against the *current* live state. Never cached --
@@ -103,6 +119,7 @@ class GMSession:
             "hub_name": hub.name,
             "area_id": area.id,
             "is_mod": client.is_mod,
+            "role": self.role,
         }
 
     def execute_command(self, cmd, arg):
@@ -313,6 +330,15 @@ class GMSession:
     def remove_ws(self, ws):
         self._ws_connections.discard(ws)
 
+    def push(self, frame):
+        """Fan out an already-shaped frame (a dict) to every socket this session owns."""
+        loop = asyncio.get_event_loop()
+        for ws in list(self._ws_connections):
+            if ws.closed:
+                self._ws_connections.discard(ws)
+                continue
+            loop.call_soon(asyncio.ensure_future, ws.send_json(frame))
+
     def push_event(self, type_, data):
         """Fan out a server->client event to every WebSocket this session owns."""
         payload = {"type": type_, "data": data}
@@ -332,6 +358,111 @@ class GMSession:
         self._ws_connections.clear()
 
 
+class RemoteSession(GMSession):
+    """A password-login session backed by a synthetic ``RemoteClient``.
+
+    Shares all of ``GMSession``'s command/evidence/WS machinery (``execute_command``,
+    ``execute_command_in_area``, the evidence ``*_direct`` methods, WS plumbing) --
+    it only re-binds validation and identity to the synthetic client, which is not a
+    live player and never has a ``_gm_bind_key``.
+    """
+
+    def __init__(self, server, remote_client, role, user, ttl):
+        super().__init__(server, remote_client, None, ttl)
+        self._role = role
+        self._user = user
+        self._ooc_listener = None
+        self._ic_listener = None
+
+    @property
+    def role(self):
+        return self._role
+
+    @property
+    def is_admin(self):
+        return self._role == "admin"
+
+    @property
+    def user(self):
+        return self._user
+
+    def is_valid(self):
+        """The remote client stays valid while it is still joined to the server."""
+        client = self._client
+        if client not in self._server.client_manager.clients:
+            return False
+        if client.area is None:
+            return False
+        return True
+
+    def summary(self):
+        client = self._client
+        area = client.area
+        hub = area.area_manager if area is not None else None
+        return {
+            "client_id": getattr(client, "id", -1),
+            "name": getattr(client, "name", ""),
+            "showname": getattr(client, "showname", ""),
+            "hub_id": hub.id if hub is not None else -1,
+            "hub_name": hub.name if hub is not None else "?",
+            "area_id": area.id if area is not None else -1,
+            "is_mod": getattr(client, "is_mod", False),
+            "role": self._role,
+            "user": self._user,
+        }
+
+    def set_monitor(self, kind, enabled):
+        """Enable/disable forwarding of OOC or IC frames to this session's sockets.
+
+        ``kind`` is ``"ooc"`` or ``"ic"``. Enabling joins the remote client to its
+        area (so it receives OOC/IC) and installs a listener that forwards only the
+        matching frame type; disabling removes it and leaves the area once neither
+        monitor is active.
+        """
+        if kind not in ("ooc", "ic"):
+            return
+        attr = "_" + kind + "_listener"
+        listener = getattr(self, attr)
+        if enabled:
+            if listener is None:
+                def forward(entry):
+                    if entry.get("type") == kind:
+                        self.push(entry)
+
+                listener = forward
+                setattr(self, attr, listener)
+                self._client.join_area()
+                self._client.add_listener(listener)
+        else:
+            if listener is not None:
+                self._client.remove_listener(listener)
+                setattr(self, attr, None)
+                if self._ooc_listener is None and self._ic_listener is None:
+                    self._client.leave_area()
+
+    def teardown(self):
+        """Detach the synthetic client: leave its area, drop listeners, clear output."""
+        client = self._client
+        for listener in (self._ooc_listener, self._ic_listener):
+            if listener is not None:
+                try:
+                    client.remove_listener(listener)
+                except Exception:
+                    pass
+        try:
+            client.leave_area()
+        except Exception:
+            pass
+        try:
+            client.clear()
+        except Exception:
+            pass
+        try:
+            client._listeners.clear()
+        except Exception:
+            pass
+
+
 class GMSessionManager:
     """
     Mints one-time login tokens, exchanges them for bound `GMSession`s, looks
@@ -348,6 +479,16 @@ class GMSessionManager:
         self._session_ttl = int(config.get("session_ttl_seconds", 28800))
         self._login_token_ttl = int(config.get("login_token_ttl_seconds", 60))
         self._sweep_handle = None
+        self._remote_sessions = {}
+
+        rl = config.get("rate_limit", {}) or {}
+        self._rate_limit = {
+            "max_attempts": int(rl.get("max_attempts", 10)),
+            "window_seconds": int(rl.get("window_seconds", 300)),
+            "lockout_seconds": int(rl.get("lockout_seconds", 300)),
+        }
+        self._users = self._parse_users(config.get("users", {}) or {})
+        self._login_attempts = {}
 
     @property
     def session_ttl(self):
@@ -356,6 +497,81 @@ class GMSessionManager:
     @property
     def login_token_ttl(self):
         return self._login_token_ttl
+
+    @staticmethod
+    def _parse_users(raw_users):
+        """Normalize ``gm_panel.users`` into ``{username: {password, role}}``."""
+        users = {}
+        for username, entry in (raw_users or {}).items():
+            if isinstance(entry, dict):
+                password = str(entry.get("password", ""))
+                role = str(entry.get("role", "admin")).lower()
+            else:
+                password = str(entry)
+                role = "admin"
+            if role not in ("admin", "gm"):
+                role = "admin"
+            users[str(username)] = {"password": password, "role": role}
+        return users
+
+    def _is_rate_limited(self, ip):
+        state = self._login_attempts.get(ip)
+        if state is None:
+            return False
+        if time.time() < state.get("lockout_until", 0):
+            return True
+        self._login_attempts.pop(ip, None)
+        return False
+
+    def _record_failed_login(self, ip):
+        now = time.time()
+        state = self._login_attempts.get(ip)
+        if state is None:
+            state = {"failures": [], "lockout_until": 0}
+            self._login_attempts[ip] = state
+        window = self._rate_limit["window_seconds"]
+        state["failures"] = [t for t in state["failures"] if now - t < window]
+        state["failures"].append(now)
+        if len(state["failures"]) >= self._rate_limit["max_attempts"]:
+            state["lockout_until"] = now + self._rate_limit["lockout_seconds"]
+            state["failures"] = []
+
+    def _clear_login_attempts(self, ip):
+        self._login_attempts.pop(ip, None)
+
+    def login(self, username, password, ip):
+        """Verify a username/password and mint a remote session.
+
+        Returns ``(token, session, error)`` -- exactly one of ``token``/``error``
+        is set. The synthetic ``RemoteClient`` is built per role:
+
+        * ``admin`` -> ``is_mod=True`` (full server scope + admin log viewer)
+        * ``gm``    -> ``is_mod=True, is_gm=True`` (the GM tabs, no log viewer)
+        """
+        ip = ip or "unknown"
+        if self._is_rate_limited(ip):
+            return None, None, "rate_limited"
+        if not self._users:
+            return None, None, "login_disabled"
+
+        entry = self._users.get(str(username or ""))
+        if entry is None or entry["password"] != str(password or ""):
+            self._record_failed_login(ip)
+            return None, None, "invalid_credentials"
+
+        self._clear_login_attempts(ip)
+        role = entry["role"]
+        if role == "admin":
+            remote = RemoteClient(self._server, is_mod=True, name="[ADMIN:%s]" % username)
+        else:
+            remote = RemoteClient(
+                self._server, is_mod=True, is_gm=True, name="[GM:%s]" % username
+            )
+        remote.join_area()
+        session = RemoteSession(self._server, remote, role, str(username), self._session_ttl)
+        token = secrets.token_urlsafe(32)
+        self._remote_sessions[token] = session
+        return token, session, None
 
     def start_sweep(self):
         """
@@ -376,6 +592,16 @@ class GMSessionManager:
             session = self._sessions.pop(t, None)
             if session is not None:
                 session.expire("expired")
+
+        remote_expired = [
+            t for t, s in self._remote_sessions.items()
+            if not s.is_valid() or (now - s.created_at > self._session_ttl)
+        ]
+        for t in remote_expired:
+            session = self._remote_sessions.pop(t, None)
+            if session is not None:
+                session.expire("expired")
+                session.teardown()
 
         stale_pending = [t for t, p in self._pending_tokens.items() if now > p.expires_at]
         for t in stale_pending:
@@ -420,9 +646,12 @@ class GMSessionManager:
         """Look up and re-validate a session by its cookie token."""
         session = self._sessions.get(token)
         if session is None:
+            session = self._remote_sessions.get(token)
+        if session is None:
             return None
         if not session.is_valid() or (time.time() - session.created_at > self._session_ttl):
             self._sessions.pop(token, None)
+            self._remote_sessions.pop(token, None)
             session.expire("expired")
             return None
         return session
@@ -435,7 +664,12 @@ class GMSessionManager:
         for token, s in list(self._sessions.items()):
             if s is session:
                 del self._sessions[token]
-                break
+                return
+        for token, s in list(self._remote_sessions.items()):
+            if s is session:
+                del self._remote_sessions[token]
+                session.teardown()
+                return
 
     def invalidate_for_client(self, client):
         """
@@ -450,7 +684,7 @@ class GMSessionManager:
 
     def all_sessions(self):
         """Live sessions, for `GMPanelBridge` to scope broadcasts against."""
-        return list(self._sessions.values())
+        return list(self._sessions.values()) + list(self._remote_sessions.values())
 
     def find_sessions_for_client(self, client):
         """Sessions specifically bound to `client` (used for `hub_switched`)."""
