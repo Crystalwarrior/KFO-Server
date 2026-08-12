@@ -63,6 +63,24 @@ class GMPanelApp:
 
         logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
+        # Web scanners / port-probers hitting the panel's plain-HTTP port with a
+        # TLS handshake make aiohttp log a noisy "Error handling request"
+        # BadStatusLine traceback -- it's harmless probes. Silence only that
+        # case and keep every real error visible. aiohttp logs the generic
+        # message "Error handling request" and attaches the real error via
+        # exc_info, so the filter must inspect the exception, not just the msg.
+        class _TlsProbeFilter(logging.Filter):
+            def filter(self, record):
+                message = record.getMessage()
+                if "BadStatusLine" in message or "Invalid method encountered" in message:
+                    return False
+                if record.exc_info and record.exc_info[1] is not None:
+                    if type(record.exc_info[1]).__name__ == "BadStatusLine":
+                        return False
+                return True
+
+        logging.getLogger("aiohttp.server").addFilter(_TlsProbeFilter())
+
         auth_routes = AuthRoutes(
             self._session_manager, self._server, self.bridge,
             self._gm_html, self._gm_login_html,
