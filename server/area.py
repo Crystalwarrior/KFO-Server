@@ -6,6 +6,7 @@ from server.constants import MusicEffect, ReportCardReason, derelative, censor
 from server.timer import Timer
 from server.script_runner import ScriptRunner, parse_demo_description
 from server.remote_client import RemoteClient
+from server.schema.link_props import LINK_PROPERTY_SCHEMA
 
 from collections import OrderedDict
 
@@ -550,30 +551,15 @@ class Area:
         if "links" in area and len(area["links"]) > 0:
             self.links.clear()
             for key, value in area["links"].items():
-                locked, hidden, target_pos, can_peek, evidence, password, seethrough = (
-                    False,
-                    False,
-                    "",
-                    True,
-                    [],
-                    "",
-                    False,
-                )
-                if "locked" in value:
-                    locked = value["locked"]
-                if "hidden" in value:
-                    hidden = value["hidden"]
-                if "target_pos" in value:
-                    target_pos = value["target_pos"]
-                if "can_peek" in value:
-                    can_peek = value["can_peek"]
-                if "evidence" in value:
-                    evidence = value["evidence"]
-                if "password" in value:
-                    password = value["password"]
-                if "seethrough" in value:
-                    seethrough = value["seethrough"]
-                self.link(key, locked, hidden, target_pos, can_peek, evidence, password, seethrough)
+                # Only forward the fields the schema declares, so a new link
+                # property is read here automatically and any unknown/legacy
+                # YAML key is ignored (matching the old per-field behaviour).
+                kwargs = {
+                    prop.name: value[prop.name]
+                    for prop in LINK_PROPERTY_SCHEMA
+                    if prop.name in value
+                }
+                self.link(key, **kwargs)
 
         # Update the clients in that area
         if self.dark:
@@ -866,39 +852,25 @@ class Area:
         self.invite_list.clear()
         self.area_manager.send_arup_lock()
 
-    def link(
-        self,
-        target,
-        locked=False,
-        hidden=False,
-        target_pos="",
-        can_peek=True,
-        evidence=[],
-        password="",
-        seethrough=False,
-    ):
+    def link(self, target, **kwargs):
         """
         Sets up a one-way connection between this area and targeted area.
         Returns the link dictionary.
-        :param target: the targeted Area ID to connect
-        :param locked: is the link unusable?
-        :param hidden: is the link invisible?
-        :param target_pos: which position should we end up in when we come through
-        :param can_peek: can you peek through this path?
-        :param evidence: a list of evidence from which this link will be accessible when you hide in it
-        :param password: the password you need to input to pass through this link
-        :param seethrough: do clients in this area automatically see the target area's presence and passing messages?
 
+        The link dict's field names and defaults are declared once in
+        `server/schema/link_props.py` (the single source of truth); each
+        keyword argument overrides the matching field's default, and a new
+        link property added to that schema is included here automatically.
+
+        :param target: the targeted Area ID to connect
+        :param kwargs: per-property overrides (see LINK_PROPERTY_SCHEMA names)
         """
-        link = {
-            "locked": locked,
-            "hidden": hidden,
-            "target_pos": target_pos,
-            "can_peek": can_peek,
-            "evidence": evidence,
-            "password": password,
-            "seethrough": seethrough,
-        }
+        link = {}
+        for prop in LINK_PROPERTY_SCHEMA:
+            default = prop.default
+            if isinstance(default, list):
+                default = list(default)
+            link[prop.name] = kwargs.get(prop.name, default)
         self.links[str(target)] = link
         return link
 

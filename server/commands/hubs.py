@@ -7,6 +7,7 @@ from server import database
 from server.constants import TargetType, derelative
 from server.exceptions import ClientError, ArgumentError, AreaError
 from server.constants import dezalgo
+from server.schema.area_fields import AREA_PREF_CM_ALLOWED
 
 from . import mod_only
 
@@ -478,33 +479,10 @@ def ooc_cmd_area_pref(client, arg):
     Leave on/true and off/false to toggle the pref.
     Usage:  /area_pref [pref] [on/true/off/false]
     """
-    cm_allowed = [
-        "showname_changes_allowed",
-        "shouts_allowed",
-        "jukebox",
-        "non_int_pres_only",
-        "blankposting_allowed",
-        "blankposting_forced",
-        "hide_clients",
-        "music_autoplay",
-        "replace_music",
-        "client_music",
-        "can_dj",
-        "music_locked",
-        "hidden",
-        "can_whisper",
-        "can_wtce",
-        "can_spectate",
-        "can_getarea",
-        "can_cross_swords",
-        "can_scrum_debate",
-        "can_panic_talk_action",
-        "bg_lock",
-        "force_sneak",
-        "present_reveals_evidence",
-        "ooc_actions_enabled",
-        "medieval_mode",
-    ]
+    # Single source of truth: `server/schema/area_fields.py`. The GM panel
+    # derives its "[gm]" badge from the exact same set, so the two can never
+    # drift apart.
+    cm_allowed = AREA_PREF_CM_ALLOWED
 
     if len(arg) == 0:
         msg = "Current preferences:"
