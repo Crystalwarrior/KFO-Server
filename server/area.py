@@ -712,7 +712,6 @@ class Area:
             return
         database.log_area("area.join", client, self)
         self.update_client(client)
-        self.send_seethrough_presence(client)
         bridge = getattr(self.server, "gm_panel_bridge", None)
         if bridge is not None:
             bridge.on_client_present(client, self)
@@ -993,7 +992,7 @@ class Area:
         for c in self.clients:
             c.send_timer_set_time(timer_id, new_time, start)
 
-    def broadcast_ooc(self, msg, exclude_list=[], relay_seethrough=False):
+    def broadcast_ooc(self, msg, exclude_list=[], relay_seethrough=False, exclude_seethrough_area=None):
         """
         Broadcast an OOC message to all clients in the area.
         :param msg: message
@@ -1005,14 +1004,21 @@ class Area:
         self.send_owner_command("CT", f"[{self.id}]" + self.server.config["hostname"], msg, "1")
         if relay_seethrough:
             # Clients in areas with a see-through link to this area watch its
-            # passing (presence) messages without being in it.
+            # passing (presence) messages without being in it. The area on the
+            # other side of the move is skipped: its users just saw the mover
+            # leave/arrive, so the relayed message is redundant for them.
             for area in self.area_manager.areas:
+                if area is exclude_seethrough_area:
+                    continue
                 link = area.links.get(str(self.id))
                 if link is not None and link.get("seethrough", False):
                     for c in area.clients:
                         if c in exclude_list:
                             continue
-                        c.send_command("CT", f"[{self.id}]" + self.server.config["hostname"], msg, "1")
+                        # already remote listening, prevents spam
+                        if c in area.owners and (c.remote_listen == 3 or c.remote_listen == 2):
+                            continue
+                        c.send_command("CT", f"[{self.id}] {self.name}:", msg, "1")
         # Discord Bridgebot
         if (
             "bridgebot" in self.server.config
@@ -1087,6 +1093,7 @@ class Area:
         third_flip=0,
         video="",
         relay_seethrough=False,
+        exclude_seethrough_area=None,
     ):
         """
         Send an IC message from a client to all applicable clients in the area.
@@ -1262,10 +1269,14 @@ class Area:
                 targets.update(area.clients)
         if relay_seethrough:
             # Clients in areas with a see-through link to this area watch its
-            # passing (presence) messages without being in it.
+            # passing (presence) messages without being in it. The area on the
+            # other side of the move is skipped: its users just saw the mover
+            # leave/arrive, so the relayed message is redundant for them.
             if not isinstance(targets, set):
                 targets = set(targets)
             for area in self.area_manager.areas:
+                if area is exclude_seethrough_area:
+                    continue
                 link = area.links.get(str(self.id))
                 if link is not None and link.get("seethrough", False):
                     targets.update(area.clients)

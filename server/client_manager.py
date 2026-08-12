@@ -1132,6 +1132,7 @@ class ClientManager:
                 except ClientError as ex:
                     msg += f'\n{ex}'
             self.send_ooc(msg)
+            self.area.send_seethrough_presence(self)
             
             # DRO Client exclusive
             self.area.broadcast_area_desc_to_target(self)
@@ -1334,6 +1335,7 @@ class ClientManager:
                                 msg=f'~~{"}}}"}[º{self.showname}º leaves to º{area.name}º.]',
                                 emote_mod=1,
                                 relay_seethrough=True,
+                                exclude_seethrough_area=self.area,
                             )
                         exclude_list = []
                         for c in old_area.clients:
@@ -1344,6 +1346,7 @@ class ClientManager:
                             f"[{self.id}] {self.showname} leaves to [{self.area.id}] {self.area.name}.",
                             exclude_list,
                             relay_seethrough=True,
+                            exclude_seethrough_area=self.area,
                         )
                     else:
                         old_area.broadcast_ooc(
@@ -1370,12 +1373,14 @@ class ClientManager:
                     self.area.broadcast_ooc(
                         f"[{self.id}] {self.showname} enters from [{old_area.id}] {old_area.name}{desc}",
                         relay_seethrough=True,
+                        exclude_seethrough_area=old_area,
                     )
                     if self.area.area_manager.passing_msg is True:
                         self.area.send_ic(
                             msg=f'~~{"}}}"}[º{self.showname}º enters from º{old_area.name}º.]',
                             emote_mod=1,
                             relay_seethrough=True,
+                            exclude_seethrough_area=old_area,
                         )
                 else:
                     self.area.broadcast_ooc(
