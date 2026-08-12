@@ -44,8 +44,8 @@ class GMPanelApp:
     def __init__(self, server, config):
         self._server = server
         self._config = config
-        self._templates_dir = os.path.join(os.path.dirname(__file__), "templates")
-        self._static_dir = os.path.join(os.path.dirname(__file__), "static")
+        self._templates_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+        self._static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
         self._gm_html = None
         self._gm_login_html = None
         self._session_manager = GMSessionManager(server, config)
