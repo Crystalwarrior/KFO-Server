@@ -55,7 +55,14 @@ class GMPanelShell {
             this._setIdentity(session.gm);
             if (!session.gm || session.gm.role !== 'admin') this._hideAdminTab();
         } catch (e) {
-            window.location.href = '/';
+            // Only bounce back to the sign-in page when the session is genuinely
+            // gone (401). Any other failure (500, network hiccup) must NOT
+            // redirect, or the panel can enter a fast reload loop.
+            if (e && e.status === 401) {
+                window.location.href = '/';
+            } else {
+                this.toast('Failed to load the GM panel: ' + ((e && e.message) || 'unknown error'), 'error');
+            }
             return;
         }
         try {
