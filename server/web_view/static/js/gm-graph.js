@@ -1200,6 +1200,7 @@ class GraphRenderer {
                 const classes = ['gr-edge'];
                 if (link.locked) classes.push('gr-edge-locked');
                 if (link.hidden) classes.push('gr-edge-hidden');
+                if (link.seethrough) classes.push('gr-edge-seethrough');
                 const pathEl = grEl('path', {
                     d, class: classes.join(' '), fill: 'none', 'marker-end': 'url(#gr-arrow)',
                 });

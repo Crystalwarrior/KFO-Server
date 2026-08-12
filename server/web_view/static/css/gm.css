@@ -211,6 +211,7 @@ body {
 .gr-edge-implicit { stroke: #2a2f42; stroke-width: 1; stroke-dasharray: 3 4; }
 .gr-edge-locked { stroke: var(--gm-danger); stroke-dasharray: 2 3; }
 .gr-edge-hidden { opacity: 0.35; }
+.gr-edge-seethrough { stroke: var(--gm-accent); stroke-dasharray: 4 4; }
 .gr-arrowhead { fill: #3d4360; }
 
 .gr-node-card { fill: var(--gm-panel); stroke: var(--gm-border); stroke-width: 1.4; }
