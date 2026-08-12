@@ -485,9 +485,16 @@ class ClientManager:
             self.reconnect_grace_timer = loop.call_later(
                 grace_time, self._finalize_ghost
             )
-            self.area.broadcast_ooc(
-                f"[{self.id}] {self.showname} has lost connection, waiting for them to reconnect..."
-            )
+            area = self.area
+            if (
+                not area.dark
+                and not area.force_sneak
+                and not self.sneaking
+                and not self.hidden
+            ):
+                area.broadcast_ooc(
+                    f"[{self.id}] {self.showname} has lost connection, waiting for them to reconnect..."
+                )
 
         def cancel_grace_timer(self):
             """Cancel the pending ghost cleanup timer."""
@@ -502,10 +509,17 @@ class ClientManager:
             self.cancel_grace_timer()
             if self.is_ghost:
                 self.is_ghost = False
-                self.area.broadcast_ooc(
-                    f"[{self.id}] {self.showname} did not reconnect, and has "
-                    "thus been disconnected."
-                )
+                area = self.area
+                if (
+                    not area.dark
+                    and not area.force_sneak
+                    and not self.sneaking
+                    and not self.hidden
+                ):
+                    area.area.broadcast_ooc(
+                        f"[{self.id}] {self.showname} did not reconnect, and has "
+                        "thus been disconnected."
+                    )
             self.server.remove_client(self)
 
         def resume_from_ghost(self, protocol, transport, hdid):
