@@ -100,6 +100,13 @@ class GraphRenderer {
         this._nodeH = 106;   // tall enough to contain the chip row below the status text
         this._width = 1000;
         this._height = 640;
+        // The canvas/viewBox size the grid layout lives in. Unlike
+        // `_width`/`_height` above (the <svg> element's rendered CSS-pixel
+        // size, kept fresh by _measure()), the canvas height is grown by
+        // _runLayout() to fit every grid row -- see the coordinate-space
+        // doc near _clientToSvg() for why the two must be tracked apart.
+        this._canvasW = 1000;
+        this._canvasH = 640;
 
         this._zoom = 1;
         this._panX = 0;
@@ -790,13 +797,19 @@ class GraphRenderer {
     // every pointer handler below (pan, wheel-zoom, node drag) plus
     // anything doing hit-testing in the future. Two coordinate spaces are
     // in play:
-    //   - "svg-local": relative to the <svg>'s own box, i.e.
-    //     `clientX/Y - boundingRect.left/top`. Because the viewBox is kept
-    //     in sync with the element's actual rendered CSS-pixel size (see
-    //     _measure()/_onResize()), one svg-local unit == one CSS pixel --
-    //     this is also the space `panX`/`panY` live in, since the viewport
-    //     transform is `translate(panX,panY) scale(zoom)` and `translate`
-    //     is applied in the *parent* (pre-scale) coordinate system.
+    //   - "svg-local": coordinates inside the <svg>'s own box, normalized
+    //     to the viewBox (exactly what `_clientToSvg()` returns) -- this is
+    //     the space `panX`/`panY` live in, since the viewport transform is
+    //     `translate(panX,panY) scale(zoom)` and `translate` is applied in
+    //     the *parent* (pre-scale) coordinate system. NOTE: svg-local units
+    //     are NOT always element CSS pixels -- the canvas height is grown
+    //     to fit every grid row (_runLayout), so under
+    //     preserveAspectRatio="xMidYMid meet" the taller viewBox gets
+    //     letterboxed (uniformly scaled down + centered) inside the element
+    //     and 1 viewBox unit maps to `s = min(ew/vw, eh/vh)` element
+    //     pixels. _clientToSvg() unwinds that letterbox transform so every
+    //     coordinate-conversion caller below works in true viewBox units
+    //     regardless of how the canvas and element aspect ratios differ.
     //   - "world": content coordinates *inside* the scaled viewport --
     //     where `_nodes`/`_baseLayout`/`_offsets` all live. Getting from
     //     svg-local to world requires undoing BOTH the pan and the zoom:
@@ -813,11 +826,38 @@ class GraphRenderer {
     // ones.
 
     /** clientX/clientY (page space, e.g. straight off a PointerEvent) ->
-     * svg-local space. Re-measures the bounding rect on every call (cheap)
-     * so a scroll/resize mid-gesture can't leave a stale offset baked in. */
+     * svg-local / true viewBox units. Re-measures the bounding rect on
+     * every call (cheap) so a scroll/resize mid-gesture can't leave a
+     * stale offset baked in.
+     *
+     * The <svg> renders its viewBox with preserveAspectRatio="xMidYMid
+     * meet" (see _render), and the canvas can be taller than the element
+     * when the grid wraps past one screen (_runLayout grows the canvas
+     * height to fit every row) -- so the viewBox is letterboxed: uniformly
+     * scaled to `s = min(ew/vw, eh/vh)` and centered, and one viewBox unit
+     * is no longer one element pixel. Unwind that transform here so the
+     * returned coordinates are real viewBox units. Previously this returned
+     * raw `clientX/Y - rect.left/top` and every pointer handler (node
+     * drag, pan, wheel-zoom) silently converted screen deltas at `s×`
+     * instead of 1:1 -- the classic symptom was a node that followed the
+     * cursor at fraction `s` of its speed (e.g. half speed when the canvas
+     * was 2x the element height), lagging behind at the midpoint of a drag
+     * to the edge of the screen. */
     _clientToSvg(clientX, clientY) {
         const rect = this._svg.getBoundingClientRect();
-        return { x: clientX - rect.left, y: clientY - rect.top };
+        const ew = rect.width, eh = rect.height;
+        const vw = Math.max(this._canvasW, 300);
+        const vh = Math.max(this._canvasH, 300);
+        let x = clientX - rect.left;
+        let y = clientY - rect.top;
+        if (ew > 0 && eh > 0 && vw > 0 && vh > 0) {
+            const s = Math.min(ew / vw, eh / vh);
+            if (Number.isFinite(s) && s > 0) {
+                x = (clientX - rect.left - (ew - vw * s) / 2) / s;
+                y = (clientY - rect.top - (eh - vh * s) / 2) / s;
+            }
+        }
+        return { x, y };
     }
 
     /** svg-local -> world (see the doc block above). */
@@ -938,10 +978,10 @@ class GraphRenderer {
         const pad = 40;
         const bw = Math.max(1, maxX - minX + pad * 2);
         const bh = Math.max(1, maxY - minY + pad * 2);
-        const zoom = Math.min(this._maxZoom, Math.max(this._minZoom, Math.min(this._width / bw, this._height / bh)));
+        const zoom = Math.min(this._maxZoom, Math.max(this._minZoom, Math.min(this._canvasW / bw, this._canvasH / bh)));
         this._zoom = zoom;
-        this._panX = this._width / 2 - ((minX + maxX) / 2) * zoom;
-        this._panY = this._height / 2 - ((minY + maxY) / 2) * zoom;
+        this._panX = this._canvasW / 2 - ((minX + maxX) / 2) * zoom;
+        this._panY = this._canvasH / 2 - ((minY + maxY) / 2) * zoom;
         this._applyViewportTransform();
     }
 
@@ -1021,8 +1061,8 @@ class GraphRenderer {
             const prev = prevPositions.get(area.id);
             this._nodes.set(area.id, {
                 area,
-                x: prev ? prev.x : this._width / 2,
-                y: prev ? prev.y : this._height / 2,
+                x: prev ? prev.x : this._canvasW / 2,
+                y: prev ? prev.y : this._canvasH / 2,
             });
         });
 
@@ -1132,8 +1172,12 @@ class GraphRenderer {
             });
         });
         // Grow the canvas height to fit every row so nothing is clipped.
+        // This is the CANVAS (viewBox) size, tracked separately from the
+        // element's own pixel size (`_width`/`_height`, see _measure) so
+        // _clientToSvg() can unwind the resulting viewBox letterboxing.
         const rows = Math.ceil(sorted.length / cols);
-        this._height = Math.max(h, margin * 2 + rows * rowSpacing);
+        this._canvasW = w;
+        this._canvasH = Math.max(h, margin * 2 + rows * rowSpacing);
 
         this._nodes.forEach((node, id) => {
             const base = this._baseLayout.get(id);
@@ -1152,8 +1196,8 @@ class GraphRenderer {
         this._edgePaths = new Map();
         this._edgesByNode = new Map();
 
-        const w = Math.max(this._width, 300);
-        const h = Math.max(this._height, 300);
+        const w = Math.max(this._canvasW, 300);
+        const h = Math.max(this._canvasH, 300);
         this._svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
         this._svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
