@@ -501,13 +501,36 @@ class AreaManager:
         if bridge is not None:
             bridge.on_hub_gm_roster_changed(self)
 
+    def remote_gms(self):
+        """
+        Remote GM login clients occupying this hub (synthetic panel sessions).
+
+        Returns an empty set when the GM panel is not enabled. Automation/demo
+        executors are never included -- they are not login sessions.
+        """
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is None:
+            return set()
+        return bridge.session_manager.remote_gm_clients_in_hub(self)
+
+    def hub_has_gm(self):
+        """
+        True if this hub is already claimed by a GM: an in-game real owner or a
+        remote GM login session. Automation/demo executors do not count.
+        """
+        if len(self.real_owners()) > 0:
+            return True
+        return len(self.remote_gms()) > 0
+
     def get_gms(self):
         """
-        Get a list of GMs.
+        Get a list of GMs, including remote GM login clients.
         :return: message
         """
         gms = set()
         for gm in self.real_owners():
+            gms.add(gm.name)
+        for gm in self.remote_gms():
             gms.add(gm.name)
         return ", ".join(gms)
 

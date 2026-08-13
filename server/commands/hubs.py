@@ -918,7 +918,7 @@ def ooc_cmd_gm(client, arg):
     """
     if not client.is_mod and not client.area.area_manager.can_gm:
         raise ClientError("You can't become a GM in this Hub!")
-    if len(client.area.area_manager.real_owners()) == 0 or client.is_mod or client in client.area.area_manager.owners:
+    if not client.area.area_manager.hub_has_gm() or client.is_mod or client in client.area.area_manager.owners:
         # Client is trying to make someone else a GM
         if arg != "":
             # GM all self clients

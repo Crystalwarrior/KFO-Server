@@ -753,20 +753,29 @@ class GMSessionManager:
             resolved.append(hub)
         return resolved
 
-    def hub_has_gm(self, hub):
-        """True if ``hub`` already has a GM: an in-game real owner or a remote GM
-        session bound to it. This is the panel's occupancy predicate."""
-        if len(hub.real_owners()) > 0:
-            return True
+    def remote_gm_clients_in_hub(self, hub):
+        """The remote GM login clients currently occupying ``hub``.
+
+        These are synthetic ``RemoteClient`` objects bound to login sessions --
+        not automation/demo executors, which never live in ``_remote_sessions``.
+        """
+        clients = set()
         for session in self._remote_gm_sessions():
             if not session.is_valid():
                 continue
             try:
                 if session.current_hub() is hub:
-                    return True
+                    clients.add(session.bound_client)
             except Exception:
                 continue
-        return False
+        return clients
+
+    def hub_has_gm(self, hub):
+        """True if ``hub`` already has a GM: an in-game real owner or a remote GM
+        session bound to it. This is the panel's occupancy predicate."""
+        if len(hub.real_owners()) > 0:
+            return True
+        return len(self.remote_gm_clients_in_hub(hub)) > 0
 
     def _remote_hub_for_user(self, username):
         """The hub (or ``None``) where ``username`` already holds a remote GM session."""
