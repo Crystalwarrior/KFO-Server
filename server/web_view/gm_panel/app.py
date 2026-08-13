@@ -109,6 +109,7 @@ class GMPanelApp:
 
         # Password login (NOT behind require -- this is what establishes the session).
         app.router.add_post("/api/gm/login", auth_routes.handle_login)
+        app.router.add_post("/api/gm/login/hub", auth_routes.handle_hub_login)
 
         # Admin-only moderator routes (log viewer + live log stream). The admin
         # console and the OOC/IC monitors live on the shared Commands tab

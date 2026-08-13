@@ -2102,7 +2102,7 @@ class ClientManager:
             msg = "🌐 Hubs 🌐"
             for hub in self.server.hub_manager.hubs:
                 owner = "FREE"
-                if len(hub.real_owners()) > 0:
+                if hub.hub_has_gm():
                     owner = hub.get_gms()
                 msg += "\r\n"
                 if self.area.area_manager == hub:

@@ -301,6 +301,7 @@ _HUB_FIELDS = {
     "move_delay": lambda h: h.move_delay,
     "arup_enabled": lambda h: int(h.arup_enabled),
     "can_gm": lambda h: int(h.can_gm),
+    "remote_gm_only": lambda h: int(h.remote_gm_only),
     "single_cm": lambda h: int(h.single_cm),
     "hide_clients": lambda h: int(h.hide_clients),
     "replace_music": lambda h: int(h.replace_music),

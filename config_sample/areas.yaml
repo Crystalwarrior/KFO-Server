@@ -38,6 +38,7 @@
 #   hide_clients: false
 #   info: ''
 #   can_gm: false
+#   remote_gm_only: false
 #   music_ref: ''
 #   client_music: true
 #   max_areas: 50

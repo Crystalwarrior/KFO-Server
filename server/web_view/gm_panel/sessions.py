@@ -8,6 +8,7 @@ the GM had typed the command themselves.
 """
 
 import asyncio
+import logging
 import secrets
 import time
 import uuid
@@ -19,6 +20,8 @@ from server.exceptions import ClientError, ArgumentError, AreaError, ServerError
 
 from server.web_view.gm_panel.commands_meta import CommandOutputScrubber
 from server.remote_client import RemoteClient
+
+logger = logging.getLogger("gm_panel")
 
 
 class SessionInvalid(Exception):
@@ -36,6 +39,23 @@ class PendingLogin:
     def __init__(self, client, bind_key, expires_at):
         self.client = client
         self.bind_key = bind_key
+        self.expires_at = expires_at
+
+
+class PendingHubAuth:
+    """A single-use pre-auth issued after password verification, awaiting the
+    GM's hub choice before a `RemoteSession` is minted.
+
+    Held for the short window between ``POST /api/gm/login`` returning
+    ``needs_hub: true`` and ``POST /api/gm/login/hub`` completing the login, so
+    the chosen hub is re-validated against the *live* occupancy state (which
+    may have changed between the two requests).
+    """
+
+    __slots__ = ("username", "expires_at")
+
+    def __init__(self, username, expires_at):
+        self.username = username
         self.expires_at = expires_at
 
 
@@ -628,8 +648,10 @@ class GMSessionManager:
         self._config = config
         self._sessions = {}
         self._pending_tokens = {}
+        self._pending_hub_auths = {}
         self._session_ttl = int(config.get("session_ttl_seconds", 28800))
         self._login_token_ttl = int(config.get("login_token_ttl_seconds", 60))
+        self._hub_auth_ttl = int(config.get("login_hub_ttl_seconds", 300))
         self._sweep_handle = None
         self._remote_sessions = {}
 
@@ -652,7 +674,12 @@ class GMSessionManager:
 
     @staticmethod
     def _parse_users(raw_users):
-        """Normalize ``gm_panel.users`` into ``{username: {password, role}}``."""
+        """Normalize ``gm_panel.users`` into ``{username: {password, role, hubs}}``.
+
+        ``hubs`` is a ``frozenset`` of hub ids a ``gm``-role account may claim,
+        or ``None`` when unrestricted (all hubs). Admins travel anywhere, so
+        their ``hubs`` is always ``None``.
+        """
         users = {}
         for username, entry in (raw_users or {}).items():
             if isinstance(entry, dict):
@@ -663,7 +690,12 @@ class GMSessionManager:
                 role = "admin"
             if role not in ("admin", "gm"):
                 role = "admin"
-            users[str(username)] = {"password": password, "role": role}
+            hubs = entry.get("hubs") if isinstance(entry, dict) else None
+            if role == "admin" or hubs is None:
+                hubs = None
+            else:
+                hubs = frozenset(int(h) for h in hubs if str(h).lstrip("-").isdigit())
+            users[str(username)] = {"password": password, "role": role, "hubs": hubs}
         return users
 
     def _is_rate_limited(self, ip):
@@ -691,40 +723,210 @@ class GMSessionManager:
     def _clear_login_attempts(self, ip):
         self._login_attempts.pop(ip, None)
 
+    def _remote_gm_sessions(self):
+        """Active ``role == "gm"`` remote sessions, used for occupancy checks."""
+        return [s for s in self._remote_sessions.values() if s.role == "gm"]
+
+    def _resolve_allowed_hubs(self, entry):
+        """Resolve a ``gm`` entry's allowed hub ids to live ``AreaManager`` objects.
+
+        Returns all hubs when the entry has no ``hubs`` restriction. Unknown ids
+        and hubs with no areas are skipped (an idless hub has no ``default_area``
+        to bind to).
+        """
+        hub_manager = getattr(self._server, "hub_manager", None)
+        if hub_manager is None:
+            return []
+        hubs = list(hub_manager.hubs)
+        allowed = entry.get("hubs")
+        if allowed is None:
+            return [h for h in hubs if h.areas]
+        by_id = {h.id: h for h in hubs}
+        resolved = []
+        for hid in sorted(allowed):
+            hub = by_id.get(hid)
+            if hub is None:
+                logger.warning("gm_panel: allowed hub id %s does not exist; ignoring", hid)
+                continue
+            if not hub.areas:
+                continue
+            resolved.append(hub)
+        return resolved
+
+    def remote_gm_clients_in_hub(self, hub):
+        """The remote GM login clients currently occupying ``hub``.
+
+        These are synthetic ``RemoteClient`` objects bound to login sessions --
+        not automation/demo executors, which never live in ``_remote_sessions``.
+        """
+        clients = set()
+        for session in self._remote_gm_sessions():
+            if not session.is_valid():
+                continue
+            try:
+                if session.current_hub() is hub:
+                    clients.add(session.bound_client)
+            except Exception:
+                continue
+        return clients
+
+    def hub_has_gm(self, hub):
+        """True if ``hub`` already has a GM: an in-game real owner or a remote GM
+        session bound to it. This is the panel's occupancy predicate."""
+        if len(hub.real_owners()) > 0:
+            return True
+        return len(self.remote_gm_clients_in_hub(hub)) > 0
+
+    def _remote_hub_for_user(self, username):
+        """The hub (or ``None``) where ``username`` already holds a remote GM session."""
+        for session in self._remote_gm_sessions():
+            if session.user != username or not session.is_valid():
+                continue
+            try:
+                return session.current_hub()
+            except Exception:
+                continue
+        return None
+
+    def _hub_claim_error(self, hub, username):
+        """Return an error code if ``username`` may not claim ``hub``, else ``None``.
+
+        Enforces the two occupancy rules:
+
+        * ``hub_occupied``      -- the hub already has any GM (in-game or another
+          account's remote session), so the panel refuses to occupy it.
+        * ``already_bound_hub`` -- ``username`` already holds a session in a
+          *different* hub. A GM account may only GM one hub at a time; re-joining
+          its own current hub (multi-client) stays allowed.
+        """
+        if len(hub.real_owners()) > 0:
+            return "hub_occupied"
+        for session in self._remote_gm_sessions():
+            if not session.is_valid():
+                continue
+            try:
+                session_hub = session.current_hub()
+            except Exception:
+                continue
+            if session.user == username:
+                if session_hub is not hub:
+                    return "already_bound_hub"
+            elif session_hub is hub:
+                return "hub_occupied"
+        return None
+
+    def hub_options_for(self, username, entry):
+        """Dropdown state for a ``gm`` login: every allowed hub with claim status.
+
+        Each option is shaped ``{id, name, occupied, self_bound, blocked}``:
+
+        * ``occupied``   -- the hub has a GM and cannot be taken (its own current
+          hub is *not* marked occupied, so a GM can re-join it).
+        * ``self_bound`` -- this hub is the one the account already holds.
+        * ``blocked``    -- the account already holds a *different* hub, so this
+          one cannot be claimed without leaving the current one.
+        """
+        options = []
+        current = self._remote_hub_for_user(username)
+        for hub in self._resolve_allowed_hubs(entry):
+            occupied = self.hub_has_gm(hub)
+            self_bound = current is not None and current is hub
+            blocked = current is not None and current is not hub
+            options.append({
+                "id": hub.id,
+                "name": hub.name,
+                "occupied": occupied and not self_bound,
+                "self_bound": self_bound,
+                "blocked": blocked,
+            })
+        return options
+
     def login(self, username, password, ip):
-        """Verify a username/password and mint a remote session.
+        """Verify a username/password and start (or complete) a login.
 
-        Returns ``(token, session, error)`` -- exactly one of ``token``/``error``
-        is set. The synthetic ``RemoteClient`` is built per role:
+        Returns ``(result, error)`` -- exactly one is set:
 
-        * ``admin`` -> ``is_mod=True`` (full server scope + admin log viewer)
-        * ``gm``    -> ``is_mod=True, is_gm=True`` (the GM tabs, no log viewer)
+        * ``error`` set         -> login rejected (``invalid_credentials``,
+          ``rate_limited``, ``login_disabled``, or ``all_hubs_occupied``).
+        * ``result["session"]`` -> an admin session is ready; the caller sets the
+          cookie immediately.
+        * ``result["pre_auth"]`` -> a ``gm`` login needs a hub choice first; the
+          caller shows the picker and then calls ``complete_hub_login``.
+
+        The synthetic ``RemoteClient`` is built per role: ``admin`` ->
+        ``is_mod=True``; ``gm`` -> ``is_mod=True, is_gm=True``.
         """
         ip = ip or "unknown"
         if self._is_rate_limited(ip):
-            return None, None, "rate_limited"
+            return None, "rate_limited"
         if not self._users:
-            return None, None, "login_disabled"
+            return None, "login_disabled"
 
         entry = self._users.get(str(username or ""))
         if entry is None or entry["password"] != str(password or ""):
             self._record_failed_login(ip)
-            return None, None, "invalid_credentials"
+            return None, "invalid_credentials"
 
         self._clear_login_attempts(ip)
-        role = entry["role"]
-        if role == "admin":
+        username = str(username)
+        if entry["role"] == "admin":
             remote = RemoteClient(self._server, is_mod=True, name="[ADMIN:%s]" % username)
-            session = AdminSession(self._server, remote, str(username), self._session_ttl)
-        else:
-            remote = RemoteClient(
-                self._server, is_mod=True, is_gm=True, name="[GM:%s]" % username
-            )
-            session = RemoteSession(self._server, remote, str(username), self._session_ttl)
-        remote.join_area()
+            session = AdminSession(self._server, remote, username, self._session_ttl)
+            remote.join_area()
+            token = secrets.token_urlsafe(32)
+            self._remote_sessions[token] = session
+            return {"token": token, "session": session}, None
+
+        # gm role: two-phase login -- return the allowed hubs for the picker.
+        options = self.hub_options_for(username, entry)
+        claimable = [o for o in options if not o["occupied"] and not o["blocked"]]
+        if not claimable:
+            return None, "all_hubs_occupied"
+        pre_auth = secrets.token_urlsafe(32)
+        self._pending_hub_auths[pre_auth] = PendingHubAuth(
+            username, time.time() + self._hub_auth_ttl
+        )
+        return {
+            "pre_auth": pre_auth,
+            "hubs": options,
+            "ttl": self._hub_auth_ttl,
+        }, None
+
+    def complete_hub_login(self, pre_auth, hub_id):
+        """Complete a two-phase ``gm`` login by claiming ``hub_id``.
+
+        Re-validates the claim against the live occupancy state (the hub may have
+        been taken between the two requests) and returns ``(result, error)`` where
+        ``result`` carries ``{"token", "session"}`` on success.
+        """
+        pending = self._pending_hub_auths.pop(pre_auth, None) if pre_auth else None
+        if pending is None or time.time() > pending.expires_at:
+            return None, "invalid_or_expired_token"
+
+        username = pending.username
+        entry = self._users.get(username)
+        if entry is None:
+            return None, "invalid_or_expired_token"
+
+        hub = None
+        for candidate in self._resolve_allowed_hubs(entry):
+            if candidate.id == hub_id:
+                hub = candidate
+                break
+        if hub is None:
+            return None, "invalid_hub"
+
+        error = self._hub_claim_error(hub, username)
+        if error is not None:
+            return None, error
+
+        remote = RemoteClient(self._server, is_mod=True, is_gm=True, name="[GM:%s]" % username)
+        remote.login_name = username
+        remote.join_area(hub.default_area())
+        session = RemoteSession(self._server, remote, username, self._session_ttl)
         token = secrets.token_urlsafe(32)
         self._remote_sessions[token] = session
-        return token, session, None
+        return {"token": token, "session": session}, None
 
     def start_sweep(self):
         """
@@ -759,6 +961,10 @@ class GMSessionManager:
         stale_pending = [t for t, p in self._pending_tokens.items() if now > p.expires_at]
         for t in stale_pending:
             self._pending_tokens.pop(t, None)
+
+        stale_hub_auths = [t for t, p in self._pending_hub_auths.items() if now > p.expires_at]
+        for t in stale_hub_auths:
+            self._pending_hub_auths.pop(t, None)
 
         loop = asyncio.get_event_loop()
         self._sweep_handle = loop.call_later(60, self._sweep)

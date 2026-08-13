@@ -778,7 +778,7 @@ class Area:
                 self.remove_owner(client)
                 client.send_ooc("You can only be a CM of a single area in this hub.")
         # Trigger this routine only if a non-privileged client left the area, and there are no GMs in this hub.
-        if self.locking_allowed and len(self.real_cms()) <= 0 and len(self.area_manager.real_owners()) <= 0:
+        if self.locking_allowed and len(self.real_cms()) <= 0 and not self.area_manager.hub_has_gm():
             # Since anyone can lock/unlock, unlock if we were the last client in this area and it was locked.
             if len(self.clients) - 1 <= 0:
                 if self.locked:

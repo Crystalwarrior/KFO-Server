@@ -916,9 +916,11 @@ def ooc_cmd_gm(client, arg):
     If providing an *, GM all clients belonging to self.
     Usage: /gm <id(s)>
     """
-    if not client.is_mod and not client.area.area_manager.can_gm:
+    area_manager = client.area.area_manager
+
+    if not client.is_mod and not area_manager.can_gm:
         raise ClientError("You can't become a GM in this Hub!")
-    if len(client.area.area_manager.real_owners()) == 0 or client.is_mod or client in client.area.area_manager.owners:
+    if area_manager.can_claim_in_game() or client.is_mod or client in area_manager.owners:
         # Client is trying to make someone else a GM
         if arg != "":
             # GM all self clients
@@ -929,7 +931,7 @@ def ooc_cmd_gm(client, arg):
             else:
                 arg = arg.split(" ")
                 # Client is not a mod and not a GM, meaning they're trying to nominate someone without being /gm first
-                if not client.is_mod and client not in client.area.area_manager.owners:
+                if not client.is_mod and client not in area_manager.owners:
                     raise ArgumentError(
                         "You cannot 'nominate' people to be GMs when you are not one."
                     )
@@ -943,11 +945,11 @@ def ooc_cmd_gm(client, arg):
                 c = client.server.client_manager.get_targets(
                     client, TargetType.ID, id, False
                 )[0]
-                if c not in client.area.area_manager.clients:
+                if c not in area_manager.clients:
                     raise ArgumentError(
                         "You can only 'nominate' people to be GMs when they are in the hub."
                     )
-                elif c in client.area.area_manager.owners:
+                elif c in area_manager.owners:
                     client.send_ooc(
                         f"{c.showname} [{c.id}] is already a GM here.")
                 else:
@@ -959,7 +961,7 @@ def ooc_cmd_gm(client, arg):
                             raise ClientError(
                                 f"One of {c.showname} [{c.id}]'s clients is already a GM in another hub!"
                             )
-                    client.area.area_manager.add_owner(c)
+                    area_manager.add_owner(c)
                     database.log_area("gm.add", client, client.area, target=c)
             except (ValueError, IndexError):
                 client.send_ooc(f"{id} does not look like a valid ID.")

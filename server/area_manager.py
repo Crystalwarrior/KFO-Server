@@ -28,6 +28,7 @@ class AreaManager:
         self.hide_clients = False
         self.info = ""
         self.can_gm = False
+        self.remote_gm_only = False
         self.music_ref = ""
         self.replace_music = False
         self.client_music = True
@@ -131,6 +132,7 @@ class AreaManager:
             "hide_clients",
             "info",
             "can_gm",
+            "remote_gm_only",
             "music_ref",
             "replace_music",
             "client_music",
@@ -234,6 +236,7 @@ class AreaManager:
             "hide_clients",
             "info",
             "can_gm",
+            "remote_gm_only",
             "music_ref",
             "replace_music",
             "client_music",
@@ -483,7 +486,7 @@ class AreaManager:
             client.broadcast_list.clear()
             client.send_ooc("Your broadcast list has been cleared.")
 
-        if len(self.real_owners()) == 0:
+        if not self.hub_has_gm():
             # To prevent people egging on the hub list by making epic meme names and bailing
             self.name = self.o_name
             self.abbreviation = self.o_abbreviation
@@ -501,14 +504,47 @@ class AreaManager:
         if bridge is not None:
             bridge.on_hub_gm_roster_changed(self)
 
+    def remote_gms(self):
+        """
+        Remote GM login clients occupying this hub (synthetic panel sessions).
+
+        Returns an empty set when the GM panel is not enabled. Automation/demo
+        executors are never included -- they are not login sessions.
+        """
+        bridge = getattr(self.server, "gm_panel_bridge", None)
+        if bridge is None:
+            return set()
+        return bridge.session_manager.remote_gm_clients_in_hub(self)
+
+    def hub_has_gm(self):
+        """
+        True if this hub is already claimed by a GM: an in-game real owner or a
+        remote GM login session. Automation/demo executors do not count.
+        """
+        if len(self.real_owners()) > 0:
+            return True
+        return len(self.remote_gms()) > 0
+
+    def can_claim_in_game(self):
+        """
+        True if an in-game client may claim this hub via /gm.
+
+        A hub flagged ``remote_gm_only`` can only be claimed through the remote
+        GM panel, so in-game claiming is refused even while it is unoccupied.
+        """
+        return not self.remote_gm_only and not self.hub_has_gm()
+
     def get_gms(self):
         """
-        Get a list of GMs.
+        Get a list of GMs, including remote GM login clients.
         :return: message
         """
         gms = set()
         for gm in self.real_owners():
             gms.add(gm.name)
+        for gm in self.remote_gms():
+            login_name = getattr(gm, "login_name", None) or gm.name
+            gms.add(f"{login_name} (remote)")
         return ", ".join(gms)
 
     def default_area(self):
