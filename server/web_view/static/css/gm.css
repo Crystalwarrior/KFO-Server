@@ -36,6 +36,12 @@ body {
 }
 .gm-header h1 { font-size: 1.1rem; color: var(--gm-accent); letter-spacing: 0.02em; }
 .gm-header-info { display: flex; align-items: center; gap: 0.8rem; }
+.gm-header-travel { display: inline-flex; align-items: center; gap: 0.4rem; }
+.gm-header-travel-label { font-size: 0.78rem; color: var(--gm-text-dim); }
+.gm-header-travel-select {
+    background: var(--gm-panel-alt); color: var(--gm-text); border: 1px solid var(--gm-border);
+    border-radius: 5px; padding: 0.3rem 0.45rem; font-size: 0.8rem;
+}
 .gm-identity { font-size: 0.82rem; color: var(--gm-text-dim); }
 .gm-header button {
     background: transparent; color: var(--gm-accent); border: 1px solid var(--gm-accent);

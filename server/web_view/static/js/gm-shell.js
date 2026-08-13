@@ -25,6 +25,12 @@ class GMPanelShell {
         this._wsDot = root.querySelector('#wsDot');
         this._wsStatus = root.querySelector('#wsStatus');
 
+        this._travelWrap = root.querySelector('#gmHeaderTravel');
+        this._travelSelect = root.querySelector('#gmHeaderTravelSelect');
+        if (this._travelSelect) {
+            this._travelSelect.addEventListener('change', () => this._travelToHub());
+        }
+
         this._bindNav();
         root.querySelector('#logoutBtn').addEventListener('click', () => this.logout());
 
@@ -70,6 +76,7 @@ class GMPanelShell {
         } catch (e) {
             // Local content degrades to plain fallback tiles; never block startup on it.
         }
+        this._loadHeaderTravel();
         this.api.connectWebSocket();
         this.switchTab('areas');
     }
@@ -102,6 +109,45 @@ class GMPanelShell {
         const name = gm.showname || gm.name || `Client ${gm.client_id}`;
         this._identityEl.textContent =
             `${name} — Hub ${gm.hub_id}: ${gm.hub_name} — Area ${gm.area_id}${gm.is_mod ? ' — MOD' : ' — GM'}`;
+    }
+
+    /** Load the travel scope and render the header "Travel to hub" control
+     * (admin-only capability; hub-bound GMs never see it). */
+    async _loadHeaderTravel() {
+        if (!this._travelWrap) return;
+        try {
+            const scope = await this.api.getCommandScope();
+            this._renderHeaderTravel(scope);
+        } catch (e) {
+            this._travelWrap.style.display = 'none';
+        }
+    }
+
+    _renderHeaderTravel(scope) {
+        if (!this._travelWrap || !this._travelSelect) return;
+        if (!scope || !scope.can_travel) {
+            this._travelWrap.style.display = 'none';
+            return;
+        }
+        this._travelSelect.innerHTML = (scope.hubs || [])
+            .map((h) => `<option value="${h.id}"${h.id === scope.current_hub_id ? ' selected' : ''}>${esc(h.name)}</option>`)
+            .join('');
+        this._travelWrap.style.display = '';
+    }
+
+    async _travelToHub() {
+        if (!this._travelSelect) return;
+        const hubId = Number(this._travelSelect.value);
+        if (Number.isNaN(hubId)) return;
+        try {
+            const result = await this.api.travelToHub(hubId);
+            this.toast(`Traveled to hub ${result.hub_name}.`, 'success');
+            // The server's hub_switched WS event updates the identity line and
+            // reloads every tab; also refresh the selector's current value.
+            await this._loadHeaderTravel();
+        } catch (e) {
+            this.toast('Travel failed: ' + (e.message || 'unknown error'), 'error');
+        }
     }
 
     switchTab(name) {
@@ -159,6 +205,7 @@ class GMPanelShell {
                 this.gmIdentity.hub_name = msg.data.new_hub_name;
                 this._renderIdentity();
             }
+            this._loadHeaderTravel();
             this._reloadAllTabs();
             return;
         }

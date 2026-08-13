@@ -75,7 +75,7 @@ class CommandsTab extends TabBase {
     async activate() {
         super.activate();
         if (!this._groups.length) await this._loadCatalog();
-        if (!this._scope) await this._loadScope();
+        await this._loadScope();
     }
 
     async _loadCatalog() {
@@ -103,36 +103,11 @@ class CommandsTab extends TabBase {
         if (!this._scopeBar) return;
         const scope = this._scope;
         if (!scope) { this._scopeBar.textContent = ''; return; }
-        if (!scope.can_travel) {
-            this._scopeBar.textContent = 'Bound to hub: ' + (scope.current_hub_name || ('#' + scope.current_hub_id));
-            return;
-        }
-        const options = (scope.hubs || []).map((h) =>
-            `<option value="${h.id}"${h.id === scope.current_hub_id ? ' selected' : ''}>${esc(h.name)}</option>`).join('');
-        this._scopeBar.innerHTML = `
-            <label class="gm-command-travel-label">Travel to hub</label>
-            <select id="commandsTravelSelect" class="gm-command-travel-select">${options}</select>
-            <button class="btn-sm" id="commandsTravelBtn">Go</button>`;
-        const select = this._scopeBar.querySelector('#commandsTravelSelect');
-        select.addEventListener('change', () => this._travel());
-        this._scopeBar.querySelector('#commandsTravelBtn').addEventListener('click', () => this._travel());
-    }
-
-    async _travel() {
-        const select = this._scopeBar ? this._scopeBar.querySelector('#commandsTravelSelect') : null;
-        if (!select) return;
-        const hubId = Number(select.value);
-        if (Number.isNaN(hubId)) return;
-        try {
-            const result = await this.api.travelToHub(hubId);
-            this._scope.current_hub_id = result.hub_id;
-            this._scope.current_hub_name = result.hub_name;
-            this._renderScope();
-            this.shell.toast(`Traveled to hub ${result.hub_name}.`, 'success');
-        } catch (e) {
-            this.shell.toast('Travel failed: ' + (e.message || 'unknown error'), 'error');
-            await this._loadScope();
-        }
+        // Travel moved to the header (gm-shell.js) -- this bar is now a plain
+        // label: admins see their current (travelable) hub, GMs their bound one.
+        const label = scope.can_travel ? 'Current hub' : 'Bound to hub';
+        this._scopeBar.textContent =
+            `${label}: ${scope.current_hub_name || ('#' + scope.current_hub_id)}`;
     }
 
     _toggleCookbook() {
@@ -425,8 +400,6 @@ class CommandsTab extends TabBase {
             .gm-output .cmd-line.ooc-line { color: #8fc7ff; }
             .gm-output .cmd-line.ic-line { color: #ffd98f; }
             .gm-output .cmd-line.sys-line { color: var(--gm-accent2); }
-            .gm-command-travel-label { font-size: 0.78rem; color: var(--gm-text-dim); }
-            .gm-command-travel-select { background: var(--gm-panel-alt); color: var(--gm-text); border: 1px solid var(--gm-border); border-radius: 5px; padding: 0.3rem 0.45rem; font-size: 0.8rem; }
             .gm-command-cookbook-head { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
             .gm-command-cookbook-head h3 { margin: 0; margin-right: auto; }
             .gm-cookbook-search { flex: 1 1 12rem; min-width: 8rem; }
