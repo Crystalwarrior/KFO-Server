@@ -4,6 +4,8 @@ import re
 
 from aiohttp import web
 
+from server.exceptions import AreaError, ClientError
+
 from server.web_view.gm_panel.commands_meta import CommandLister
 from server.web_view.gm_panel.sessions import SessionInvalid
 from server.web_view.gm_panel.storage import _command_response
@@ -60,3 +62,63 @@ class CommandRoutes:
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         return _command_response(output)
+
+    async def handle_get_scope(self, request):
+        """Return the console's travel scope for this session.
+
+        GMs (hub-bound) get ``can_travel: false`` plus their own hub; admins get
+        ``can_travel: true`` plus the full list of hubs they may travel to. The
+        Commands tab uses this to render either a fixed "bound to <hub>" label or
+        an admin-only hub selector.
+        """
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        hub = session.current_hub()
+        payload = {
+            "ok": True,
+            "role": session.role,
+            "can_travel": session.can_travel,
+            "current_hub_id": hub.id,
+            "current_hub_name": hub.name,
+            "hubs": [],
+        }
+        if session.can_travel:
+            payload["hubs"] = [
+                {"id": h.id, "name": h.name} for h in session.available_hubs()
+            ]
+        return web.json_response(payload)
+
+    async def handle_travel(self, request):
+        """Move an admin session to another hub (the polymorphic ``can_travel``
+        capability). Hub-bound GM sessions are rejected with a 403."""
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        if not session.can_travel:
+            return web.json_response({"error": "not_authorized"}, status=403)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response(
+                {"ok": False, "error": "invalid_request"}, status=400
+            )
+        try:
+            hub_id = int(data.get("hub_id"))
+        except (TypeError, ValueError):
+            return web.json_response(
+                {"ok": False, "output": ["[ERROR] Invalid hub id."]}, status=400
+            )
+        try:
+            hub = session.travel_to_hub(hub_id)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        except (ClientError, AreaError) as ex:
+            return web.json_response(
+                {"ok": False, "output": [f"[ERROR] {ex}"]}, status=400
+            )
+        session.push_event("hub_switched", {
+            "new_hub_id": hub.id,
+            "new_hub_name": hub.name,
+        })
+        return web.json_response({"ok": True, "hub_id": hub.id, "hub_name": hub.name})

@@ -130,10 +130,14 @@
                 <div class="gm-empty">Loading command catalog…</div>
             </div>
             <div class="gm-panel-box gm-command-console">
-                <h3>Console</h3>
+                <div class="gm-command-console-head">
+                    <h3>Console</h3>
+                    <span class="gm-command-scope" id="commandsScopeBar"></span>
+                    <button class="btn-sm" id="commandsCookbookToggleBtn">Hide Cookbook</button>
+                </div>
                 <div class="gm-output" id="commandsOutput"></div>
                 <div class="gm-input-bar">
-                    <input type="text" id="commandsRawInput" placeholder="/cmd arg  (must be in the catalog on the left)" autocomplete="off" spellcheck="false">
+                    <input type="text" id="commandsRawInput" placeholder="/cmd arg" autocomplete="off" spellcheck="false">
                     <button id="commandsRunBtn">Run</button>
                 </div>
             </div>

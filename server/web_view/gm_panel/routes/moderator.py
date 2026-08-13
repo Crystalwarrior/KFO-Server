@@ -1,10 +1,14 @@
-"""Moderator routes: admin log viewer, admin console, and OOC/IC monitoring.
+"""Moderator routes: admin log viewer and OOC/IC monitoring.
 
 These are the GM panel's port of ``server/web_view/admin_panel.py``'s moderator
 surface. They are the ONLY part of the panel that can see ipid/hdid or query the
 global event log, so every handler here is gated to sessions whose role is
 ``admin`` (a password login of ``role: admin``). Live-client GM sessions and
 ``role: gm`` remote sessions receive a 403.
+
+The admin console lives on the shared Commands tab now (``CommandRoutes``) --
+it is the same free-form runner a GM uses, plus the ``ooc`` say command and
+hub-travel for ``AdminSession``.
 
 The live-log WebSocket (``/ws/gm/admin_live``) carries two kinds of frame:
 
@@ -26,14 +30,14 @@ from server.remote_client import RemoteClient
 
 
 class ModeratorRoutes:
-    """Admin-only routes: log viewer, admin console, OOC/IC monitor, live WS."""
+    """Admin-only routes: log viewer, OOC/IC monitor, live WS."""
 
     def __init__(self, session_manager, server):
         self._session_manager = session_manager
         self._server = server
 
     def _require_admin(self, request):
-        """Return the admin ``RemoteSession``, or a 401/403 response."""
+        """Return the admin session, or a 401/403 response."""
         session = request["gm_session"]
         if not session.is_valid():
             return None, web.json_response({"error": "session_invalid"}, status=401)
@@ -157,31 +161,6 @@ class ModeratorRoutes:
                 "is_ooc_muted": getattr(c, "is_ooc_muted", False),
             })
         return web.json_response(players)
-
-    async def handle_api_command(self, request):
-        session, err = self._require_admin(request)
-        if err is not None:
-            return err
-        try:
-            data = await request.json()
-        except Exception:
-            return web.json_response(
-                {"ok": False, "output": ["[ERROR] Invalid request body."]}, status=400
-            )
-
-        cmd = str(data.get("cmd", "")).strip()
-        if cmd.startswith("/"):
-            cmd = cmd[1:]
-        arg = str(data.get("arg", ""))
-
-        remote = session.bound_client
-        if cmd == "ooc":
-            name = ("[M]" + remote.name) if remote.is_mod else remote.name
-            remote.area.send_command("CT", name, arg)
-            output = []
-        else:
-            output = remote.execute(cmd, arg)
-        return web.json_response({"ok": True, "output": output})
 
     async def handle_api_ooc_monitor(self, request):
         session, err = self._require_admin(request)

@@ -101,7 +101,6 @@ class ApiClient {
     getConnectEvents(params) { return this.get('/api/gm/logs/connect_events?' + this._qs(params)); }
     getMiscEvents(params) { return this.get('/api/gm/logs/misc_events?' + this._qs(params)); }
     getPlayers() { return this.get('/api/gm/admin/players'); }
-    runAdminCommand(cmd, arg) { return this.post('/api/gm/admin/command', { cmd, arg }); }
     setOocMonitor(enabled) { return this.post('/api/gm/admin/ooc_monitor', { enabled }); }
     setIcMonitor(enabled) { return this.post('/api/gm/admin/ic_monitor', { enabled }); }
 
@@ -143,6 +142,8 @@ class ApiClient {
 
     getCommandGroups() { return this.get('/api/gm/commands'); }
     runCommand(cmd, arg) { return this.post('/api/gm/commands/run', { cmd, arg }); }
+    getCommandScope() { return this.get('/api/gm/commands/scope'); }
+    travelToHub(hubId) { return this.post('/api/gm/commands/travel', { hub_id: hubId }); }
 
     // --- Characters tab (§3.5) --------------------------------------------
 

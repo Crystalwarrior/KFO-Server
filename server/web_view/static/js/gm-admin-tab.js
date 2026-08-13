@@ -1,14 +1,15 @@
 /**
  * gm-admin-tab.js
- * AdminTab: the GM panel's port of the legacy admin panel's log viewer +
- * admin console (admin.js). This is the ONLY tab that talks to the
- * moderator endpoints (`/api/gm/logs/*`, `/api/gm/admin/*`, `/ws/gm/admin_live`)
+ * AdminTab: the GM panel's port of the legacy admin panel's log viewer
+ * (admin.js). The admin console is the shared Commands tab console; this
+ * tab only talks to the moderator endpoints (`/api/gm/logs/*`,
+ * `/api/gm/admin/players` + the OOC/IC monitors, `/ws/gm/admin_live`)
  * and it is only reachable by admin-role sessions; every other session gets a
  * 403 from the server and never sees the tab (the shell hides it).
  *
  * Logic is ported from admin.js (log sub-tabs, filters, PAGE_SIZE=100
- * pagination, live mode, event-tag coloring, console + history, per-player
- * quick actions + modals, OOC/IC monitors) but re-expressed as a TabBase
+ * pagination, live mode, event-tag coloring, per-player quick actions +
+ * modals, OOC/IC monitors) but re-expressed as a TabBase
  * subclass with gm.css variables + a scoped <style> block, exactly like
  * gm-commands-tab.js does.
  */
@@ -24,8 +25,6 @@ class AdminTab extends TabBase {
         this.liveMode = false;
         this.ws = null;
         this.hubsData = [];
-        this.adminCmdHistory = [];
-        this.adminCmdHistoryIdx = -1;
         this.oocMonitorActive = false;
         this.icMonitorActive = false;
         this._players = [];
@@ -70,10 +69,6 @@ class AdminTab extends TabBase {
 
                 <div class="gm-admin-panel" id="admPanel" style="display:none">
                     <div class="gm-admin-output" id="admOutput"></div>
-                    <div class="gm-admin-input-bar">
-                        <input type="text" id="admCmdInput" placeholder="Type a command, e.g. /kick 1" autocomplete="off" spellcheck="false">
-                        <button class="btn-sm" id="admRunBtn">Run</button>
-                    </div>
                     <div class="gm-admin-players">
                         <div class="gm-admin-players-header">
                             <span>Online Players</span>
@@ -101,7 +96,6 @@ class AdminTab extends TabBase {
         this._panel = this.root.querySelector('#admPanel');
         this._pagination = this.root.querySelector('#admPagination');
         this._outputEl = this.root.querySelector('#admOutput');
-        this._cmdInput = this.root.querySelector('#admCmdInput');
         this._playersList = this.root.querySelector('#admPlayersList');
 
         this._filterHub = this.root.querySelector('#admFilterHub');
@@ -120,28 +114,7 @@ class AdminTab extends TabBase {
         this.root.querySelector('#admLiveBtn').addEventListener('click', () => this._toggleLive());
         this.root.querySelector('#admPrevBtn').addEventListener('click', () => this._prevPage());
         this.root.querySelector('#admNextBtn').addEventListener('click', () => this._nextPage());
-        this.root.querySelector('#admRunBtn').addEventListener('click', () => this._executeAdminCmd());
         this.root.querySelector('#admRefreshPlayers').addEventListener('click', () => this._refreshPlayers());
-
-        this._cmdInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); this._executeAdminCmd(); }
-            else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (this.adminCmdHistoryIdx > 0) {
-                    this.adminCmdHistoryIdx--;
-                    this._cmdInput.value = this.adminCmdHistory[this.adminCmdHistoryIdx];
-                }
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (this.adminCmdHistoryIdx < this.adminCmdHistory.length - 1) {
-                    this.adminCmdHistoryIdx++;
-                    this._cmdInput.value = this.adminCmdHistory[this.adminCmdHistoryIdx];
-                } else {
-                    this.adminCmdHistoryIdx = this.adminCmdHistory.length;
-                    this._cmdInput.value = '';
-                }
-            }
-        });
 
         this.root.querySelector('#admOocToggle').addEventListener('change', (e) => this._toggleOocMonitor(e.target.checked));
         this.root.querySelector('#admIcToggle').addEventListener('change', (e) => this._toggleIcMonitor(e.target.checked));
@@ -190,7 +163,6 @@ class AdminTab extends TabBase {
 
         if (isAdmin) {
             this._refreshPlayers();
-            this._cmdInput.focus();
             return;
         }
 
@@ -499,56 +471,30 @@ class AdminTab extends TabBase {
         this._updatePagination();
     }
 
-    // --- admin console ---------------------------------------------------
+    // --- quick actions (run through the shared Commands-tab console) --------
 
-    async _executeAdminCmd() {
-        const raw = this._cmdInput.value.trim();
+    async _adminQuickCmd(cmd) {
+        const raw = String(cmd || '').trim();
         if (!raw) return;
-        this.adminCmdHistory.push(raw);
-        this.adminCmdHistoryIdx = this.adminCmdHistory.length;
-        this._cmdInput.value = '';
-
-        const line = document.createElement('div');
-        line.className = 'cmd-line';
-        line.textContent = raw;
-        this._outputEl.appendChild(line);
-
-        let cmd = raw, arg = '';
-        if (raw.startsWith('/')) {
-            const parts = raw.slice(1).split(/\s+/);
-            cmd = parts[0];
-            arg = parts.slice(1).join(' ');
-        } else {
-            this._appendAdminOutput('Commands must start with /. Use /ooc <message> to send OOC chat.', 'sys');
-            this._cmdInput.focus();
-            return;
-        }
-
+        const body = raw.startsWith('/') ? raw.slice(1) : raw;
+        const parts = body.split(/\s+/).filter(Boolean);
+        const name = parts[0];
+        const arg = parts.slice(1).join(' ');
+        if (!name) return;
+        this._appendAdminOutput(raw, 'sys');
         const outDiv = document.createElement('div');
         outDiv.className = 'cmd-output';
         outDiv.textContent = 'Running...';
         this._outputEl.appendChild(outDiv);
-
         try {
-            const data = await this.api.runAdminCommand(cmd, arg);
-            if (data.error) {
-                outDiv.className = 'cmd-output cmd-error';
-                outDiv.textContent = data.error;
-            } else if (data.output && data.output.length > 0) {
-                outDiv.textContent = data.output.join('\n');
-            } else {
-                outDiv.textContent = 'Command executed (no output).';
-            }
+            const data = await this.api.runCommand(name, arg);
+            outDiv.textContent = (data.output && data.output.length) ? data.output.join('\n') : 'Command executed (no output).';
+            outDiv.classList.toggle('cmd-error', !data.ok);
         } catch (e) {
             outDiv.className = 'cmd-output cmd-error';
             outDiv.textContent = 'Request failed: ' + e.message;
         }
         this._outputEl.scrollTop = this._outputEl.scrollHeight;
-    }
-
-    _adminQuickCmd(cmd) {
-        this._cmdInput.value = cmd;
-        this._executeAdminCmd();
     }
 
     _appendAdminOutput(msg, type) {

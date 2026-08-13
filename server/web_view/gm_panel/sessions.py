@@ -106,6 +106,19 @@ class GMSession:
         """The bound client's current `Area`. Always re-read live."""
         return self._client.area
 
+    @property
+    def can_travel(self):
+        """Whether this session may move between hubs. GMs are hub-bound."""
+        return False
+
+    def available_hubs(self):
+        """The hubs this session may operate in. A GM session sees only its own."""
+        return [self.current_hub()]
+
+    def travel_to_hub(self, hub_id):
+        """Move this session's client to `hub_id` (overridden by `AdminSession`)."""
+        raise ClientError("You must be authorized to do that.")
+
     def summary(self):
         """Small "who am I" dict, safe to hand to the browser."""
         client = self._client
@@ -132,9 +145,22 @@ class GMSession:
         typed the command themselves. The bound client's `send_ooc` is shadowed
         with an instance attribute for the duration of the call so its response
         is captured instead of printed into the GM's real AO chat window.
+
+        GM sessions run their output through `CommandOutputScrubber`; the
+        `AdminSession` override skips that scrub (admins are authorized to see
+        ipid/hdid) and special-cases the `ooc` chat command.
         """
         if not self.is_valid():
             raise SessionInvalid()
+        return CommandOutputScrubber.scrub(self._run_command(cmd, arg))
+
+    def _run_command(self, cmd, arg):
+        """Execute `cmd` through the bound client and return the raw output lines.
+
+        Shared by `execute_command` (which scrubs) and `AdminSession` (which does
+        not). Kept as a single code path so command dispatch, output capture, and
+        the `send_ooc` shadowing are never duplicated.
+        """
         client = self._client
         buffer = []
         original_send_ooc = client.send_ooc
@@ -149,7 +175,7 @@ class GMSession:
             buffer.append(f"[ERROR] {type(ex).__name__}: {ex}")
         finally:
             client.send_ooc = original_send_ooc
-        return CommandOutputScrubber.scrub(buffer)
+        return buffer
 
     def _area_in_scope(self, area):
         return area is not None and area.area_manager is self.current_hub()
@@ -185,7 +211,7 @@ class GMSession:
         """
         Run an OOC command through the bound client with `.area` temporarily
         shadowed to `area`, capturing its output exactly like `execute_command`
-        -- this is `execute_command` and `_call_on_target_area` combined for
+        -- this combines `_run_command` with `_call_on_target_area` for
         commands (area prefs, links, `/desc`, `/doc`, ...) that always act on
         `client.area` and take no area-id argument of their own, so the only
         way to target a *different* area through the real command layer is to
@@ -198,19 +224,11 @@ class GMSession:
             raise SessionInvalid()
         buffer = []
 
-        def run(client):
-            original_send_ooc = client.send_ooc
-
-            def capture(msg, *a, **kw):
-                buffer.append(msg)
-
-            client.send_ooc = capture
-            try:
-                commands.call(client, cmd, arg)
-            except (ClientError, ArgumentError, AreaError, ServerError) as ex:
-                buffer.append(f"[ERROR] {type(ex).__name__}: {ex}")
-            finally:
-                client.send_ooc = original_send_ooc
+        def run(_client):
+            # `_run_command` re-reads `self._client`, whose `.area` has been
+            # shadowed to the target area by `_call_on_target_area` for the
+            # duration of this call.
+            buffer.extend(self._run_command(cmd, arg))
 
         self._call_on_target_area(area, run)
         return CommandOutputScrubber.scrub(buffer)
@@ -364,23 +382,15 @@ class RemoteSession(GMSession):
     Shares all of ``GMSession``'s command/evidence/WS machinery (``execute_command``,
     ``execute_command_in_area``, the evidence ``*_direct`` methods, WS plumbing) --
     it only re-binds validation and identity to the synthetic client, which is not a
-    live player and never has a ``_gm_bind_key``.
+    live player and never has a ``_gm_bind_key``. Role is ``"gm"`` (hub-bound);
+    ``AdminSession`` is the server-scoped subclass.
     """
 
-    def __init__(self, server, remote_client, role, user, ttl):
+    def __init__(self, server, remote_client, user, ttl):
         super().__init__(server, remote_client, None, ttl)
-        self._role = role
         self._user = user
         self._ooc_listener = None
         self._ic_listener = None
-
-    @property
-    def role(self):
-        return self._role
-
-    @property
-    def is_admin(self):
-        return self._role == "admin"
 
     @property
     def user(self):
@@ -407,7 +417,7 @@ class RemoteSession(GMSession):
             "hub_name": hub.name if hub is not None else "?",
             "area_id": area.id if area is not None else -1,
             "is_mod": getattr(client, "is_mod", False),
-            "role": self._role,
+            "role": self.role,
             "user": self._user,
         }
 
@@ -461,6 +471,56 @@ class RemoteSession(GMSession):
             client._listeners.clear()
         except Exception:
             pass
+
+
+class AdminSession(RemoteSession):
+    """A server-scoped admin session.
+
+    Unlike ``RemoteSession`` (a ``role: gm`` login, bound to a single hub) and
+    ``GMSession`` (a live in-game GM, also hub-bound), an admin may travel to any
+    hub on the server and sees raw (un-scrubbed) command output -- admins are
+    already authorized to view ipid/hdid. It also special-cases the ``ooc``
+    console command to speak as ``[M]<name>`` in its current area.
+    """
+
+    @property
+    def role(self):
+        return "admin"
+
+    @property
+    def is_admin(self):
+        return True
+
+    @property
+    def can_travel(self):
+        return True
+
+    def available_hubs(self):
+        hub_manager = getattr(self._server, "hub_manager", None)
+        if hub_manager is None:
+            return [self.current_hub()]
+        return list(hub_manager.hubs)
+
+    def travel_to_hub(self, hub_id):
+        for hub in self.available_hubs():
+            if hub.id == hub_id:
+                if hub is self.current_hub():
+                    raise ClientError("User already in specified hub.")
+                self._client.change_area(hub.default_area())
+                if self._client.area.area_manager is not hub:
+                    raise ClientError("Failed to travel to hub.")
+                return hub
+        raise AreaError("Targeted hub not found!")
+
+    def execute_command(self, cmd, arg):
+        if not self.is_valid():
+            raise SessionInvalid()
+        if cmd == "ooc":
+            remote = self.bound_client
+            name = ("[M]" + remote.name) if remote.is_mod else remote.name
+            remote.area.send_command("CT", name, arg)
+            return []
+        return self._run_command(cmd, arg)
 
 
 class GMSessionManager:
@@ -563,12 +623,13 @@ class GMSessionManager:
         role = entry["role"]
         if role == "admin":
             remote = RemoteClient(self._server, is_mod=True, name="[ADMIN:%s]" % username)
+            session = AdminSession(self._server, remote, str(username), self._session_ttl)
         else:
             remote = RemoteClient(
                 self._server, is_mod=True, is_gm=True, name="[GM:%s]" % username
             )
+            session = RemoteSession(self._server, remote, str(username), self._session_ttl)
         remote.join_area()
-        session = RemoteSession(self._server, remote, role, str(username), self._session_ttl)
         token = secrets.token_urlsafe(32)
         self._remote_sessions[token] = session
         return token, session, None

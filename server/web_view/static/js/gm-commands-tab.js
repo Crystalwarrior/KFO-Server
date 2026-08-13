@@ -12,6 +12,11 @@
  * authorization happens server-side on every run, so a permission-denied or
  * unknown command just shows up as an error line in the console, same as
  * typing it in-game would.
+ *
+ * This is the single console for BOTH GMs and admins. The Admin tab no longer
+ * has its own command runner; admin-only extras (the `ooc` say command and hub
+ * travel) are exposed here, and the cookbook is toggleable via
+ * `#commandsCookbookToggleBtn`.
  */
 
 /** Fallback used only if the list response omits docs_url. */
@@ -32,24 +37,34 @@ class CommandsTab extends TabBase {
         this._lastOutputEl = null;
         this._groupsEl = null;
 
+        // Travel scope (hub-bound GM vs. server-scoped admin) + console history
+        // + the cookbook show/hide preference.
+        this._scope = null;
+        this._cmdHistory = [];
+        this._cmdHistoryIdx = -1;
+        this._cookbookVisible = this._readCookbookPref();
+
         this._catalogEl = root.querySelector('#commandCatalog');
         this._output = root.querySelector('#commandsOutput');
         this._rawInput = root.querySelector('#commandsRawInput');
+        this._scopeBar = root.querySelector('#commandsScopeBar');
+        this._cookbookToggleBtn = root.querySelector('#commandsCookbookToggleBtn');
         // The static template's placeholder pre-dates the free-form runner;
         // refresh it at runtime rather than editing the template.
         this._rawInput.placeholder = '/cmd args  (any command -- the leading / is optional; the server enforces permissions)';
 
         root.querySelector('#commandsRunBtn').addEventListener('click', () => this._runRaw());
-        this._rawInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); this._runRaw(); }
-        });
+        this._rawInput.addEventListener('keydown', (e) => this._onInputKeydown(e));
+        this._cookbookToggleBtn.addEventListener('click', () => this._toggleCookbook());
 
+        this._applyCookbookVisibility();
         this._injectStyles();
     }
 
     async activate() {
         super.activate();
         if (!this._groups.length) await this._loadCatalog();
+        if (!this._scope) await this._loadScope();
     }
 
     async _loadCatalog() {
@@ -60,6 +75,102 @@ class CommandsTab extends TabBase {
             this._renderCatalog();
         } catch (e) {
             this._catalogEl.innerHTML = `<div class="gm-empty">Failed to load command list: ${esc(e.message)}</div>`;
+        }
+    }
+
+    async _loadScope() {
+        try {
+            this._scope = await this.api.getCommandScope();
+            this._renderScope();
+        } catch (e) {
+            this._scope = null;
+            if (this._scopeBar) this._scopeBar.textContent = '';
+        }
+    }
+
+    _renderScope() {
+        if (!this._scopeBar) return;
+        const scope = this._scope;
+        if (!scope) { this._scopeBar.textContent = ''; return; }
+        if (!scope.can_travel) {
+            this._scopeBar.textContent = 'Bound to hub: ' + (scope.current_hub_name || ('#' + scope.current_hub_id));
+            return;
+        }
+        const options = (scope.hubs || []).map((h) =>
+            `<option value="${h.id}"${h.id === scope.current_hub_id ? ' selected' : ''}>${esc(h.name)}</option>`).join('');
+        this._scopeBar.innerHTML = `
+            <label class="gm-command-travel-label">Travel to hub</label>
+            <select id="commandsTravelSelect" class="gm-command-travel-select">${options}</select>
+            <button class="btn-sm" id="commandsTravelBtn">Go</button>`;
+        const select = this._scopeBar.querySelector('#commandsTravelSelect');
+        select.addEventListener('change', () => this._travel());
+        this._scopeBar.querySelector('#commandsTravelBtn').addEventListener('click', () => this._travel());
+    }
+
+    async _travel() {
+        const select = this._scopeBar ? this._scopeBar.querySelector('#commandsTravelSelect') : null;
+        if (!select) return;
+        const hubId = Number(select.value);
+        if (Number.isNaN(hubId)) return;
+        try {
+            const result = await this.api.travelToHub(hubId);
+            this._scope.current_hub_id = result.hub_id;
+            this._scope.current_hub_name = result.hub_name;
+            this._renderScope();
+            this.shell.toast(`Traveled to hub ${result.hub_name}.`, 'success');
+        } catch (e) {
+            this.shell.toast('Travel failed: ' + (e.message || 'unknown error'), 'error');
+            await this._loadScope();
+        }
+    }
+
+    _toggleCookbook() {
+        this._cookbookVisible = !this._cookbookVisible;
+        this._persistCookbookPref();
+        this._applyCookbookVisibility();
+    }
+
+    _readCookbookPref() {
+        try {
+            return localStorage.getItem('gmCommandsCookbookVisible') !== '0';
+        } catch (e) {
+            return true;
+        }
+    }
+
+    _persistCookbookPref() {
+        try {
+            localStorage.setItem('gmCommandsCookbookVisible', this._cookbookVisible ? '1' : '0');
+        } catch (e) {
+            // Storage may be unavailable (private mode / quota); the in-memory
+            // toggle still works for this session.
+        }
+    }
+
+    _applyCookbookVisibility() {
+        if (this._catalogEl) this._catalogEl.style.display = this._cookbookVisible ? '' : 'none';
+        if (this._cookbookToggleBtn) this._cookbookToggleBtn.textContent = this._cookbookVisible ? 'Hide Cookbook' : 'Show Cookbook';
+    }
+
+    _onInputKeydown(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this._runRaw();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (this._cmdHistoryIdx > 0) {
+                this._cmdHistoryIdx--;
+                this._rawInput.value = this._cmdHistory[this._cmdHistoryIdx];
+            }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (this._cmdHistoryIdx < this._cmdHistory.length - 1) {
+                this._cmdHistoryIdx++;
+                this._rawInput.value = this._cmdHistory[this._cmdHistoryIdx];
+            } else {
+                this._cmdHistoryIdx = this._cmdHistory.length;
+                this._rawInput.value = '';
+            }
         }
     }
 
@@ -197,6 +308,8 @@ class CommandsTab extends TabBase {
     _runRaw() {
         const raw = this._rawInput.value.trim();
         if (!raw) return;
+        this._cmdHistory.push(raw);
+        this._cmdHistoryIdx = this._cmdHistory.length;
         const body = raw.startsWith('/') ? raw.slice(1) : raw;
         const parts = body.split(/\s+/).filter(Boolean);
         const cmd = parts[0];
@@ -250,6 +363,11 @@ class CommandsTab extends TabBase {
         const style = document.createElement('style');
         style.id = 'gm-commands-tab-styles';
         style.textContent = `
+            .gm-command-console-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+            .gm-command-console-head h3 { margin: 0; margin-right: auto; }
+            .gm-command-scope { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--gm-text-dim); flex-wrap: wrap; }
+            .gm-command-travel-label { font-size: 0.78rem; color: var(--gm-text-dim); }
+            .gm-command-travel-select { background: var(--gm-panel-alt); color: var(--gm-text); border: 1px solid var(--gm-border); border-radius: 5px; padding: 0.3rem 0.45rem; font-size: 0.8rem; }
             .gm-command-cookbook-head { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
             .gm-command-cookbook-head h3 { margin: 0; margin-right: auto; }
             .gm-cookbook-search { flex: 1 1 12rem; min-width: 8rem; }
