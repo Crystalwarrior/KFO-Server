@@ -615,12 +615,12 @@ function adminDangerous(action, idx) {
         ooc_mute: {
             title: `OOC Mute ${pname}?`,
             fields: [],
-            build: () => `/ooc_mute ${p.name || pname}`,
+            build: () => `/ooc_mute ${p.id || pname}`,
         },
         ooc_unmute: {
             title: `OOC Unmute ${pname}?`,
             fields: [],
-            build: () => `/ooc_unmute ${p.name || pname}`,
+            build: () => `/ooc_unmute ${p.id || pname}`,
         },
         pm: {
             title: `PM ${pname}?`,
