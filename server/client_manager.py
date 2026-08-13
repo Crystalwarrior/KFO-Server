@@ -584,7 +584,7 @@ class ClientManager:
                     and not self.sneaking
                     and not self.hidden
                 ):
-                    area.area.broadcast_ooc(
+                    area.broadcast_ooc(
                         f"[{self.id}] {self.showname} did not reconnect, and has "
                         "thus been disconnected."
                     )
