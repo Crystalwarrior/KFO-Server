@@ -267,10 +267,12 @@ gm_panel:
   host: "0.0.0.0"
   session_ttl_seconds: 28800        # 8h, matches admin_panel's cookie lifetime
   login_token_ttl_seconds: 60       # one-time /gmpanel link expires fast
+  login_hub_ttl_seconds: 300        # time a gm login may sit on the hub picker
   users:
     # username:
     #   password: changeme
     #   role: admin            # admin (log viewer + console) | gm (GM tabs only)
+    #   hubs: [0, 2]           # gm only: hub IDs this account may GM; omit = all hubs
 
   # Optional: point this at a static image host mirroring your backgrounds/
   # folder (e.g. "https://assets.example.com/backgrounds/") so the Areas tab
