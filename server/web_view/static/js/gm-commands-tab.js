@@ -12,6 +12,11 @@
  * authorization happens server-side on every run, so a permission-denied or
  * unknown command just shows up as an error line in the console, same as
  * typing it in-game would.
+ *
+ * This is the single console for BOTH GMs and admins. The Admin tab no longer
+ * has its own command runner; admin-only extras (the `ooc` say command and hub
+ * travel) are exposed here, and the cookbook is toggleable via
+ * `#commandsCookbookToggleBtn`.
  */
 
 /** Fallback used only if the list response omits docs_url. */
@@ -32,24 +37,45 @@ class CommandsTab extends TabBase {
         this._lastOutputEl = null;
         this._groupsEl = null;
 
+        // Travel scope (hub-bound GM vs. server-scoped admin) + console history
+        // + the cookbook show/hide preference.
+        this._scope = null;
+        this._cmdHistory = [];
+        this._cmdHistoryIdx = -1;
+        this._cookbookVisible = this._readCookbookPref();
+
         this._catalogEl = root.querySelector('#commandCatalog');
         this._output = root.querySelector('#commandsOutput');
         this._rawInput = root.querySelector('#commandsRawInput');
+        this._scopeBar = root.querySelector('#commandsScopeBar');
+        this._cookbookToggleBtn = root.querySelector('#commandsCookbookToggleBtn');
         // The static template's placeholder pre-dates the free-form runner;
         // refresh it at runtime rather than editing the template.
         this._rawInput.placeholder = '/cmd args  (any command -- the leading / is optional; the server enforces permissions)';
 
-        root.querySelector('#commandsRunBtn').addEventListener('click', () => this._runRaw());
-        this._rawInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); this._runRaw(); }
-        });
+        // OOC/IC monitor toggles. Frames arrive over the shared /ws/gm/live
+        // (via ApiClient pub/sub) as {type: 'monitor_ooc'|'monitor_ic', data}.
+        this._oocMonitorActive = false;
+        this._icMonitorActive = false;
+        this._oocMonitorCb = root.querySelector('#commandsOocMonitorCb');
+        this._icMonitorCb = root.querySelector('#commandsIcMonitorCb');
+        this._oocMonitorCb.addEventListener('change', (e) => this._toggleMonitor('ooc', e.target.checked));
+        this._icMonitorCb.addEventListener('change', (e) => this._toggleMonitor('ic', e.target.checked));
+        this.api.on('monitor_ooc', (data) => this._onMonitorFrame('ooc', data));
+        this.api.on('monitor_ic', (data) => this._onMonitorFrame('ic', data));
 
+        root.querySelector('#commandsRunBtn').addEventListener('click', () => this._runRaw());
+        this._rawInput.addEventListener('keydown', (e) => this._onInputKeydown(e));
+        this._cookbookToggleBtn.addEventListener('click', () => this._toggleCookbook());
+
+        this._applyCookbookVisibility();
         this._injectStyles();
     }
 
     async activate() {
         super.activate();
         if (!this._groups.length) await this._loadCatalog();
+        await this._loadScope();
     }
 
     async _loadCatalog() {
@@ -60,6 +86,77 @@ class CommandsTab extends TabBase {
             this._renderCatalog();
         } catch (e) {
             this._catalogEl.innerHTML = `<div class="gm-empty">Failed to load command list: ${esc(e.message)}</div>`;
+        }
+    }
+
+    async _loadScope() {
+        try {
+            this._scope = await this.api.getCommandScope();
+            this._renderScope();
+        } catch (e) {
+            this._scope = null;
+            if (this._scopeBar) this._scopeBar.textContent = '';
+        }
+    }
+
+    _renderScope() {
+        if (!this._scopeBar) return;
+        const scope = this._scope;
+        if (!scope) { this._scopeBar.textContent = ''; return; }
+        // Travel moved to the header (gm-shell.js) -- this bar is now a plain
+        // label: admins see their current (travelable) hub, GMs their bound one.
+        const label = scope.can_travel ? 'Current hub' : 'Bound to hub';
+        this._scopeBar.textContent =
+            `${label}: ${scope.current_hub_name || ('#' + scope.current_hub_id)}`;
+    }
+
+    _toggleCookbook() {
+        this._cookbookVisible = !this._cookbookVisible;
+        this._persistCookbookPref();
+        this._applyCookbookVisibility();
+    }
+
+    _readCookbookPref() {
+        try {
+            return localStorage.getItem('gmCommandsCookbookVisible') !== '0';
+        } catch (e) {
+            return true;
+        }
+    }
+
+    _persistCookbookPref() {
+        try {
+            localStorage.setItem('gmCommandsCookbookVisible', this._cookbookVisible ? '1' : '0');
+        } catch (e) {
+            // Storage may be unavailable (private mode / quota); the in-memory
+            // toggle still works for this session.
+        }
+    }
+
+    _applyCookbookVisibility() {
+        if (this._catalogEl) this._catalogEl.style.display = this._cookbookVisible ? '' : 'none';
+        if (this._cookbookToggleBtn) this._cookbookToggleBtn.textContent = this._cookbookVisible ? 'Hide Cookbook' : 'Show Cookbook';
+    }
+
+    _onInputKeydown(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this._runRaw();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (this._cmdHistoryIdx > 0) {
+                this._cmdHistoryIdx--;
+                this._rawInput.value = this._cmdHistory[this._cmdHistoryIdx];
+            }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (this._cmdHistoryIdx < this._cmdHistory.length - 1) {
+                this._cmdHistoryIdx++;
+                this._rawInput.value = this._cmdHistory[this._cmdHistoryIdx];
+            } else {
+                this._cmdHistoryIdx = this._cmdHistory.length;
+                this._rawInput.value = '';
+            }
         }
     }
 
@@ -197,6 +294,8 @@ class CommandsTab extends TabBase {
     _runRaw() {
         const raw = this._rawInput.value.trim();
         if (!raw) return;
+        this._cmdHistory.push(raw);
+        this._cmdHistoryIdx = this._cmdHistory.length;
         const body = raw.startsWith('/') ? raw.slice(1) : raw;
         const parts = body.split(/\s+/).filter(Boolean);
         const cmd = parts[0];
@@ -240,6 +339,49 @@ class CommandsTab extends TabBase {
         this._output.scrollTop = this._output.scrollHeight;
     }
 
+    // --- OOC / IC monitors ----------------------------------------------
+
+    async _toggleMonitor(kind, enabled) {
+        const activeKey = kind === 'ooc' ? '_oocMonitorActive' : '_icMonitorActive';
+        const cb = kind === 'ooc' ? this._oocMonitorCb : this._icMonitorCb;
+        try {
+            const data = await this.api.setMonitor(kind, enabled);
+            this[activeKey] = !!data.monitoring;
+            if (data.monitoring) {
+                this._appendMonitorLine(
+                    `[MONITOR] ${kind.toUpperCase()} monitoring enabled for ${data.area_name || '?'} (A${data.area_id})`, 'sys');
+            } else {
+                this._appendMonitorLine(`[MONITOR] ${kind.toUpperCase()} monitoring disabled`, 'sys');
+            }
+        } catch (e) {
+            if (cb) cb.checked = false;
+            this[activeKey] = false;
+            this._appendMonitorLine(`[MONITOR] Failed to toggle ${kind.toUpperCase()} monitor: ${e.message}`, 'error');
+        }
+    }
+
+    _onMonitorFrame(kind, data) {
+        const active = kind === 'ooc' ? this._oocMonitorActive : this._icMonitorActive;
+        if (!active) return;
+        const where = `[A${data.area_id || '?'}]`;
+        if (kind === 'ooc') {
+            this._appendMonitorLine(`${where} ${data.name || '?'}: ${data.msg || ''}`, 'ooc');
+        } else {
+            const name = data.showname || data.char_name || `CID:${data.client_id === undefined ? '?' : data.client_id}`;
+            const charPart = (data.showname && data.char_name && data.showname !== data.char_name)
+                ? ` (${data.char_name})` : '';
+            this._appendMonitorLine(`${where} ${name}${charPart}: ${data.text || ''}`, 'ic');
+        }
+    }
+
+    _appendMonitorLine(msg, cls) {
+        const line = document.createElement('div');
+        line.className = 'cmd-line' + (cls === 'ooc' ? ' ooc-line' : cls === 'ic' ? ' ic-line' : cls === 'sys' ? ' sys-line' : ' cmd-error');
+        line.textContent = msg;
+        this._output.appendChild(line);
+        this._output.scrollTop = this._output.scrollHeight;
+    }
+
     /** The cookbook head/search/groups is new markup this tab owns entirely
      * (built at runtime, see _renderCatalog); its styling is scoped here
      * rather than in gm.css so this file stays self-contained. Injected
@@ -250,6 +392,14 @@ class CommandsTab extends TabBase {
         const style = document.createElement('style');
         style.id = 'gm-commands-tab-styles';
         style.textContent = `
+            .gm-command-console-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+            .gm-command-console-head h3 { margin: 0; margin-right: auto; }
+            .gm-command-scope { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--gm-text-dim); flex-wrap: wrap; }
+            .gm-command-monitor { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; color: var(--gm-text-dim); cursor: pointer; user-select: none; }
+            .gm-command-monitor input { cursor: pointer; }
+            .gm-output .cmd-line.ooc-line { color: #8fc7ff; }
+            .gm-output .cmd-line.ic-line { color: #ffd98f; }
+            .gm-output .cmd-line.sys-line { color: var(--gm-accent2); }
             .gm-command-cookbook-head { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
             .gm-command-cookbook-head h3 { margin: 0; margin-right: auto; }
             .gm-cookbook-search { flex: 1 1 12rem; min-width: 8rem; }

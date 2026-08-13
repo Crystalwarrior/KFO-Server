@@ -66,6 +66,7 @@ class RemoteClient(ClientManager.Client):
 
         # Event listeners: list of callbacks for OOC/IC monitoring
         self._listeners = []
+        self._monitors_self_intercept = False
         self._in_area = False
 
     def __enter__(self):

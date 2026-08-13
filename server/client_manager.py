@@ -214,6 +214,12 @@ class ClientManager:
             # If we're viewing Area evidence or Inventory
             self.viewing_inventory = False
 
+            # Registered callbacks for OOC/IC monitor frames (e.g. GM panel)
+            self._listeners = []
+            # RemoteClient overrides the CT/MS interception path; see base
+            # `_notify_monitors`. Kept on for real clients only.
+            self._monitors_self_intercept = True
+
         def send_raw_message(self, msg):
             """
             Send a raw packet over TCP.
@@ -225,6 +231,67 @@ class ClientManager:
                 return
             self.transport.write(msg.encode("utf-8"))
 
+        def add_listener(self, callback):
+            """Register a callback for OOC/IC monitor events: callback(entry_dict)."""
+            if callback not in self._listeners:
+                self._listeners.append(callback)
+
+        def remove_listener(self, callback):
+            """Unregister a monitor callback."""
+            self._listeners = [cb for cb in self._listeners if cb is not callback]
+
+        def _notify_monitors(self, command, args):
+            """Forward an OOC (CT) or IC (MS) packet this client receives to listeners."""
+            if not self._listeners or not self._monitors_self_intercept:
+                return
+            area = self.area
+            if command == "CT" and len(args) >= 2:
+                entry = {
+                    "type": "ooc",
+                    "area_id": area.id if area else -1,
+                    "area_name": area.name if area else "?",
+                    "hub_id": area.area_manager.id if area and area.area_manager else -1,
+                    "hub_name": area.area_manager.name if area and area.area_manager else "?",
+                    "name": str(args[0]).replace("<dollar>", "$"),
+                    "msg": str(args[1]) if len(args) > 1 else "",
+                    "ts": time.time(),
+                }
+            elif command == "MS" and len(args) >= 16:
+                cid = args[8] if len(args) > 8 else -1
+                char_name = ""
+                client_id = -1
+                if area:
+                    for c in area.clients:
+                        if c.char_id == cid:
+                            client_id = c.id
+                            char_name = getattr(c, "char_name", "")
+                            break
+                    if not char_name:
+                        try:
+                            char_name = area.area_manager.char_list[cid]
+                        except (IndexError, KeyError, TypeError, AttributeError):
+                            pass
+                entry = {
+                    "type": "ic",
+                    "area_id": area.id if area else -1,
+                    "area_name": area.name if area else "?",
+                    "hub_id": area.area_manager.id if area and area.area_manager else -1,
+                    "hub_name": area.area_manager.name if area and area.area_manager else "?",
+                    "client_id": client_id,
+                    "char_name": char_name,
+                    "showname": str(args[15]) if len(args) > 15 else "",
+                    "text": str(args[4]) if len(args) > 4 else "",
+                    "color": args[14] if len(args) > 14 else 0,
+                    "ts": time.time(),
+                }
+            else:
+                return
+            for cb in list(self._listeners):
+                try:
+                    cb(entry)
+                except Exception:
+                    pass
+
         def send_command(self, command, *args):
             """
             Compose and send an AO-compatible message, with arguments
@@ -232,6 +299,7 @@ class ClientManager:
             :param command: command name
             :param *args: list of arguments
             """
+            self._notify_monitors(command, args)
             if args:
                 # Music packet
                 if command == "MC":

@@ -36,6 +36,12 @@ body {
 }
 .gm-header h1 { font-size: 1.1rem; color: var(--gm-accent); letter-spacing: 0.02em; }
 .gm-header-info { display: flex; align-items: center; gap: 0.8rem; }
+.gm-header-travel { display: inline-flex; align-items: center; gap: 0.4rem; }
+.gm-header-travel-label { font-size: 0.78rem; color: var(--gm-text-dim); }
+.gm-header-travel-select {
+    background: var(--gm-panel-alt); color: var(--gm-text); border: 1px solid var(--gm-border);
+    border-radius: 5px; padding: 0.3rem 0.45rem; font-size: 0.8rem;
+}
 .gm-identity { font-size: 0.82rem; color: var(--gm-text-dim); }
 .gm-header button {
     background: transparent; color: var(--gm-accent); border: 1px solid var(--gm-accent);
@@ -144,6 +150,8 @@ body {
 .badge.afk { background: #4a4a63; color: #cfcfe0; }
 .badge.hidden { background: #333; color: #999; border: 1px solid #444; }
 .badge.running { background: var(--gm-success); color: #06210f; }
+.badge.muted { background: #6a5a2a; color: #fdf0c9; }
+.badge.ooc-muted { background: #4a4a6a; color: #d4d4ff; }
 
 /* --- Split layouts --- */
 .gm-split { display: flex; gap: 0.7rem; flex: 1; overflow: hidden; }
@@ -412,9 +420,6 @@ body {
     grid-auto-rows: 1fr;
     gap: 0.7rem; align-items: stretch; flex: 1; min-height: 0;
 }
-/* The Files subtab stays a strict 2x2 that fills the available height
- * (auto-fit alone would fan the four boxes out into a single wide row). */
-.gm-data-body[data-subtab="files"] .gm-data-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .gm-data-grid > .gm-panel-box { overflow: visible; min-height: 0; }
 .gm-data-hub-box { grid-column: 1 / -1; }
 .gm-data-filelist { flex: 1; min-height: 0; }
@@ -422,13 +427,13 @@ body {
 .gm-data-file-actions .btn-sm { padding: 0.22rem 0.5rem; font-size: 0.72rem; white-space: nowrap; }
 .gm-data-output-box .gm-output { min-height: 90px; max-height: 220px; }
 .badge.readonly { background: #333; color: var(--gm-warn); border: 1px solid #4a4a1f; }
+.badge.editable { background: #31313f; color: var(--gm-text-dim); border: 1px solid var(--gm-border); }
 
 /* --- Mobile responsive --- */
 @media (max-width: 900px) {
     .gm-split { flex-direction: column; overflow: auto; }
     .gm-split > .gm-panel-box { overflow: visible; }
     .gm-data-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
-    .gm-data-body[data-subtab="files"] .gm-data-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
     .gm-header { padding: 0.5rem 0.7rem; }

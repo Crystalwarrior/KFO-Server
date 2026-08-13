@@ -26,6 +26,7 @@ import re
 
 from server.constants import _SYSTEM_IPID
 from server.exceptions import ArgumentError
+from server.schema.link_props import LINK_PROPERTY_SCHEMA
 
 # Characters allowed in an expression after identifier substitution.
 ALLOWED_CHARS = "0123456789+-*/(). "
@@ -350,16 +351,27 @@ def _evidence_field(evidence, field):
 
 
 # Whitelisted link fields. A link is the dict stored under `area.links[str(target)]`.
-# The `evidence` list is returned space-joined so scripts can read it as a scalar.
-_LINK_FIELDS = {
-    "locked": lambda l: int(l.get("locked", False)),
-    "hidden": lambda l: int(l.get("hidden", False)),
-    "target_pos": lambda l: l.get("target_pos", ""),
-    "can_peek": lambda l: int(l.get("can_peek", True)),
-    "seethrough": lambda l: int(l.get("seethrough", False)),
-    "evidence": lambda l: " ".join(str(e) for e in l.get("evidence", ())),
-    "password": lambda l: l.get("password", ""),
-}
+# The field set and per-field coercion derive from the single source of truth in
+# `server/schema/link_props.py`, so a new link property is automatically readable
+# from scripts (`links[i].<field>`) without editing this module. Booleans read as
+# 0/1; the `evidence` list is returned space-joined so scripts can read it as a
+# scalar.
+def _make_link_getter(prop):
+    if prop.kind == "bool":
+        def getter(link, _default=prop.default):
+            return int(link.get(prop.name, _default))
+        return getter
+    if prop.kind == "list":
+        def getter(link):
+            return " ".join(str(e) for e in link.get(prop.name, ()))
+        return getter
+
+    def getter(link, _default=prop.default):
+        return link.get(prop.name, _default)
+    return getter
+
+
+_LINK_FIELDS = {prop.name: _make_link_getter(prop) for prop in LINK_PROPERTY_SCHEMA}
 
 
 def _link_item(area, index):

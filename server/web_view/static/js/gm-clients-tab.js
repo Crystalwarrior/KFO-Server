@@ -38,7 +38,10 @@ class ClientsTab extends TabBase {
         this._tbody.addEventListener('click', (e) => this._onTableClick(e));
         this._tbody.addEventListener('change', (e) => this._onTableChange(e));
 
+        this._searchQuery = '';
+        this._buildClientSearch();
         this._buildMoveModal();
+        this._buildForceSwitchModal();
     }
 
     /** Late-inject local content resolution (mirrors AreasGraphTab). */
@@ -117,6 +120,46 @@ class ClientsTab extends TabBase {
         }
         this._tbody.innerHTML = this._clients.map((c) => this._rowHtml(c)).join('');
         this._loadIcons();
+        this._applyClientSearch({ scroll: false });
+    }
+
+    /** Toolbar search: live-filter the roster, highlight the first match
+     * and (on user-typed changes) scroll it into view. The query matches
+     * showname, OOC name, character folder (incl. iniswap), client id, or
+     * area ("A3"). Filters re-apply after every poll-driven re-render so
+     * the search survives refreshes without the user doing anything. */
+    _buildClientSearch() {
+        const toolbar = this.root.querySelector('.gm-toolbar');
+        if (!toolbar) return;
+        const input = createGmSearchBox('Find client…', (v) => {
+            this._searchQuery = v;
+            this._applyClientSearch({ scroll: true });
+        });
+        toolbar.appendChild(input);
+        this._clientSearchInput = input;
+    }
+
+    _applyClientSearch(opts) {
+        opts = opts || {};
+        const q = (this._searchQuery || '').trim().toLowerCase();
+        const rows = Array.from(this._tbody.querySelectorAll('tr[data-id]'));
+        let firstMatch = null;
+        rows.forEach((row) => {
+            const c = this._clients.find((x) => String(x.id) === String(row.dataset.id));
+            let hay = '';
+            if (c) {
+                hay = [c.showname, c.name, this._folderKey(c), String(c.id), c.area_id !== undefined && c.area_id !== null ? 'A' + c.area_id : '']
+                    .filter(Boolean).join(' ').toLowerCase();
+            }
+            const match = !q || hay.includes(q);
+            row.classList.toggle('gm-search-row-hidden', !match);
+            if (q && match && firstMatch === null) firstMatch = row;
+        });
+        rows.forEach((row) => {
+            if (q) row.classList.toggle('gm-search-match', row === firstMatch);
+            else row.classList.remove('gm-search-match');
+        });
+        if (opts.scroll && firstMatch) firstMatch.scrollIntoView({ block: 'nearest' });
     }
 
     /** The character folder to key icon/color lookups on -- accounts for
@@ -132,17 +175,47 @@ class ClientsTab extends TabBase {
             c.is_area_cm ? '<span class="badge cm">CM</span>' : '',
             c.is_afk ? '<span class="badge afk">AFK</span>' : '',
             c.hidden ? '<span class="badge hidden">HIDDEN</span>' : '',
+            // Admin sessions also receive is_muted/is_ooc_muted (the
+            // serializer only ships them with session.is_admin).
+            this._isAdmin() && c.is_muted ? '<span class="badge muted">MIC</span>' : '',
+            this._isAdmin() && c.is_ooc_muted ? '<span class="badge ooc-muted">OOC</span>' : '',
         ].filter(Boolean).join(' ');
 
         const actionBtns = [];
         if (c.is_hub_gm) {
             actionBtns.push(`<button class="btn-sm danger" data-action="ungm" data-id="${c.id}" title="Remove from hub GM roster">Demote</button>`);
         } else {
-            actionBtns.push(`<button class="btn-sm" data-action="gm" data-id="${c.id}" ${c.is_mod ? 'disabled title="Already staff"' : ''} title="Add to hub GM roster">Promote to GM</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="gm" data-id="${c.id}" ${c.is_mod ? 'disabled title="Already staff"' : ''} title="Add to hub GM roster">Promote to GM</button>`);
         }
         actionBtns.push(`<button class="btn-sm" data-action="pm" data-id="${c.id}" title="Private message this player">PM</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="teleport-here" data-id="${c.id}" title="Move this player to your current area">Bring here</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="teleport-area" data-id="${c.id}" title="Move this player to a chosen area">Send to…</button>`);
+        // GM moderation actions (every panel user -- the commands themselves
+        // are mod_only-gated, so an actor without the right rank gets the same
+        // rejection the in-game command layer would produce). All of these
+        // target by client id, never by ipid.
+        actionBtns.push(`<button class="btn-sm danger" data-action="kill" data-id="${c.id}" title="Force into spectator (death)">Kill</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="freeze" data-id="${c.id}" title="Freeze from moving between areas">Freeze</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="unfreeze" data-id="${c.id}" title="Unfreeze">Unfreeze</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="blind" data-id="${c.id}" title="Blind from seeing/talking IC">Blind</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="unblind" data-id="${c.id}" title="Unblind">Unblind</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="${c.hidden ? 'unhide' : 'hide'}" data-id="${c.id}" title="${c.hidden ? 'Unhide from /getarea and playercounts' : 'Hide from /getarea and playercounts'}">${c.hidden ? 'Unhide' : 'Hide'}</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="move-delay" data-id="${c.id}" title="Set this player's move delay">Move delay…</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="force-switch" data-id="${c.id}" title="Force this player to switch character">Force switch…</button>`);
+        // Admin-only moderation quick actions (admin sessions only -- the
+        // server only sends ipid/mute state to admin role sessions, and these
+        // buttons are gated on the same check below). They dispatch through the
+        // shared command runner (`/api/gm/commands/run`), so the real command
+        // layer's permission checks apply exactly as if typed in-game.
+        if (this._isAdmin()) {
+            actionBtns.push(`<button class="btn-sm" data-action="whois" data-id="${c.id}" title="Look up this player">Whois</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="kick" data-id="${c.id}" title="Kick this player">Kick</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="ban" data-id="${c.id}" title="Ban this player">Ban</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="mute" data-id="${c.id}" title="Mute IC">Mute</button>`);
+            actionBtns.push(`<button class="btn-sm" data-action="unmute" data-id="${c.id}" title="Unmute IC">Unmute</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="ooc_mute" data-id="${c.id}" title="Mute OOC">OOC Mute</button>`);
+            actionBtns.push(`<button class="btn-sm" data-action="ooc_unmute" data-id="${c.id}" title="Unmute OOC">OOC Unmute</button>`);
+        }
         const actionBtn = `<span class="gm-client-actions">${actionBtns.join('')}</span>`;
 
         const folder = this._folderKey(c);
@@ -208,6 +281,10 @@ class ClientsTab extends TabBase {
             if (client) this._openMoveModal(client);
             return;
         }
+        if (['whois', 'kick', 'ban', 'mute', 'unmute', 'ooc_mute', 'ooc_unmute'].includes(btn.dataset.action)) {
+            this._adminAction(btn.dataset.action, btn.dataset.id);
+            return;
+        }
         this._runAction(btn.dataset.action, btn.dataset.id);
     }
 
@@ -261,10 +338,112 @@ class ClientsTab extends TabBase {
             } else if (action === 'ungm') {
                 if (!window.confirm(`Demote ${label} from GM?`)) return;
                 result = await this.api.demoteClient(id);
-            } else { // 'gm'
+            } else if (['kill', 'freeze', 'unfreeze', 'blind', 'unblind', 'hide', 'unhide', 'move-delay', 'force-switch'].includes(action)) {
+                // GM moderation actions, dispatched through the shared command
+                // runner so the real command layer's mod_only gates apply.
+                const cmdMap = {
+                    kill: 'kill', freeze: 'freeze', unfreeze: 'unfreeze',
+                    blind: 'blind', unblind: 'unblind',
+                    hide: 'player_hide', unhide: 'player_unhide',
+                    'move-delay': 'player_move_delay', 'force-switch': 'force_switch',
+                };
+                const cmd = cmdMap[action];
+                let arg = String(id);
+                if (action === 'move-delay') {
+                    const delay = window.prompt(`Move delay for ${label} in seconds (-1800..1800; blank = show current):`, '');
+                    if (delay === null) return;
+                    if (delay.trim() !== '') arg += ' ' + delay.trim();
+                } else if (action === 'force-switch') {
+                    if (opts.char !== undefined) {
+                        if (opts.char !== '') arg += ' ' + opts.char;
+                    } else {
+                        // Pull the target hub's character list and let the GM
+                        // pick (see _openForceSwitchModal); no prompt fallback.
+                        this._openForceSwitchModal(client || null, id);
+                        return;
+                    }
+                } else if (!window.confirm(`${action} ${label}?`)) {
+                    return;
+                }
+                result = await this.api.runCommand(cmd, arg);
+            } else if (action === 'gm') {
+                if (!window.confirm(`Promote ${label} to hub GM?`)) return;
                 result = await this.api.promoteClient(id);
             }
             const text = (result.output || []).join(' ') || (result.ok ? 'Done.' : 'Command failed.');
+            this.shell.toast(text, result.ok ? 'success' : 'error');
+            await this.reload();
+        } catch (e) {
+            this.shell.toast('Failed: ' + e.message, 'error');
+        }
+    }
+
+    // --- admin-only moderation quick actions -----------------------------
+
+    _isAdmin() {
+        return !!(this.shell.gmIdentity && this.shell.gmIdentity.role === 'admin');
+    }
+
+    async _adminAction(action, id) {
+        if (!this._isAdmin()) return;
+        const client = this._clients.find((c) => String(c.id) === String(id));
+        if (!client) return;
+        const label = client.showname || client.char_name || client.name || `#${client.id}`;
+        const ipid = client.ipid;
+        if (ipid === undefined || ipid === null) {
+            this.shell.toast('IPID is unavailable for this session.', 'error');
+            return;
+        }
+
+        let cmd;
+        let arg = '';
+        if (action === 'whois') {
+            cmd = 'whois';
+            arg = String(ipid);
+        } else if (action === 'kick') {
+            const reason = window.prompt(`Kick ${label}? (optional reason)`, '');
+            if (reason === null) return;
+            cmd = 'kick';
+            arg = `${ipid} ${reason}`.trim();
+        } else if (action === 'ban') {
+            if (!window.confirm(`Ban ${label} (IPID ${ipid})?`)) return;
+            const reason = window.prompt('Ban reason (required):', '');
+            if (reason === null || !reason.trim()) {
+                this.shell.toast('Ban cancelled: a reason is required.', 'error');
+                return;
+            }
+            const duration = window.prompt('Ban duration (e.g. "6 hours", "1 week", "perma") [default: 6 hours]:', '');
+            if (duration === null) return;
+            cmd = 'ban';
+            arg = `${ipid} "${reason.trim()}"`;
+            if (duration.trim()) arg += ` "${duration.trim()}"`;
+        } else if (action === 'mute') {
+            if (!window.confirm(`Mute ${label} (IC)?`)) return;
+            cmd = 'mute';
+            arg = String(ipid);
+        } else if (action === 'unmute') {
+            if (!window.confirm(`Unmute ${label} (IC)?`)) return;
+            cmd = 'unmute';
+            arg = String(ipid);
+        } else if (action === 'ooc_mute' || action === 'ooc_unmute') {
+            if (!window.confirm(`${action === 'ooc_mute' ? 'OOC-mute' : 'OOC-unmute'} ${label}?`)) return;
+            // `/ooc_mute`/`/ooc_unmute` address players by OOC name, not by
+            // showname. If the target has no OOC name on record yet, the name
+            // lookup cannot resolve, so fail loudly instead of silently
+            // targeting someone else (or, for unmute, everyone muted).
+            if (!client.name) {
+                this.shell.toast(`${label} has no OOC name on record; cannot ${action.replace('_', '-')} by name.`, 'error');
+                return;
+            }
+            cmd = action;
+            arg = client.name;
+        } else {
+            return;
+        }
+
+        try {
+            const result = await this.api.runCommand(cmd, arg);
+            const text = (result.output || []).join('\n') || (result.ok ? 'Command executed (no output).' : 'Command failed.');
             this.shell.toast(text, result.ok ? 'success' : 'error');
             await this.reload();
         } catch (e) {
@@ -342,5 +521,86 @@ class ClientsTab extends TabBase {
         this._closeMoveModal();
         if (areaId === '') return;
         await this._runAction('teleport-area', client.id, { area_id: areaId, pos });
+    }
+
+    // --- "Force switch…" (character picker) modal --------------------------
+
+    _buildForceSwitchModal() {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'gm-modal-backdrop hidden';
+        backdrop.id = 'clientsForceSwitchModal';
+        backdrop.innerHTML = `
+            <div class="gm-modal">
+                <div class="gm-modal-header">
+                    <h3>Force Character Switch</h3>
+                    <button type="button" class="btn-sm" data-action="close">Close</button>
+                </div>
+                <div class="gm-modal-body">
+                    <p class="dim" id="clientsForceSwitchTargetLabel"></p>
+                    <div class="gm-inline-form">
+                        <span class="dim">Switch to:</span>
+                        <select id="clientsForceSwitchSelect"></select>
+                    </div>
+                    <div class="gm-toolbar">
+                        <button class="btn-sm" id="clientsForceSwitchConfirmBtn">Force switch</button>
+                        <button class="btn-sm" data-action="close">Cancel</button>
+                    </div>
+                </div>
+            </div>`;
+        this.root.appendChild(backdrop);
+
+        this._forceSwitchModal = backdrop;
+        this._forceSwitchTarget = null;
+        this._forceSwitchTargetLabel = backdrop.querySelector('#clientsForceSwitchTargetLabel');
+        this._forceSwitchSelect = backdrop.querySelector('#clientsForceSwitchSelect');
+
+        backdrop.querySelectorAll('[data-action="close"]').forEach((b) =>
+            b.addEventListener('click', () => this._closeForceSwitchModal()));
+        backdrop.querySelector('#clientsForceSwitchConfirmBtn').addEventListener('click', () => this._confirmForceSwitch());
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) this._closeForceSwitchModal(); });
+    }
+
+    async _openForceSwitchModal(client, clientId) {
+        // The target comes from the roster row, but tolerate a missing entry.
+        const target = client || { id: clientId, showname: '', name: '' };
+        let data;
+        try {
+            data = await this.api.getCharacters();
+        } catch (e) {
+            this.shell.toast('Failed to load the character list: ' + e.message, 'error');
+            return;
+        }
+        const label = target.showname || target.name || ('#' + target.id);
+        this._forceSwitchTarget = target;
+        this._forceSwitchTargetLabel.textContent =
+            `Force ${label} (#${target.id}) to switch to:`;
+        // Empty value = dump them on the character select screen; '-1' and
+        // 'spectator' both resolve to spectator on the server.
+        const options = [
+            '<option value="">Character select screen</option>',
+            '<option value="spectator">Spectator</option>',
+        ];
+        const slots = (data.slots || [])
+            .slice()
+            .sort((a, b) => a.char_id - b.char_id);
+        for (const slot of slots) {
+            options.push(
+                `<option value="${esc(slot.folder)}">[${slot.char_id}] ${esc(slot.folder)}${slot.taken ? ' (taken)' : ''}</option>`);
+        }
+        this._forceSwitchSelect.innerHTML = options.join('');
+        this._forceSwitchModal.classList.remove('hidden');
+    }
+
+    _closeForceSwitchModal() {
+        this._forceSwitchModal.classList.add('hidden');
+        this._forceSwitchTarget = null;
+    }
+
+    async _confirmForceSwitch() {
+        const client = this._forceSwitchTarget;
+        if (!client) return;
+        const value = this._forceSwitchSelect.value;
+        this._closeForceSwitchModal();
+        await this._runAction('force-switch', client.id, { char: value });
     }
 }

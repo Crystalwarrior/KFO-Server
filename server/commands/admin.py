@@ -375,18 +375,47 @@ def ooc_cmd_unmod(client, arg):
     client.send_ooc("You're no longer a mod.")
 
 
+def _get_ooc_mute_targets(client, arg):
+    """
+    Resolve `/ooc_mute`/`/ooc_unmute` targets across the caller's hub.
+
+    Prefer a forward partial-name match (``/ooc_mute Jo`` -> any ``Jo*``), then
+    a numeric client id, then `get_targets`'s OOC_NAME branch. That last branch
+    is written for `/pm <name> <msg>` layouts (it requires the query to start
+    with the client's *full* name), which makes it unreliable as a standalone
+    name lookup -- e.g. the query ``john`` can match a client named ``Jo`` while
+    missing ``John Doe`` -- so it is only a last resort here.
+    """
+    term = arg.strip().lower()
+    hub = client.area.area_manager
+    targets = []
+    if term:
+        targets = [
+            c for c in client.server.client_manager.clients
+            if c.name and c.name.lower().startswith(term)
+            and c.area is not None and c.area.area_manager is hub
+        ]
+    if not targets and term.isdigit():
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(term), False
+        )
+    if not targets:
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.OOC_NAME, arg, False
+        )
+    return targets
+
+
 @mod_only()
 def ooc_cmd_ooc_mute(client, arg):
     """
     Prevent a user from talking out-of-character.
-    Usage: /ooc_mute <ooc-name>
+    Usage: /ooc_mute <ooc-name|client-id>
     """
     if len(arg) == 0:
         raise ArgumentError(
             "You must specify a target. Use /ooc_mute <OOC-name>.")
-    targets = client.server.client_manager.get_targets(
-        client, TargetType.OOC_NAME, arg, False
-    )
+    targets = _get_ooc_mute_targets(client, arg)
     if not targets:
         raise ArgumentError("Targets not found. Use /ooc_mute <OOC-name>.")
     for target in targets:
@@ -399,12 +428,14 @@ def ooc_cmd_ooc_mute(client, arg):
 def ooc_cmd_ooc_unmute(client, arg):
     """
     Allow an OOC-muted user to talk out-of-character.
-    Usage: /ooc_unmute <ooc-name>
+    Usage: /ooc_unmute <ooc-name|client-id>
     """
     if len(arg) == 0:
         raise ArgumentError(
             "You must specify a target. Use /ooc_unmute <OOC-name>.")
-    targets = client.server.client_manager.get_ooc_muted_clients()
+    targets = [
+        c for c in _get_ooc_mute_targets(client, arg) if c.is_ooc_muted
+    ]
     if not targets:
         raise ArgumentError("Targets not found. Use /ooc_unmute <OOC-name>.")
     for target in targets:

@@ -215,6 +215,10 @@ doorman_webhook:
   message: "A user is alone and has no one to talk to!"
   url: #webhook url
 
+# DEPRECATED -- the standalone admin panel has been folded into gm_panel (below).
+# Do NOT host admin_panel and gm_panel separately: enable gm_panel and give an
+# admin-role user a username/password (see gm_panel.users) to get the log viewer
+# and admin console. Kept only for backward compatibility.
 # Admin panel for viewing server logs in a web browser.
 # Logs are organized by hub/area and can be viewed live.
 admin_panel:
@@ -245,18 +249,28 @@ admin_panel:
     window_seconds: 300    # Time window in seconds (5 minutes)
     lockout_seconds: 300   # Lockout duration in seconds (5 minutes)
 
-# GM Control Panel: lets an in-game GM micromanage their hub from a browser
-# (areas as a graph, who's present, characters, GM-scoped OOC commands, and
-# the Automation Demos system). Unlike admin_panel, there are no standing
-# usernames/passwords -- a GM binds the panel to their live client by
-# running /gmpanel in-game, which mints a one-time login link. GMs never
-# have access to ipid/hdid/IP; that stays moderator-only.
+# GM Control Panel: the single web panel -- it doubles as the admin panel.
+# Lets an in-game GM micromanage their hub from a browser (areas as a graph,
+# who's present, characters, GM-scoped OOC commands, and the Automation Demos
+# system), and gives admin-role users the server log viewer + admin console.
+#
+# admin_panel (above) is deprecated: do NOT host admin_panel and gm_panel
+# separately -- enable this panel and configure `users` below instead.
+#
+# GMs bind the panel to their live client by running /gmpanel in-game, which
+# mints a one-time login link. Optionally, standing usernames/passwords (the
+# `users` block below) let an admin or GM log in remotely with no live client.
+# GMs never see ipid/hdid/IP -- that stays moderator-only (admin-role logins only).
 gm_panel:
   enabled: false
   port: 27018
   host: "0.0.0.0"
   session_ttl_seconds: 28800        # 8h, matches admin_panel's cookie lifetime
   login_token_ttl_seconds: 60       # one-time /gmpanel link expires fast
+  users:
+    # username:
+    #   password: changeme
+    #   role: admin            # admin (log viewer + console) | gm (GM tabs only)
 
   # Optional: point this at a static image host mirroring your backgrounds/
   # folder (e.g. "https://assets.example.com/backgrounds/") so the Areas tab

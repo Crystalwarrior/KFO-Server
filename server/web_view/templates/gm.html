@@ -10,6 +10,10 @@
 <header class="gm-header">
     <h1>GM Control Panel</h1>
     <div class="gm-header-info">
+        <span class="gm-header-travel" id="gmHeaderTravel" style="display:none">
+            <label class="gm-header-travel-label" for="gmHeaderTravelSelect">Travel to hub</label>
+            <select id="gmHeaderTravelSelect" class="gm-header-travel-select"></select>
+        </span>
         <span class="gm-identity" id="gmIdentity"></span>
         <button id="localContentBtn" title="Configure local backgrounds/icons/evidence images and marker colors">Local Content</button>
         <button id="logoutBtn">Logout</button>
@@ -23,6 +27,7 @@
     <div class="gm-tab" data-tab="commands">Commands</div>
     <div class="gm-tab" data-tab="evidence">Evidence</div>
     <div class="gm-tab" data-tab="data">Hub Data</div>
+    <div class="gm-tab" data-tab="admin">Admin</div>
     <span class="gm-conn-status">
         <span class="live-dot" id="wsDot"></span>
         <span id="wsStatus">Connecting…</span>
@@ -129,10 +134,20 @@
                 <div class="gm-empty">Loading command catalog…</div>
             </div>
             <div class="gm-panel-box gm-command-console">
-                <h3>Console</h3>
+                <div class="gm-command-console-head">
+                    <h3>Console</h3>
+                    <span class="gm-command-scope" id="commandsScopeBar"></span>
+                    <label class="gm-command-monitor" title="Forward OOC from your area to the console">
+                        <input type="checkbox" id="commandsOocMonitorCb"> Monitor OOC
+                    </label>
+                    <label class="gm-command-monitor" title="Forward IC from your area to the console">
+                        <input type="checkbox" id="commandsIcMonitorCb"> Monitor IC
+                    </label>
+                    <button class="btn-sm" id="commandsCookbookToggleBtn">Hide Cookbook</button>
+                </div>
                 <div class="gm-output" id="commandsOutput"></div>
                 <div class="gm-input-bar">
-                    <input type="text" id="commandsRawInput" placeholder="/cmd arg  (must be in the catalog on the left)" autocomplete="off" spellcheck="false">
+                    <input type="text" id="commandsRawInput" placeholder="/cmd arg" autocomplete="off" spellcheck="false">
                     <button id="commandsRunBtn">Run</button>
                 </div>
             </div>
@@ -246,8 +261,11 @@
             <span class="gm-toolbar-hint">Import/export the hub's yaml files: hub layout, evidence packs, character data, music lists and character lists.</span>
         </div>
         <div class="gm-subtabs" role="tablist" aria-label="Hub Data sections">
-            <button type="button" class="gm-subtab active" data-subtab="hub" role="tab">Hub Saves</button>
-            <button type="button" class="gm-subtab" data-subtab="files" role="tab">Files</button>
+            <button type="button" class="gm-subtab active" data-subtab="hub" role="tab">Hub Layout</button>
+            <button type="button" class="gm-subtab" data-subtab="evidence" role="tab">Evidence Packs</button>
+            <button type="button" class="gm-subtab" data-subtab="character_data" role="tab">Character Data</button>
+            <button type="button" class="gm-subtab" data-subtab="charlists" role="tab">Character Lists</button>
+            <button type="button" class="gm-subtab" data-subtab="musiclists" role="tab">Music Lists</button>
         </div>
         <div class="gm-data-subtabs">
 
@@ -278,7 +296,7 @@
                 </div>
             </div>
 
-            <div class="gm-data-body gm-data-subtab hidden" data-subtab="files">
+            <div class="gm-data-body gm-data-subtab hidden" data-subtab="evidence">
                 <div class="gm-data-grid">
                     <div class="gm-panel-box" data-kind="evidence">
                         <h3>Evidence Packs</h3>
@@ -294,7 +312,11 @@
                             <button class="btn-sm gm-data-upload-btn">Upload</button>
                         </div>
                     </div>
+                </div>
+            </div>
 
+            <div class="gm-data-body gm-data-subtab hidden" data-subtab="character_data">
+                <div class="gm-data-grid">
                     <div class="gm-panel-box" data-kind="character_data">
                         <h3>Character Data</h3>
                         <div class="gm-scroll-area gm-data-filelist">
@@ -309,7 +331,11 @@
                             <button class="btn-sm gm-data-upload-btn">Upload</button>
                         </div>
                     </div>
+                </div>
+            </div>
 
+            <div class="gm-data-body gm-data-subtab hidden" data-subtab="charlists">
+                <div class="gm-data-grid">
                     <div class="gm-panel-box" data-kind="charlists">
                         <h3>Character Lists (saved files)</h3>
                         <div class="gm-scroll-area gm-data-filelist">
@@ -324,7 +350,11 @@
                             <button class="btn-sm gm-data-upload-btn">Upload</button>
                         </div>
                     </div>
+                </div>
+            </div>
 
+            <div class="gm-data-body gm-data-subtab hidden" data-subtab="musiclists">
+                <div class="gm-data-grid">
                     <div class="gm-panel-box" data-kind="musiclists">
                         <h3>Music Lists (saved files)</h3>
                         <div class="gm-scroll-area gm-data-filelist">
@@ -349,6 +379,9 @@
 
         </div>
     </section>
+
+    <!-- ADMIN TAB -->
+    <section class="gm-tab-panel" id="tab-admin"></section>
 
 </main>
 
@@ -392,6 +425,7 @@
 <script src="/static/js/gm-commands-tab.js"></script>
 <script src="/static/js/gm-evidence-tab.js"></script>
 <script src="/static/js/gm-data-tab.js"></script>
+<script src="/static/js/gm-admin-tab.js"></script>
 <script src="/static/js/gm-shell.js"></script>
 <script src="/static/js/gm-main.js"></script>
 </body>

@@ -14,7 +14,7 @@
     .gm-login-box h1 { text-align: center; margin-bottom: 0.4rem; color: var(--gm-accent); font-size: 1.3rem; }
     .gm-login-box p.hint { text-align: center; color: var(--gm-text-dim); font-size: 0.82rem; margin-bottom: 1.3rem; }
     .gm-login-box label { display: block; margin-bottom: 0.3rem; font-size: 0.85rem; color: var(--gm-text-dim); }
-    .gm-login-box input[type="text"] {
+    .gm-login-box input[type="text"], .gm-login-box input[type="password"] {
         width: 100%; padding: 0.6rem; margin-bottom: 1rem; border: 1px solid var(--gm-border);
         border-radius: 4px; background: var(--gm-panel-alt); color: var(--gm-text); font-size: 0.9rem;
     }
@@ -39,6 +39,16 @@
                placeholder="https://.../?token=... or the raw token">
         <button type="submit" id="gmLoginSubmit">Open Panel</button>
     </form>
+    <hr class="gm-login-divider">
+    <p class="hint">…or sign in with a standing username / password (admin or remote GM).</p>
+    <form id="gmPwLoginForm">
+        <label for="gmPwUsername">Username</label>
+        <input type="text" id="gmPwUsername" name="username" autocomplete="username">
+        <label for="gmPwPassword">Password</label>
+        <input type="password" id="gmPwPassword" name="password" autocomplete="current-password">
+        <button type="submit" id="gmPwLoginSubmit">Sign In</button>
+    </form>
+    <div class="gm-login-error" id="gmPwLoginError"></div>
     <div class="gm-login-error" id="gmLoginError"></div>
 </div>
 <script>
@@ -96,6 +106,40 @@
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         submitToken(input.value);
+    });
+
+    var pwForm = document.getElementById('gmPwLoginForm');
+    var pwUser = document.getElementById('gmPwUsername');
+    var pwPass = document.getElementById('gmPwPassword');
+    var pwError = document.getElementById('gmPwLoginError');
+    var pwSubmit = document.getElementById('gmPwLoginSubmit');
+
+    async function submitPassword(username, password) {
+        pwSubmit.disabled = true;
+        pwError.textContent = '';
+        try {
+            var resp = await fetch('/api/gm/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ username: username, password: password }),
+            });
+            var data = await resp.json();
+            if (resp.ok && data.ok) {
+                window.location.href = '/';
+                return;
+            }
+            pwError.textContent = (data && data.error) || 'Login failed.';
+        } catch (err) {
+            pwError.textContent = 'Request failed: ' + err.message;
+        } finally {
+            pwSubmit.disabled = false;
+        }
+    }
+
+    pwForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitPassword(pwUser.value, pwPass.value);
     });
 
     var params = new URLSearchParams(window.location.search);

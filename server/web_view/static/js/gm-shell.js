@@ -25,6 +25,12 @@ class GMPanelShell {
         this._wsDot = root.querySelector('#wsDot');
         this._wsStatus = root.querySelector('#wsStatus');
 
+        this._travelWrap = root.querySelector('#gmHeaderTravel');
+        this._travelSelect = root.querySelector('#gmHeaderTravelSelect');
+        if (this._travelSelect) {
+            this._travelSelect.addEventListener('change', () => this._travelToHub());
+        }
+
         this._bindNav();
         root.querySelector('#logoutBtn').addEventListener('click', () => this.logout());
 
@@ -53,8 +59,16 @@ class GMPanelShell {
             // handle_session_get returns {ok, gm: {...}} -- the GM identity
             // lives under `.gm`, not on the envelope itself.
             this._setIdentity(session.gm);
+            if (!session.gm || session.gm.role !== 'admin') this._hideAdminTab();
         } catch (e) {
-            window.location.href = '/';
+            // Only bounce back to the sign-in page when the session is genuinely
+            // gone (401). Any other failure (500, network hiccup) must NOT
+            // redirect, or the panel can enter a fast reload loop.
+            if (e && e.status === 401) {
+                window.location.href = '/';
+            } else {
+                this.toast('Failed to load the GM panel: ' + ((e && e.message) || 'unknown error'), 'error');
+            }
             return;
         }
         try {
@@ -62,6 +76,7 @@ class GMPanelShell {
         } catch (e) {
             // Local content degrades to plain fallback tiles; never block startup on it.
         }
+        this._loadHeaderTravel();
         this.api.connectWebSocket();
         this.switchTab('areas');
     }
@@ -72,6 +87,15 @@ class GMPanelShell {
         });
     }
 
+    /** The Admin tab (log viewer + admin console) is only for admin-role
+     * sessions. Hide it for everyone else -- live GMs and remote GMs. */
+    _hideAdminTab() {
+        const nav = this._navEl.querySelector('.gm-tab[data-tab="admin"]');
+        if (nav) nav.remove();
+        const panel = this.root.querySelector('#tab-admin');
+        if (panel) panel.remove();
+        this.tabs.delete('admin');
+    }
     _setIdentity(gm) {
         this.gmIdentity = gm || null;
         this._renderIdentity();
@@ -85,6 +109,45 @@ class GMPanelShell {
         const name = gm.showname || gm.name || `Client ${gm.client_id}`;
         this._identityEl.textContent =
             `${name} — Hub ${gm.hub_id}: ${gm.hub_name} — Area ${gm.area_id}${gm.is_mod ? ' — MOD' : ' — GM'}`;
+    }
+
+    /** Load the travel scope and render the header "Travel to hub" control
+     * (admin-only capability; hub-bound GMs never see it). */
+    async _loadHeaderTravel() {
+        if (!this._travelWrap) return;
+        try {
+            const scope = await this.api.getCommandScope();
+            this._renderHeaderTravel(scope);
+        } catch (e) {
+            this._travelWrap.style.display = 'none';
+        }
+    }
+
+    _renderHeaderTravel(scope) {
+        if (!this._travelWrap || !this._travelSelect) return;
+        if (!scope || !scope.can_travel) {
+            this._travelWrap.style.display = 'none';
+            return;
+        }
+        this._travelSelect.innerHTML = (scope.hubs || [])
+            .map((h) => `<option value="${h.id}"${h.id === scope.current_hub_id ? ' selected' : ''}>${esc(h.name)}</option>`)
+            .join('');
+        this._travelWrap.style.display = '';
+    }
+
+    async _travelToHub() {
+        if (!this._travelSelect) return;
+        const hubId = Number(this._travelSelect.value);
+        if (Number.isNaN(hubId)) return;
+        try {
+            const result = await this.api.travelToHub(hubId);
+            this.toast(`Traveled to hub ${result.hub_name}.`, 'success');
+            // The server's hub_switched WS event updates the identity line and
+            // reloads every tab; also refresh the selector's current value.
+            await this._loadHeaderTravel();
+        } catch (e) {
+            this.toast('Travel failed: ' + (e.message || 'unknown error'), 'error');
+        }
     }
 
     switchTab(name) {
@@ -142,6 +205,7 @@ class GMPanelShell {
                 this.gmIdentity.hub_name = msg.data.new_hub_name;
                 this._renderIdentity();
             }
+            this._loadHeaderTravel();
             this._reloadAllTabs();
             return;
         }
