@@ -70,12 +70,6 @@ masterserver_description: This is my flashy new server
 # To prevent issues, this value should be greater than 60.
 timeout: 250
 
-# How long (in seconds) a disconnected client's session is kept alive as a
-# "ghost" so a reconnecting client can resume their area, character, position,
-# evidence, etc. If the client doesn't reconnect within this window the ghost
-# is cleaned up like a normal disconnection.
-reconnect_grace_time: 20
-
 # Packet size in bytes. This is 1024 by default.
 # Don't touch this if you don't know what you're doing.
 packet_size: 1024

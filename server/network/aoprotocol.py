@@ -116,17 +116,10 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client is not None:
-            if self.ping_timeout is not None:
-                self.ping_timeout.cancel()
-                self.ping_timeout = None
             logger.debug("%s disconnected.", self.client.ipid)
-            if self.client.char_id is None or not self.client.joined:
-                # Never finished the join handshake - nothing worth resuming.
-                self.server.remove_client(self.client)
-            elif not self.client.is_ghost:
-                # Keep the session around for a short grace period so a
-                # reconnecting client can resume it.
-                self.client.mark_ghost()
+            self.server.remove_client(self.client)
+        if self.ping_timeout is not None:
+            self.ping_timeout.cancel()
 
     def get_messages(self):
         """Parses out full messages from the buffer.
@@ -348,15 +341,6 @@ class AOProtocol(asyncio.Protocol):
             return
 
         cid = args[1]
-        if not self.client.joined:
-            # First join of this connection. If a ghost with our identity
-            # still exists, resume that session instead of starting fresh.
-            resumed = self.server.client_manager.try_resume(
-                self.client, self, self.client.hdid
-            )
-            if resumed is not None:
-                self.client = resumed
-                return
         try:
             self.client.change_character(cid)
         except ClientError:

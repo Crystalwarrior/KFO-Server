@@ -364,9 +364,6 @@ class TsuServer3:
                 "password": self.config["modpass"]}}
         if "multiclient_limit" not in self.config:
             self.config["multiclient_limit"] = 16
-
-        if "reconnect_grace_time" not in self.config:
-            self.config["reconnect_grace_time"] = 20
         if "asset_url" not in self.config:
             self.config["asset_url"] = ""
         if "block_repeat" not in self.config:

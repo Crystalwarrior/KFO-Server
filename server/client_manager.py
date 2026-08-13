@@ -4,7 +4,6 @@ import time
 import math
 import os
 import arrow
-import asyncio
 from heapq import heappop, heappush
 
 
@@ -56,14 +55,6 @@ class ClientManager:
 
             self.first_joined = True
             self.joined = False
-
-            # Reconnect/ghost state. A "ghost" is a client whose transport
-            # dropped but whose session is kept alive for a grace period so a
-            # reconnecting client can resume it.
-            self.is_ghost = False
-            self.ghost_since = 0
-            self.reconnect_grace_timer = None
-            self.protocol = None
 
             # Pairing character ID
             self.charid_pair = -1
@@ -225,10 +216,6 @@ class ClientManager:
             Send a raw packet over TCP.
             :param msg: string to send
             """
-            # Ghost clients have a dead transport; drop anything we'd send them
-            # while they wait for a reconnect to resume their session.
-            if self.is_ghost:
-                return
             self.transport.write(msg.encode("utf-8"))
 
         def add_listener(self, callback):
@@ -2678,65 +2665,6 @@ class ClientManager:
                         ],
                     ],
                 )
-
-    def find_ghost(self, client):
-        """
-        Find a ghost client that a given client should be resumed from.
-
-        A matching ghost must share the same IPID and HDID (our identity for
-        resumption), must actually be in ghost state and must have finished
-        choosing a character.
-        :param client: client looking to resume
-        :returns: matching ghost client, or None
-        """
-        if client.hdid == "":
-            return None
-        for c in self.clients:
-            if (
-                c is not client
-                and c.is_ghost
-                and c.ipid == client.ipid
-                and c.hdid != ""
-                and c.hdid == client.hdid
-                and c.char_id is not None
-            ):
-                return c
-        return None
-
-    def try_resume(self, client, protocol, hdid):
-        """
-        Attempt to resume a ghost session for a freshly-connected client.
-
-        If a matching ghost is found, the fresh client object is discarded and
-        the ghost's live session is handed over to the new connection.
-        :param client: the brand new client object (not yet joined)
-        :param protocol: the AOProtocol instance handling this connection
-        :param hdid: the client's hardware ID
-        :returns: the resumed client, or None if there was nothing to resume
-        """
-        ghost = self.find_ghost(client)
-        if ghost is None:
-            return None
-        # Discard the fresh client and free its assigned ID / slot so the
-        # manager's counts stay accurate, then hand the ghost session over to
-        # the new connection.
-        self._discard_new_client(client)
-        ghost.resume_from_ghost(protocol, client.transport, hdid)
-        return ghost
-
-    def _discard_new_client(self, client):
-        """
-        Remove a fresh, never-joined client (the stand-in created before a
-        ghost session is resumed) so its ID/slot is returned.
-        """
-        heappush(self.cur_id, client.id)
-        temp_ipid = client.ipid
-        for c in self.server.client_manager.clients:
-            if c.ipid == temp_ipid:
-                c.clientscon -= 1
-        if client in client.area.clients:
-            client.area.clients.discard(client)
-        self.clients.discard(client)
 
     def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
         """
