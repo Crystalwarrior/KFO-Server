@@ -483,7 +483,7 @@ class AreaManager:
             client.broadcast_list.clear()
             client.send_ooc("Your broadcast list has been cleared.")
 
-        if len(self.real_owners()) == 0:
+        if not self.hub_has_gm():
             # To prevent people egging on the hub list by making epic meme names and bailing
             self.name = self.o_name
             self.abbreviation = self.o_abbreviation
@@ -531,7 +531,8 @@ class AreaManager:
         for gm in self.real_owners():
             gms.add(gm.name)
         for gm in self.remote_gms():
-            gms.add(gm.name)
+            login_name = getattr(gm, "login_name", None) or gm.name
+            gms.add(f"{login_name} (remote)")
         return ", ".join(gms)
 
     def default_area(self):

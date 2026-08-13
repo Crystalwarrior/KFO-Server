@@ -921,6 +921,7 @@ class GMSessionManager:
             return None, error
 
         remote = RemoteClient(self._server, is_mod=True, is_gm=True, name="[GM:%s]" % username)
+        remote.login_name = username
         remote.join_area(hub.default_area())
         session = RemoteSession(self._server, remote, username, self._session_ttl)
         token = secrets.token_urlsafe(32)
