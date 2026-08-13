@@ -174,6 +174,10 @@ class ClientsTab extends TabBase {
             c.is_area_cm ? '<span class="badge cm">CM</span>' : '',
             c.is_afk ? '<span class="badge afk">AFK</span>' : '',
             c.hidden ? '<span class="badge hidden">HIDDEN</span>' : '',
+            // Admin sessions also receive is_muted/is_ooc_muted (the
+            // serializer only ships them with session.is_admin).
+            this._isAdmin() && c.is_muted ? '<span class="badge muted">MIC</span>' : '',
+            this._isAdmin() && c.is_ooc_muted ? '<span class="badge ooc-muted">OOC</span>' : '',
         ].filter(Boolean).join(' ');
 
         const actionBtns = [];
@@ -185,6 +189,20 @@ class ClientsTab extends TabBase {
         actionBtns.push(`<button class="btn-sm" data-action="pm" data-id="${c.id}" title="Private message this player">PM</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="teleport-here" data-id="${c.id}" title="Move this player to your current area">Bring here</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="teleport-area" data-id="${c.id}" title="Move this player to a chosen area">Send to…</button>`);
+        // Admin-only moderation quick actions (admin sessions only -- the
+        // server only sends ipid/mute state to admin role sessions, and these
+        // buttons are gated on the same check below). They dispatch through the
+        // shared command runner (`/api/gm/commands/run`), so the real command
+        // layer's permission checks apply exactly as if typed in-game.
+        if (this._isAdmin()) {
+            actionBtns.push(`<button class="btn-sm" data-action="whois" data-id="${c.id}" title="Look up this player">Whois</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="kick" data-id="${c.id}" title="Kick this player">Kick</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="ban" data-id="${c.id}" title="Ban this player">Ban</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="mute" data-id="${c.id}" title="Mute IC">Mute</button>`);
+            actionBtns.push(`<button class="btn-sm" data-action="unmute" data-id="${c.id}" title="Unmute IC">Unmute</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="ooc_mute" data-id="${c.id}" title="Mute OOC">OOC Mute</button>`);
+            actionBtns.push(`<button class="btn-sm" data-action="ooc_unmute" data-id="${c.id}" title="Unmute OOC">OOC Unmute</button>`);
+        }
         const actionBtn = `<span class="gm-client-actions">${actionBtns.join('')}</span>`;
 
         const folder = this._folderKey(c);
@@ -250,6 +268,10 @@ class ClientsTab extends TabBase {
             if (client) this._openMoveModal(client);
             return;
         }
+        if (['whois', 'kick', 'ban', 'mute', 'unmute', 'ooc_mute', 'ooc_unmute'].includes(btn.dataset.action)) {
+            this._adminAction(btn.dataset.action, btn.dataset.id);
+            return;
+        }
         this._runAction(btn.dataset.action, btn.dataset.id);
     }
 
@@ -307,6 +329,79 @@ class ClientsTab extends TabBase {
                 result = await this.api.promoteClient(id);
             }
             const text = (result.output || []).join(' ') || (result.ok ? 'Done.' : 'Command failed.');
+            this.shell.toast(text, result.ok ? 'success' : 'error');
+            await this.reload();
+        } catch (e) {
+            this.shell.toast('Failed: ' + e.message, 'error');
+        }
+    }
+
+    // --- admin-only moderation quick actions -----------------------------
+
+    _isAdmin() {
+        return !!(this.shell.gmIdentity && this.shell.gmIdentity.role === 'admin');
+    }
+
+    async _adminAction(action, id) {
+        if (!this._isAdmin()) return;
+        const client = this._clients.find((c) => String(c.id) === String(id));
+        if (!client) return;
+        const label = client.showname || client.char_name || client.name || `#${client.id}`;
+        const ipid = client.ipid;
+        if (ipid === undefined || ipid === null) {
+            this.shell.toast('IPID is unavailable for this session.', 'error');
+            return;
+        }
+
+        let cmd;
+        let arg = '';
+        if (action === 'whois') {
+            cmd = 'whois';
+            arg = String(ipid);
+        } else if (action === 'kick') {
+            const reason = window.prompt(`Kick ${label}? (optional reason)`, '');
+            if (reason === null) return;
+            cmd = 'kick';
+            arg = `${ipid} ${reason}`.trim();
+        } else if (action === 'ban') {
+            if (!window.confirm(`Ban ${label} (IPID ${ipid})?`)) return;
+            const reason = window.prompt('Ban reason (required):', '');
+            if (reason === null || !reason.trim()) {
+                this.shell.toast('Ban cancelled: a reason is required.', 'error');
+                return;
+            }
+            const duration = window.prompt('Ban duration (e.g. "6 hours", "1 week", "perma") [default: 6 hours]:', '');
+            if (duration === null) return;
+            cmd = 'ban';
+            arg = `${ipid} "${reason.trim()}"`;
+            if (duration.trim()) arg += ` "${duration.trim()}"`;
+        } else if (action === 'mute') {
+            if (!window.confirm(`Mute ${label} (IC)?`)) return;
+            cmd = 'mute';
+            arg = String(ipid);
+        } else if (action === 'unmute') {
+            if (!window.confirm(`Unmute ${label} (IC)?`)) return;
+            cmd = 'unmute';
+            arg = String(ipid);
+        } else if (action === 'ooc_mute' || action === 'ooc_unmute') {
+            if (!window.confirm(`${action === 'ooc_mute' ? 'OOC-mute' : 'OOC-unmute'} ${label}?`)) return;
+            // `/ooc_mute`/`/ooc_unmute` address players by OOC name, not by
+            // showname. If the target has no OOC name on record yet, the name
+            // lookup cannot resolve, so fail loudly instead of silently
+            // targeting someone else (or, for unmute, everyone muted).
+            if (!client.name) {
+                this.shell.toast(`${label} has no OOC name on record; cannot ${action.replace('_', '-')} by name.`, 'error');
+                return;
+            }
+            cmd = action;
+            arg = client.name;
+        } else {
+            return;
+        }
+
+        try {
+            const result = await this.api.runCommand(cmd, arg);
+            const text = (result.output || []).join('\n') || (result.ok ? 'Command executed (no output).' : 'Command failed.');
             this.shell.toast(text, result.ok ? 'success' : 'error');
             await this.reload();
         } catch (e) {

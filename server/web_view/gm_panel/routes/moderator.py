@@ -1,4 +1,4 @@
-"""Moderator routes: admin log viewer and OOC/IC monitoring.
+"""Moderator routes: the admin log viewer.
 
 These are the GM panel's port of ``server/web_view/admin_panel.py``'s moderator
 surface. They are the ONLY part of the panel that can see ipid/hdid or query the
@@ -6,31 +6,21 @@ global event log, so every handler here is gated to sessions whose role is
 ``admin`` (a password login of ``role: admin``). Live-client GM sessions and
 ``role: gm`` remote sessions receive a 403.
 
-The admin console lives on the shared Commands tab now (``CommandRoutes``) --
-it is the same free-form runner a GM uses, plus the ``ooc`` say command and
-hub-travel for ``AdminSession``.
-
-The live-log WebSocket (``/ws/gm/admin_live``) carries two kinds of frame:
-
-* ``{"type": "area"|"connect"|"misc", "data": {...}}`` -- drained from
-  ``database.subscribe()`` (the global event log).
-* ``{"type": "ooc"|"ic", ...}`` -- flat frames forwarded from the session's
-  ``RemoteClient`` when the OOC/IC monitor is enabled.
+The admin console and the OOC/IC monitors live on the shared Commands tab
+(``CommandRoutes``) -- the console is the same free-form runner a GM uses, and
+the monitor toggles are de-gated there so GMs and admins both get them. The
+"Go Live" log stream is the one moderator-specific live feature: ``handle_api_log_live``
+turns on a per-session subscription to ``database.subscribe()`` whose frames are
+fanned out over the shared ``/ws/gm/live`` WebSocket.
 """
 
-import asyncio
-import json
-
-import aiohttp
 from aiohttp import web
 
 from server import database
-from server.constants import _SYSTEM_IPID
-from server.remote_client import RemoteClient
 
 
 class ModeratorRoutes:
-    """Admin-only routes: log viewer, OOC/IC monitor, live WS."""
+    """Admin-only routes: log viewer + its live stream."""
 
     def __init__(self, session_manager, server):
         self._session_manager = session_manager
@@ -137,32 +127,17 @@ class ModeratorRoutes:
         total = db.count_misc_events(event_subtype, ipid, since, until)
         return web.json_response({"events": events, "total": total})
 
-    # -- admin console -------------------------------------------------
+    # -- live log stream ----------------------------------------------
 
-    async def handle_api_players(self, request):
-        session, err = self._require_admin(request)
-        if err is not None:
-            return err
-        players = []
-        for c in list(self._server.client_manager.clients):
-            if isinstance(c, RemoteClient) or c.ipid == _SYSTEM_IPID:
-                continue
-            area = getattr(c, "area", None)
-            players.append({
-                "id": c.id,
-                "name": getattr(c, "name", ""),
-                "char_name": getattr(c, "char_name", ""),
-                "showname": getattr(c, "showname", ""),
-                "ipid": c.ipid,
-                "area_id": area.id if area is not None else -1,
-                "area_name": area.name if area is not None else "?",
-                "is_mod": getattr(c, "is_mod", False),
-                "is_muted": getattr(c, "is_muted", False),
-                "is_ooc_muted": getattr(c, "is_ooc_muted", False),
-            })
-        return web.json_response(players)
+    async def handle_api_log_live(self, request):
+        """Toggle the live event-log stream for this admin session.
 
-    async def handle_api_ooc_monitor(self, request):
+        Enabling subscribes the session to ``database.subscribe()``; rows are
+        fanned out over the shared ``/ws/gm/live`` WebSocket as
+        ``{"type": "area"|"connect"|"misc", "data": {...}}`` frames. Disabling
+        cancels the subscription. The de-gated Commands-tab monitors keep their
+        own ``set_monitor`` toggle.
+        """
         session, err = self._require_admin(request)
         if err is not None:
             return err
@@ -171,67 +146,5 @@ class ModeratorRoutes:
         except Exception:
             return web.json_response({"ok": False, "error": "invalid_request"}, status=400)
         enabled = bool(data.get("enabled", False))
-        session.set_monitor("ooc", enabled)
-        area = session.current_area()
-        return web.json_response({
-            "ok": True,
-            "monitoring": enabled,
-            "area_name": area.name if area is not None else "?",
-            "area_id": area.id if area is not None else -1,
-        })
-
-    async def handle_api_ic_monitor(self, request):
-        session, err = self._require_admin(request)
-        if err is not None:
-            return err
-        try:
-            data = await request.json()
-        except Exception:
-            return web.json_response({"ok": False, "error": "invalid_request"}, status=400)
-        enabled = bool(data.get("enabled", False))
-        session.set_monitor("ic", enabled)
-        area = session.current_area()
-        return web.json_response({
-            "ok": True,
-            "monitoring": enabled,
-            "area_name": area.name if area is not None else "?",
-            "area_id": area.id if area is not None else -1,
-        })
-
-    # -- live-log WebSocket -------------------------------------------
-
-    async def handle_admin_ws_live(self, request):
-        session, err = self._require_admin(request)
-        if err is not None:
-            return err
-        db = database._database_singleton
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-        session.add_ws(ws)
-        queue = db.subscribe()
-
-        async def drain():
-            try:
-                while True:
-                    entry = await asyncio.wait_for(queue.get(), timeout=30)
-                    await ws.send_json(entry)
-            except asyncio.TimeoutError:
-                await ws.ping()
-
-        listener = asyncio.ensure_future(drain())
-        try:
-            async for msg in ws:
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    try:
-                        payload = json.loads(msg.data)
-                    except Exception:
-                        continue
-                    if payload.get("type") == "ping":
-                        await ws.send_json({"type": "pong", "data": {}})
-                elif msg.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSE):
-                    break
-        finally:
-            listener.cancel()
-            session.remove_ws(ws)
-            db.unsubscribe(queue)
-        return ws
+        session.set_log_live(enabled)
+        return web.json_response({"ok": True, "live": enabled})

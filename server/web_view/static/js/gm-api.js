@@ -91,18 +91,16 @@ class ApiClient {
     getSession() { return this.get('/api/gm/session'); }
     logout() { return this.post('/api/gm/logout'); }
 
-    // --- Admin / moderator (log viewer + console + monitors) ----------
-    // These endpoints are only reachable by admin-role sessions; gm/live
-    // sessions get a 403 from the server.
+    // --- Admin / moderator (log viewer) ---------------------------------
+    // Only admin-role sessions can reach these endpoints; gm/live sessions
+    // get a 403 from the server.
     login(username, password) { return this.post('/api/gm/login', { username, password }); }
     getLogHubs() { return this.get('/api/gm/logs/hubs'); }
     getLogEventTypes(category) { return this.get('/api/gm/logs/event_types?category=' + encodeURIComponent(category || 'area')); }
     getAreaEvents(params) { return this.get('/api/gm/logs/area_events?' + this._qs(params)); }
     getConnectEvents(params) { return this.get('/api/gm/logs/connect_events?' + this._qs(params)); }
     getMiscEvents(params) { return this.get('/api/gm/logs/misc_events?' + this._qs(params)); }
-    getPlayers() { return this.get('/api/gm/admin/players'); }
-    setOocMonitor(enabled) { return this.post('/api/gm/admin/ooc_monitor', { enabled }); }
-    setIcMonitor(enabled) { return this.post('/api/gm/admin/ic_monitor', { enabled }); }
+    setLogLive(enabled) { return this.post('/api/gm/logs/live', { enabled }); }
 
     _qs(params) {
         const q = [];
@@ -144,6 +142,11 @@ class ApiClient {
     runCommand(cmd, arg) { return this.post('/api/gm/commands/run', { cmd, arg }); }
     getCommandScope() { return this.get('/api/gm/commands/scope'); }
     travelToHub(hubId) { return this.post('/api/gm/commands/travel', { hub_id: hubId }); }
+
+    // OOC/IC monitor toggles (de-gated -- the Commands-tab console aid for
+    // GMs and admins alike). Frames stream over /ws/gm/live as
+    // {type: 'monitor_ooc'|'monitor_ic', data: {...}}.
+    setMonitor(kind, enabled) { return this.post(`/api/gm/monitor/${kind}`, { enabled }); }
 
     // --- Characters tab (§3.5) --------------------------------------------
 

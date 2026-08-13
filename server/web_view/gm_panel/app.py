@@ -110,18 +110,16 @@ class GMPanelApp:
         # Password login (NOT behind require -- this is what establishes the session).
         app.router.add_post("/api/gm/login", auth_routes.handle_login)
 
-        # Admin-only moderator routes (log viewer + monitors + live WS). The
-        # admin console is the shared Commands tab console (/api/gm/commands/*).
+        # Admin-only moderator routes (log viewer + live log stream). The admin
+        # console and the OOC/IC monitors live on the shared Commands tab
+        # (/api/gm/commands/*, /api/gm/monitor/*) so GMs and admins both get them.
         app.router.add_get("/api/gm/logs/hubs", require(moderator_routes.handle_api_hubs))
         app.router.add_get("/api/gm/logs/areas", require(moderator_routes.handle_api_areas))
         app.router.add_get("/api/gm/logs/event_types", require(moderator_routes.handle_api_event_types))
         app.router.add_get("/api/gm/logs/area_events", require(moderator_routes.handle_api_area_events))
         app.router.add_get("/api/gm/logs/connect_events", require(moderator_routes.handle_api_connect_events))
         app.router.add_get("/api/gm/logs/misc_events", require(moderator_routes.handle_api_misc_events))
-        app.router.add_get("/api/gm/admin/players", require(moderator_routes.handle_api_players))
-        app.router.add_post("/api/gm/admin/ooc_monitor", require(moderator_routes.handle_api_ooc_monitor))
-        app.router.add_post("/api/gm/admin/ic_monitor", require(moderator_routes.handle_api_ic_monitor))
-        app.router.add_get("/ws/gm/admin_live", require(moderator_routes.handle_admin_ws_live))
+        app.router.add_post("/api/gm/logs/live", require(moderator_routes.handle_api_log_live))
 
         # Areas tab -- literal/collection routes ("hub/areas/...") registered
         # separately from the per-area "{area_id}/..." routes.
@@ -198,6 +196,7 @@ class GMPanelApp:
         app.router.add_post("/api/gm/commands/run", require(command_routes.handle_run_command))
         app.router.add_get("/api/gm/commands/scope", require(command_routes.handle_get_scope))
         app.router.add_post("/api/gm/commands/travel", require(command_routes.handle_travel))
+        app.router.add_post("/api/gm/monitor/{kind}", require(command_routes.handle_set_monitor))
 
         # Characters tab
         app.router.add_get(

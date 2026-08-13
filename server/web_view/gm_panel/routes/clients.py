@@ -32,8 +32,12 @@ class ClientRoutes:
         if not session.is_valid():
             return web.json_response({"error": "session_invalid"}, status=401)
         hub = session.current_hub()
+        # `include_sensitive` (ipid + mute state) is only ever set for
+        # admin-role sessions -- see ClientSerializer.to_dict.
+        include_sensitive = session.is_admin
         clients = [
-            ClientSerializer.to_dict(c) for c in hub.clients
+            ClientSerializer.to_dict(c, include_sensitive=include_sensitive)
+            for c in hub.clients
             if not isinstance(c, RemoteClient) and c.ipid != _SYSTEM_IPID
         ]
         return web.json_response({"hub_id": hub.id, "clients": clients})

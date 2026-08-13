@@ -56,6 +56,10 @@ class GMSession:
         self._ttl = ttl
         self._created_at = time.time()
         self._ws_connections = set()
+        self._ooc_listener = None
+        self._ic_listener = None
+        self._log_live_task = None
+        self._log_live_queue = None
 
     @property
     def bound_client(self):
@@ -367,13 +371,99 @@ class GMSession:
                 continue
             loop.call_soon(asyncio.ensure_future, ws.send_json(payload))
 
+    def set_monitor(self, kind, enabled):
+        """Enable/disable forwarding of OOC or IC frames to this session's sockets.
+
+        ``kind`` is ``"ooc"`` or ``"ic"``. The live bound client is already a real
+        area participant, so enabling just installs a listener that forwards the
+        matching frame to this session's WebSockets (shaped ``{type, data}`` for the
+        shared ``/ws/gm/live`` stream); disabling removes it.
+        """
+        if kind not in ("ooc", "ic"):
+            return
+        if not self.is_valid():
+            raise SessionInvalid()
+        attr = "_" + kind + "_listener"
+        listener = getattr(self, attr)
+        if enabled:
+            if listener is None:
+                def forward(entry):
+                    if entry.get("type") == kind:
+                        data = {k: v for k, v in entry.items() if k != "type"}
+                        self.push_event("monitor_" + kind, data)
+
+                listener = forward
+                setattr(self, attr, listener)
+                self._client.add_listener(listener)
+        else:
+            if listener is not None:
+                self._client.remove_listener(listener)
+                setattr(self, attr, None)
+
+    def set_log_live(self, enabled):
+        """Subscribe/unsubscribe this session to the global event log.
+
+        Route-gated to admin sessions (it streams ipid/hdid-bearing log rows).
+        Pushes live ``area``/``connect``/``misc`` frames -- the AdminTab log
+        viewer's "Go Live" -- over the shared ``/ws/gm/live`` stream rather than
+        a dedicated log WebSocket.
+        """
+        if enabled:
+            if self._log_live_task is not None:
+                return
+            from server import database
+            self._log_live_queue = database._database_singleton.subscribe()
+            queue = self._log_live_queue
+
+            async def drain():
+                try:
+                    while True:
+                        entry = await queue.get()
+                        if not entry or not entry.get("type"):
+                            continue
+                        self.push_event(entry["type"], entry["data"])
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    pass
+
+            self._log_live_task = asyncio.get_event_loop().create_task(drain())
+        else:
+            self._stop_log_live()
+
+    def _stop_log_live(self):
+        if self._log_live_task is not None:
+            self._log_live_task.cancel()
+            self._log_live_task = None
+        if self._log_live_queue is not None:
+            try:
+                from server import database
+                database._database_singleton.unsubscribe(self._log_live_queue)
+            except Exception:
+                pass
+            self._log_live_queue = None
+
     def expire(self, reason):
         """Notify and close every WebSocket this session owns, then go dark."""
         self.push_event("session_ended", {"reason": reason})
+        self._clear_listeners()
         loop = asyncio.get_event_loop()
         for ws in list(self._ws_connections):
             loop.call_soon(asyncio.ensure_future, ws.close())
         self._ws_connections.clear()
+
+    def _clear_listeners(self):
+        """Detach every monitor listener and the log-live subscription."""
+        client = self._client
+        for attr in ("_ooc_listener", "_ic_listener"):
+            listener = getattr(self, attr, None)
+            if listener is not None:
+                try:
+                    client.remove_listener(listener)
+                except Exception:
+                    pass
+                setattr(self, attr, None)
+        self._stop_log_live()
 
 
 class RemoteSession(GMSession):
@@ -427,7 +517,8 @@ class RemoteSession(GMSession):
         ``kind`` is ``"ooc"`` or ``"ic"``. Enabling joins the remote client to its
         area (so it receives OOC/IC) and installs a listener that forwards only the
         matching frame type; disabling removes it and leaves the area once neither
-        monitor is active.
+        monitor is active. Frames are shaped ``{type: "monitor_ooc"|"monitor_ic",
+        data: {...}}`` for the shared ``/ws/gm/live`` stream.
         """
         if kind not in ("ooc", "ic"):
             return
@@ -437,7 +528,8 @@ class RemoteSession(GMSession):
             if listener is None:
                 def forward(entry):
                     if entry.get("type") == kind:
-                        self.push(entry)
+                        data = {k: v for k, v in entry.items() if k != "type"}
+                        self.push_event("monitor_" + kind, data)
 
                 listener = forward
                 setattr(self, attr, listener)

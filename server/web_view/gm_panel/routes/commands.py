@@ -63,6 +63,36 @@ class CommandRoutes:
             return web.json_response({"error": "session_invalid"}, status=401)
         return _command_response(output)
 
+    async def handle_set_monitor(self, request):
+        """Toggle OOC or IC monitoring for this session (GMs and admins alike).
+
+        The monitor is session-level state that lives on `GMSession`/`RemoteSession`;
+        its frames stream over the shared `/ws/gm/live` as
+        ``{"type": "monitor_ooc"|"monitor_ic", "data": {...}}``. Being de-gated here
+        (any valid session) is deliberate -- the feature is a console aid, not an
+        admin privilege.
+        """
+        session = request["gm_session"]
+        kind = request.match_info["kind"]
+        if kind not in ("ooc", "ic"):
+            return web.json_response({"error": "invalid monitor kind"}, status=400)
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "error": "invalid_request"}, status=400)
+        enabled = bool(data.get("enabled", False))
+        try:
+            session.set_monitor(kind, enabled)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        area = session.current_area()
+        return web.json_response({
+            "ok": True,
+            "monitoring": enabled,
+            "area_name": area.name if area is not None else "?",
+            "area_id": area.id if area is not None else -1,
+        })
+
     async def handle_get_scope(self, request):
         """Return the console's travel scope for this session.
 

@@ -33,10 +33,10 @@ class ClientSerializer:
     """
 
     @staticmethod
-    def to_dict(client):
+    def to_dict(client, include_sensitive=False):
         area = client.area
         hub = area.area_manager if area is not None else None
-        return {
+        data = {
             "id": client.id,
             "char_id": client.char_id,
             "char_name": client.char_name,
@@ -55,6 +55,15 @@ class ClientSerializer:
             "software": client.software,
             "version": client.version,
         }
+        # Moderation-only fields (ipid, mute state) exist for the admin quick
+        # actions in the Clients tab. The one caller passes `session.is_admin`;
+        # a non-admin call can never set this flag, so `ClientSerializer`
+        # remains the structural guarantee that ipid never reaches a GM.
+        if include_sensitive:
+            data["ipid"] = client.ipid
+            data["is_muted"] = client.is_muted
+            data["is_ooc_muted"] = client.is_ooc_muted
+        return data
 
 
 class AreaSerializer:

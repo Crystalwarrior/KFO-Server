@@ -144,6 +144,8 @@ body {
 .badge.afk { background: #4a4a63; color: #cfcfe0; }
 .badge.hidden { background: #333; color: #999; border: 1px solid #444; }
 .badge.running { background: var(--gm-success); color: #06210f; }
+.badge.muted { background: #6a5a2a; color: #fdf0c9; }
+.badge.ooc-muted { background: #4a4a6a; color: #d4d4ff; }
 
 /* --- Split layouts --- */
 .gm-split { display: flex; gap: 0.7rem; flex: 1; overflow: hidden; }
