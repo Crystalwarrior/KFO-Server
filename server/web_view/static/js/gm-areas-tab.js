@@ -28,6 +28,12 @@ class AreasGraphTab extends TabBase {
         this._thumbBaseUrl = '';
         this._selectedAreaId = null;
         this._inspectorRefreshPending = false;
+        // Collapsed Area Inspector section keys (AREA MANAGEMENT / FIELDS /
+        // TRIGGERS / LINKS / PREFERENCES). The popover is rebuilt from
+        // scratch on every 4s poll and WS event, so collapse state has to
+        // live here on the tab and be re-applied to each rebuilt <details>,
+        // exactly like CommandsTab's _collapsedModules.
+        this._collapsedSections = new Set();
         // ITEM 2 (v6 brief): id -> full ClientSerializer record, refreshed
         // every reload() alongside the graph's folder map (see
         // _loadClientsData below) -- the inspector's occupant list needs
@@ -76,6 +82,18 @@ class AreasGraphTab extends TabBase {
         this._popover.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') this._selectOpenSince = 0;
         });
+        // Persist a section's collapsed/open state across the popover's 4s
+        // poll and WS rebuilds (see _collapsedSections). The <details>
+        // cards are recreated from scratch by _renderInspector every time,
+        // so this delegated listener is what records a GM's manual toggles.
+        this._popover.addEventListener('toggle', (e) => {
+            const details = e.target.closest ? e.target.closest('.gm-inspector-collapsible') : null;
+            if (!details) return;
+            const key = details.dataset.section;
+            if (!key) return;
+            if (details.open) this._collapsedSections.delete(key);
+            else this._collapsedSections.add(key);
+        }, true);
         this._hubLabel = root.querySelector('#areasHubLabel');
 
         this._injectStyles();
@@ -546,6 +564,21 @@ class AreasGraphTab extends TabBase {
         `).join('');
     }
 
+    /** Wrap one Area Inspector section in its collapsible <details> card
+     * -- the same pattern as the Commands tab's category groups (see
+     * gm-commands-tab.js). `key` names the section so its collapsed/open
+     * state survives the popover's 4s-poll/WS rebuilds via
+     * this._collapsedSections (a manual toggle fires a 'toggle' event that
+     * the constructor's delegated listener records). `title` is the summary
+     * label; `content` is the already-built section HTML. */
+    _inspectorSection(key, title, content) {
+        const open = !this._collapsedSections.has(key);
+        return `<details class="gm-inspector-section gm-inspector-collapsible" data-section="${esc(key)}" ${open ? 'open' : ''}>
+            <summary class="gm-inspector-summary">${esc(title)}</summary>
+            <div class="gm-inspector-section-body">${content}</div>
+        </details>`;
+    }
+
     _renderInspector(area) {
         // The 4s poll (and every WS-driven reload) rebuilds this whole frame
         // via innerHTML, which resets the frame's own scroll to the top --
@@ -691,6 +724,63 @@ class AreasGraphTab extends TabBase {
             ? posLock.map((p) => `<span class="gm-poslock-chip">${esc(p)}</span>`).join('')
             : '<span class="dim">No position lock (all positions available).</span>';
 
+        // The five long-content sections are collapsible <details> cards
+        // (see _inspectorSection).
+        const managementSection = this._inspectorSection('management', 'Area Management', `
+            <div class="gm-inline-form">
+                <select id="inspectorSwapSelect">${targetOptions}</select>
+                <button class="btn-sm" id="inspectorSwapBtn">Swap</button>
+                <button class="btn-sm" id="inspectorSwitchBtn"
+                    title="Swap without correcting the linked areas' positions/evidence">Switch</button>
+            </div>
+            <div class="gm-inline-form" style="margin-top:0.35rem">
+                <button class="btn-sm" id="inspectorDuplicateBtn" style="flex:1"
+                    title="Duplicate this area, copying its properties and evidence into a new area">Duplicate</button>
+                <button class="btn-sm danger" id="inspectorRemoveBtn" style="flex:1">Remove</button>
+            </div>`);
+        // The Links category sits ABOVE Fields (GM panel UX request). Full
+        // section order: Area Management, Visuals (Background + Position
+        // Lock), Links, Fields, Triggers, Preferences.
+        const visualsSection = this._inspectorSection('visuals', 'Visuals', `
+            <label>Background</label>
+            <div class="gm-inline-form">
+                <input type="text" id="inspectorBgInput" value="${esc(area.background || '')}" placeholder="background name">
+                <input type="text" id="inspectorBgSuffixInput" value="${esc(area.background_suffix || '')}" placeholder="suffix">
+            </div>
+            <div class="gm-inline-form" style="margin-top:0.35rem">
+                <input type="text" id="inspectorOverlayInput" value="${esc(area.overlay || '')}" placeholder="overlay">
+                <span class="gm-field-hint">Image layered over the background, e.g. a vignette or foreground effect.</span>
+            </div>
+            <button class="btn-sm" id="inspectorBgSetBtn" style="margin-top:0.35rem;width:100%">Set Background</button>
+            <div style="margin-top:0.65rem">
+                <label>Position Lock</label>
+                <div class="gm-poslock-list">${posLockListHtml}</div>
+                <div class="gm-inline-form">
+                    <input type="text" id="inspectorPosLockInput" value="${esc(posLock.join(', '))}" placeholder="pos one, pos two">
+                </div>
+                <div class="gm-inline-form" style="margin-top:0.35rem">
+                    <button class="btn-sm" id="inspectorPosLockSaveBtn" style="flex:1">Save</button>
+                    <button class="btn-sm danger" id="inspectorPosLockClearBtn" style="flex:1" ${posLock.length ? '' : 'disabled'}>Clear</button>
+                </div>
+            </div>`);
+        const linksSection = this._inspectorSection('links', 'Links', `
+            <div class="gm-link-list">${linksHtml}</div>
+            <div class="gm-inline-form">
+                <select id="inspectorLinkAddSelect">${targetOptions}</select>
+                <label class="gm-link-twoway-label" title="Unchecked: only this area gets a link to the target, the target does not link back">
+                    <input type="checkbox" id="inspectorLinkTwoWay" checked> Two-way
+                </label>
+                <button class="btn-sm" id="inspectorLinkAddBtn">Add Link</button>
+            </div>`);
+        const fieldsSection = basicFields.length
+            ? this._inspectorSection('fields', 'Fields', basicsHtml)
+            : '';
+        const triggersSection = triggersHtml
+            ? this._inspectorSection('triggers', 'Triggers', triggersHtml)
+            : '';
+        const prefsSection = this._inspectorSection('prefs', 'Preferences', `
+            <div class="gm-pref-list">${prefsHtml}</div>`);
+
         this._popover.innerHTML = `
             <div class="gm-inspector-head">
                 <div class="area-popover-title">Area ${esc(area.id)}: ${esc(area.name || '')}</div>
@@ -704,66 +794,17 @@ class AreasGraphTab extends TabBase {
                 title="${alreadyHere ? 'Your bound client is already here.' : 'Move your bound client to this area.'}"
                 ${alreadyHere ? 'disabled' : ''}>Teleport here</button>
 
-            <div class="gm-inspector-section">
-                <h4>Area Management</h4>
-                <div class="gm-inline-form">
-                    <select id="inspectorSwapSelect">${targetOptions}</select>
-                    <button class="btn-sm" id="inspectorSwapBtn">Swap</button>
-                    <button class="btn-sm" id="inspectorSwitchBtn"
-                        title="Swap without correcting the linked areas' positions/evidence">Switch</button>
-                </div>
-                <div class="gm-inline-form" style="margin-top:0.35rem">
-                    <button class="btn-sm" id="inspectorDuplicateBtn" style="flex:1"
-                        title="Duplicate this area, copying its properties and evidence into a new area">Duplicate</button>
-                    <button class="btn-sm danger" id="inspectorRemoveBtn" style="flex:1">Remove</button>
-                </div>
-            </div>
+            ${managementSection}
 
-            <div class="gm-inspector-section">
-                <label>Background</label>
-                <div class="gm-inline-form">
-                    <input type="text" id="inspectorBgInput" value="${esc(area.background || '')}" placeholder="background name">
-                    <input type="text" id="inspectorBgSuffixInput" value="${esc(area.background_suffix || '')}" placeholder="suffix">
-                </div>
-                <div class="gm-inline-form" style="margin-top:0.35rem">
-                    <input type="text" id="inspectorOverlayInput" value="${esc(area.overlay || '')}" placeholder="overlay">
-                    <span class="gm-field-hint">Image layered over the background, e.g. a vignette or foreground effect.</span>
-                </div>
-                <button class="btn-sm" id="inspectorBgSetBtn" style="margin-top:0.35rem;width:100%">Set Background</button>
-            </div>
+            ${visualsSection}
 
-            <div class="gm-inspector-section">
-                <label>Position Lock</label>
-                <div class="gm-poslock-list">${posLockListHtml}</div>
-                <div class="gm-inline-form">
-                    <input type="text" id="inspectorPosLockInput" value="${esc(posLock.join(', '))}" placeholder="pos one, pos two">
-                </div>
-                <div class="gm-inline-form" style="margin-top:0.35rem">
-                    <button class="btn-sm" id="inspectorPosLockSaveBtn" style="flex:1">Save</button>
-                    <button class="btn-sm danger" id="inspectorPosLockClearBtn" style="flex:1" ${posLock.length ? '' : 'disabled'}>Clear</button>
-                </div>
-            </div>
+            ${linksSection}
 
-            ${basicFields.length ? `<div class="gm-inspector-section"><h4>Fields</h4>${basicsHtml}</div>` : ''}
+            ${fieldsSection}
 
-            ${triggersHtml ? `<div class="gm-inspector-section"><h4>Triggers</h4>${triggersHtml}</div>` : ''}
+            ${triggersSection}
 
-            <div class="gm-inspector-section">
-                <h4>Links</h4>
-                <div class="gm-link-list">${linksHtml}</div>
-                <div class="gm-inline-form">
-                    <select id="inspectorLinkAddSelect">${targetOptions}</select>
-                    <label class="gm-link-twoway-label" title="Unchecked: only this area gets a link to the target, the target does not link back">
-                        <input type="checkbox" id="inspectorLinkTwoWay" checked> Two-way
-                    </label>
-                    <button class="btn-sm" id="inspectorLinkAddBtn">Add Link</button>
-                </div>
-            </div>
-
-            <div class="gm-inspector-section">
-                <h4>Preferences</h4>
-                <div class="gm-pref-list">${prefsHtml}</div>
-            </div>
+            ${prefsSection}
         `;
         this._popover.scrollTop = prevScrollTop;
 
@@ -1213,6 +1254,28 @@ class AreasGraphTab extends TabBase {
                 font-size: 0.78rem; color: var(--gm-accent2); margin-bottom: 0.35rem;
                 text-transform: uppercase; letter-spacing: 0.03em;
             }
+            /* Collapsible inspector categories (see _inspectorSection in
+             * gm-areas-tab.js) -- the same <details>/<summary> card pattern
+             * as the Commands tab's category groups, so a GM can shrink the
+             * long FIELDS/TRIGGERS/LINKS lists down to their headers. The
+             * base .gm-inspector-section divider styling (above) is
+             * neutralized for the card form. */
+            .gm-inspector-collapsible {
+                border: 1px solid var(--gm-border); border-radius: 6px;
+                background: var(--gm-panel-alt); overflow: hidden;
+                border-top: none; margin-top: 0.5rem; padding-top: 0;
+            }
+            .gm-inspector-summary {
+                cursor: pointer; list-style: none; padding: 0.45rem 0.6rem; font-weight: 600;
+                font-size: 0.78rem; color: var(--gm-accent2); text-transform: uppercase;
+                letter-spacing: 0.03em; display: flex; align-items: center; gap: 0.5rem; user-select: none;
+            }
+            .gm-inspector-summary::-webkit-details-marker { display: none; }
+            .gm-inspector-summary::before {
+                content: '▸'; display: inline-block; transition: transform 0.12s ease; font-size: 0.7rem;
+            }
+            .gm-inspector-collapsible[open] > .gm-inspector-summary::before { transform: rotate(90deg); }
+            .gm-inspector-section-body { padding: 0.45rem 0.6rem 0.6rem; }
             .gm-field-row { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.3rem; }
             .gm-field-row label {
                 flex: 0 0 auto; font-size: 0.72rem; color: var(--gm-text-dim); width: 150px;
