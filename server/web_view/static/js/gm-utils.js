@@ -106,3 +106,60 @@ function buildClientLabel(client, opts) {
 
     return { iconHtml, badgesHtml, idHtml, folderHtml, posHtml, shownameHtml, html };
 }
+
+/** Insert (once) the stylesheet backing createGmSearchBox() and the
+ * shared search-result/layout classes (.gm-search-row-hidden,
+ * .gm-search-match, .gm-search-wrap/.gm-search-menu autocomplete). Kept
+ * here (not gm.css) because gm.css/gm.html are not this package's to
+ * edit -- same convention as the per-tab `_injectStyles()` calls. */
+function _injectGmSearchStyles() {
+    if (document.getElementById('gm-search-box-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'gm-search-box-styles';
+    style.textContent = `
+        .gm-search-box {
+            background: var(--gm-panel-alt); color: var(--gm-text); border: 1px solid var(--gm-border);
+            border-radius: 4px; padding: 0.32rem 0.55rem; font-size: 0.8rem;
+            min-width: 8rem; max-width: 14rem; flex: 0 1 auto;
+        }
+        .gm-search-box:focus { outline: none; border-color: var(--gm-accent); }
+        .gm-search-box::placeholder { color: var(--gm-text-dim); }
+        .gm-search-row { margin: 0 0 0.45rem; }
+        .gm-search-row-hidden { display: none; }
+        .gm-search-match { background: rgba(238, 240, 248, 0.09); box-shadow: inset 0 0 0 1px var(--gm-accent); }
+        .gm-search-wrap { position: relative; flex: 0 1 auto; }
+        .gm-search-menu {
+            position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+            background: var(--gm-panel); border: 1px solid var(--gm-border); border-radius: 6px;
+            max-height: 260px; overflow-y: auto; min-width: 15rem;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+        }
+        .gm-search-menu.hidden { display: none; }
+        .gm-search-item {
+            display: block; width: 100%; text-align: left; background: none; border: none;
+            color: var(--gm-text); font-size: 0.8rem; padding: 0.4rem 0.6rem; cursor: pointer;
+        }
+        .gm-search-item:hover { background: rgba(238, 240, 248, 0.08); }
+        .gm-search-item .mono { color: var(--gm-text-dim); }
+        .gm-search-menu-empty { padding: 0.4rem 0.6rem; font-size: 0.78rem; color: var(--gm-text-dim); }
+    `;
+    document.head.appendChild(style);
+}
+
+/** A compact toolbar search <input> shared across the panel tabs (see
+ * gm-data-tab/gm-areas-tab/gm-clients-tab/gm-characters-tab). Fires
+ * `onInput(query)` on every keystroke (and on the native clear button,
+ * via the 'search' event). The owner decides what a query does -- live
+ * row filtering, autocomplete focus, etc. */
+function createGmSearchBox(placeholder, onInput) {
+    _injectGmSearchStyles();
+    const input = document.createElement('input');
+    input.type = 'search';
+    input.className = 'gm-search-box';
+    input.placeholder = placeholder || 'Search…';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.addEventListener('input', () => onInput(input.value));
+    input.addEventListener('search', () => onInput(input.value));
+    return input;
+}

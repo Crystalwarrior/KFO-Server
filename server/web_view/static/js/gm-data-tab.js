@@ -138,6 +138,45 @@ class GMDataTab extends TabBase {
         // gm.html/gm.css are not this package's to edit.
         this._injectFolderPrefixFields();
         this._injectStyles();
+        this._buildDataSearchBoxes();
+    }
+
+    /** One live search filter per data section (Hub Saves + each of the
+     * Files kinds -- evidence / character_data / charlists / musiclists),
+     * injected after each box's <h3>. Rerenders just that section's
+     * already-loaded table, no network round-trip. */
+    _buildDataSearchBoxes() {
+        this._search = { hub: '', evidence: '', character_data: '', charlists: '', musiclists: '' };
+        const attachAfterHeading = (boxEl, key, placeholder) => {
+            const heading = boxEl.querySelector('h3');
+            if (!heading) return;
+            const input = createGmSearchBox(placeholder, (v) => {
+                this._search[key] = v;
+                this._renderDataFiles(key);
+            });
+            const wrap = document.createElement('div');
+            wrap.className = 'gm-search-row';
+            wrap.appendChild(input);
+            heading.after(wrap);
+        };
+
+        // Hub Saves search (its own panel, re-rendered below).
+        const hubBox = this.root.querySelector('.gm-data-hub-box');
+        const hubHeading = hubBox && hubBox.querySelector('h3');
+        if (hubHeading) {
+            const input = createGmSearchBox('Filter hubs…', (v) => {
+                this._search.hub = v;
+                this._renderHubSaves();
+            });
+            const wrap = document.createElement('div');
+            wrap.className = 'gm-search-row';
+            wrap.appendChild(input);
+            hubHeading.after(wrap);
+        }
+
+        Object.keys(this._kindBoxes).forEach((kind) => {
+            attachAfterHeading(this._kindBoxes[kind].el, kind, `Filter ${kind.replace(/_/g, ' ')}…`);
+        });
     }
 
     /** The injected folder-prefix fields (see _injectFolderPrefixFields)
@@ -220,7 +259,9 @@ class GMDataTab extends TabBase {
 
     /** Switches the active Hub Data subtab (see the nav bar in gm.html) and
      * refreshes just that subtab's data -- the Output console sits below
-     * the subtab bodies and is shared across all of them. */
+     * the subtab bodies and is shared across all of them. Each kind
+     * (evidence / character_data / charlists / musiclists) has its own
+     * subtab; "hub" covers the hub layout save/load panel. */
     _setSubtab(name, opts) {
         opts = opts || {};
         if (!this._subtabBodies.some((el) => el.dataset.subtab === name)) name = 'hub';
@@ -230,8 +271,8 @@ class GMDataTab extends TabBase {
         if (opts.skipReload) return;
         if (name === 'hub') {
             this._loadHubSaves();
-        } else if (name === 'files') {
-            ['evidence', 'character_data', 'charlists', 'musiclists'].forEach((k) => this._loadDataFiles(k));
+        } else {
+            this._loadDataFiles(name);
         }
     }
 
@@ -288,15 +329,18 @@ class GMDataTab extends TabBase {
     async _loadHubSaves() {
         try {
             const data = await this.api.getHubSaves();
-            // The server returns only public read_only hubs. Merge in the
-            // editable hubs this GM verifiably knows about (its own prior
-            // saves/imports) so its own layouts still appear -- everything
-            // else stays hidden.
+            // Non-mod hub GMs get only the public read_only hubs; mods get
+            // every hub on the server. Merge in this GM's own editable saves
+            // (localStorage known-hubs) so its layouts still appear even when
+            // the server only listed read_only ones -- and use that same known
+            // set to tell "yours" apart from editable hubs other GMs saved.
+            const knownNames = new Set(this._knownHubNames());
             const byName = new Map();
             (data.files || []).forEach((f) => {
-                byName.set(f.name, { name: f.name, read_only: !!f.read_only, known: !f.read_only });
+                const readOnly = !!f.read_only;
+                byName.set(f.name, { name: f.name, read_only: readOnly, known: !readOnly && knownNames.has(f.name) });
             });
-            this._knownHubNames().forEach((name) => {
+            knownNames.forEach((name) => {
                 if (!byName.has(name)) byName.set(name, { name, read_only: false, known: true });
             });
             const sortByName = (a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase());
@@ -311,13 +355,16 @@ class GMDataTab extends TabBase {
     }
 
     _renderHubSaves() {
-        if (!this._hubSaves.length) {
-            this._hubSavesTbody.innerHTML = '<tr><td colspan="3" class="gm-empty">No hubs to show. Shared read-only hubs and hubs you\'ve saved before appear here.</td></tr>';
+        const q = (this._search && this._search.hub || '').trim().toLowerCase();
+        const list = q ? this._hubSaves.filter((f) => f.name.toLowerCase().includes(q)) : this._hubSaves;
+        if (!list.length) {
+            this._hubSavesTbody.innerHTML = `<tr><td colspan="3" class="gm-empty">${
+                q ? 'No saved hubs match.' : 'No hubs to show. Shared read-only hubs and hubs you\'ve saved before appear here.'}</td></tr>`;
             return;
         }
-        this._hubSavesTbody.innerHTML = this._hubSaves.map((f) => `
+        this._hubSavesTbody.innerHTML = list.map((f) => `
             <tr>
-                <td>${esc(f.name)}${f.read_only ? ' <span class="badge readonly">read-only</span>' : ' <span class="badge gm-data-known">yours</span>'}</td>
+                <td>${esc(f.name)}${f.read_only ? ' <span class="badge readonly">read-only</span>' : (f.known ? ' <span class="badge gm-data-known">yours</span>' : ' <span class="badge">editable</span>')}</td>
                 <td><button class="btn-sm" data-action="load" data-name="${esc(f.name)}">Load</button></td>
                 <td><button class="btn-sm" data-action="export" data-name="${esc(f.name)}">Export</button></td>
             </tr>`).join('');
@@ -431,11 +478,15 @@ class GMDataTab extends TabBase {
 
     _renderDataFiles(kind) {
         const box = this._kindBoxes[kind];
-        if (!box.files.length) {
-            box.tbody.innerHTML = '<tr><td colspan="2" class="gm-empty">No files.</td></tr>';
+        if (!box) return;
+        const q = (this._search && this._search[kind] || '').trim().toLowerCase();
+        const list = q ? box.files.filter((f) => f.name.toLowerCase().includes(q)) : box.files;
+        if (!list.length) {
+            box.tbody.innerHTML = `<tr><td colspan="2" class="gm-empty">${
+                q ? 'No files match.' : 'No files.'}</td></tr>`;
             return;
         }
-        box.tbody.innerHTML = box.files.map((f) => `
+        box.tbody.innerHTML = list.map((f) => `
             <tr>
                 <td>${esc(f.name)}${f.read_only ? ' <span class="badge readonly">read-only</span>' : ''}</td>
                 <td class="gm-data-file-actions">

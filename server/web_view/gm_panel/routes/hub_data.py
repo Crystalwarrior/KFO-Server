@@ -18,6 +18,7 @@ from server.web_view.gm_panel.storage import (
     _command_ok,
     _command_response,
     _hub_data_gate_ok,
+    _list_data_files,
     _public_data_files,
     _resolve_existing_data_path,
     _safe_data_write_path,
@@ -80,9 +81,15 @@ class HubDataRoutes:
         session, err = self._require_session_and_gate(request)
         if err is not None:
             return err
-        # Only the public read_only hubs are listed -- editable hubs are private
-        # to the GMs who saved them (see DATA_KIND_LIST_PUBLIC_ONLY).
-        return web.json_response({"ok": True, "files": _public_data_files("hubs")})
+        # Mods have server-wide scope and can safely see every hub on the
+        # server, editable ones included. Non-mod hub GMs only get the public
+        # read_only hubs; their own editable saves are merged back client-side
+        # from localStorage (see DATA_KIND_LIST_PUBLIC_ONLY).
+        if session.bound_client.is_mod:
+            files = _list_data_files("hubs")
+        else:
+            files = _public_data_files("hubs")
+        return web.json_response({"ok": True, "files": files})
 
     async def handle_hub_save(self, request):
         session, err = self._require_session_and_gate(request)
@@ -206,7 +213,13 @@ class HubDataRoutes:
         if err is not None:
             return err
         kind = request.match_info.get("kind", "")
-        files = _public_data_files(kind)
+        # Mods can list every hub on the server (see handle_hub_saves); other
+        # kinds have no private-name restriction, so _list_data_files is fine
+        # for them either way.
+        if kind == "hubs":
+            files = _list_data_files("hubs") if session.bound_client.is_mod else _public_data_files("hubs")
+        else:
+            files = _public_data_files(kind)
         if files is None:
             return web.json_response({"ok": False, "error": "unknown_kind"}, status=400)
         return web.json_response({"ok": True, "files": files})

@@ -54,6 +54,19 @@ class GraphRenderer {
         // controls (ITEM 4 in the v4 brief) report through this callback
         // instead of reaching for `shell.toast` directly. Safe to omit.
         this._onToast = (options && options.onToast) || (() => {});
+        // Drag-a-link: fires `onLinkDragComplete(sourceId, targetId,
+        // twoWay)` when a GM drags from a node's link handle and drops it
+        // on another NOT-yet-linked node, `onLinkDragExisting(sourceId,
+        // targetId, twoWay)` when that direct link already exists (the
+        // owning tab offers to remove it instead of duplicating it), and
+        // `onLinkDragEmpty(sourceId, twoWay, worldX, worldY)` when the
+        // drop lands on empty canvas instead (the owning tab offers to
+        // create a new area at that world position and link to it). See
+        // _bindLinkHandle/_bindLinkDrag. The owning tab owns the actual
+        // API call + refresh; this renderer only runs the gesture.
+        this._onLinkDragComplete = (options && options.onLinkDragComplete) || (() => {});
+        this._onLinkDragExisting = (options && options.onLinkDragExisting) || (() => {});
+        this._onLinkDragEmpty = (options && options.onLinkDragEmpty) || (() => {});
         this._thumbBaseUrl = '';
         this._localContent = null;
         this._clientFolders = {}; // client_id -> character folder name
@@ -122,6 +135,16 @@ class GraphRenderer {
         this._draggingNode = null;
         this._panning = null;
         this._resizeRaf = null;
+        // Drag-to-create-link gesture state (see _bindLinkHandle /
+        // _bindLinkDrag): the two-way default mode for drag-created links
+        // (any single gesture can be forced one-way with Shift), the active
+        // gesture, and the transient rubber-band <path> shown while
+        // dragging. `_linkDrag` sits right next to `_draggingNode`/
+        // `_panning` because it gates the same re-render deferral in
+        // _scheduleSnapshot/_endGesture.
+        this._linkTwoWay = true;
+        this._linkDrag = null;
+        this._linkDragEl = null;
 
         // Drag/pan-desync fix (see _bindNodeDrag / _bindNodeDragMove docs
         // below, ROOT CAUSE A): while a node drag or a pan gesture is in
@@ -165,6 +188,7 @@ class GraphRenderer {
 
         this._bindPanZoom();
         this._bindNodeDragMove();
+        this._bindLinkDrag();
         this._applyViewportTransform();
     }
 
@@ -466,6 +490,7 @@ class GraphRenderer {
         mk('⟳', 'Reset zoom & pan', () => this.resetView());
         mk('✕', 'Reset manual layout for this hub', () => this.resetOffsets());
         this._buildIconScaleControl(controls);
+        this._buildLinkModeControl(controls);
 
         // ITEM 4 (v4 brief) -- save/load/export/import named layout
         // snapshots (node offsets + zoom/pan), per hub, in localStorage.
@@ -523,6 +548,32 @@ class GraphRenderer {
         wrap.appendChild(slider);
         controls.appendChild(wrap);
         this._iconScaleSlider = slider;
+    }
+
+    /** Two-way/one-way mode for drag-created links (see _bindLinkHandle):
+     * checked (default) = every dropped link also links back (two-way);
+     * unchecked = one-way only. Holding Shift while dragging FLIPS this
+     * for that single gesture, and the checkbox visually mirrors the
+     * flip for the duration of the drag. */
+    _buildLinkModeControl(controls) {
+        const wrap = document.createElement('div');
+        wrap.className = 'gr-ctrl-linkmode';
+        wrap.title = 'Drag-created links go both ways. Uncheck for one-way links; holding Shift while dragging flips this for that link.';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = this._linkTwoWay;
+        cb.className = 'gr-ctrl-linkmode-cb';
+        const label = document.createElement('span');
+        label.className = 'gr-ctrl-linkmode-label';
+        label.textContent = '2-way';
+        const stop = (e) => e.stopPropagation();
+        cb.addEventListener('pointerdown', stop);
+        cb.addEventListener('click', stop);
+        cb.addEventListener('change', () => { this._linkTwoWay = cb.checked; });
+        wrap.appendChild(cb);
+        wrap.appendChild(label);
+        controls.appendChild(wrap);
+        this._linkModeCheckbox = cb;
     }
 
     /** Small popover listing this hub's saved layouts (toggled by the
@@ -788,6 +839,16 @@ class GraphRenderer {
         });
         marker.appendChild(grEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gr-arrowhead' }));
         defs.appendChild(marker);
+        // Accent-colored arrowhead for the transient drag-a-link rubber
+        // band (see _bindLinkDrag) -- the regular gr-arrow marker's head is
+        // painted edge-gray and can't be re-tinted per-path via CSS, so a
+        // second marker is defined for the drag line to reference.
+        const dragMarker = grEl('marker', {
+            id: 'gr-arrow-accent', viewBox: '0 0 10 10', refX: 9, refY: 5,
+            markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse',
+        });
+        dragMarker.appendChild(grEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gr-arrowhead-accent' }));
+        defs.appendChild(dragMarker);
         this._svg.appendChild(defs);
     }
 
@@ -992,6 +1053,17 @@ class GraphRenderer {
         this._applyViewportTransform();
     }
 
+    /** Center the camera on an area's node at the current zoom (the
+     * AreasGraphTab search's "focus" half), so a GM can jump straight to
+     * an area in a large hub without dragging/panning. */
+    focusArea(areaId) {
+        const node = this._nodes.get(areaId);
+        if (!node) return;
+        this._panX = this._canvasW / 2 - node.x * this._zoom;
+        this._panY = this._canvasH / 2 - node.y * this._zoom;
+        this._applyViewportTransform();
+    }
+
     _applyViewportTransform() {
         this._viewport.setAttribute('transform', `translate(${this._panX}, ${this._panY}) scale(${this._zoom})`);
     }
@@ -1039,7 +1111,7 @@ class GraphRenderer {
      * rebuilds on every one of these calls, silently killing any drag in
      * progress when a poll tick landed mid-gesture). */
     _scheduleSnapshot(areas, forceLayout) {
-        if (this._draggingNode || this._panning) {
+        if (this._draggingNode || this._panning || this._linkDrag) {
             // Only the freshest pending snapshot matters (an older one is
             // strictly superseded); `forceLayout` must stay sticky across
             // however many snapshots get coalesced while the gesture runs,
@@ -1092,19 +1164,53 @@ class GraphRenderer {
             }
         }
 
+        // A freshly-created area (drag-into-nothingness flow, see
+        // placeAreaAt) whose placement raced the create+reload round-trip:
+        // the moment this snapshot actually contains it (and _runLayout
+        // computed a base grid slot for it), pin it to the world position
+        // the GM released the drop at.
+        this._applyPendingPlacement();
+
         this._render(areas);
     }
 
-    /** Called once a node drag or a pan fully ends (both must be clear --
-     * see the callers in _bindPanZoom/_bindNodeDragMove). Applies whatever
-     * snapshot got deferred (see _scheduleSnapshot) while the gesture was
-     * running, if any. */
+    /** Called once a node drag, a pan, or a link drag fully ends (all must be
+     * clear -- see the callers in _bindPanZoom/_bindNodeDragMove/
+     * _bindLinkDrag). Applies whatever snapshot got deferred (see
+     * _scheduleSnapshot) while the gesture was running, if any. */
     _endGesture() {
-        if (this._draggingNode || this._panning) return;
+        if (this._draggingNode || this._panning || this._linkDrag) return;
         if (!this._pendingRender) return;
         const { areas, forceLayout } = this._pendingRender;
         this._pendingRender = null;
         this._applySnapshot(areas, forceLayout);
+    }
+
+    /** Pin a (ideally just-created) area's node to an absolute world
+     * position, e.g. where a GM released a drag-a-link drop on empty
+     * canvas (see _onLinkDragEmpty / placeAreaAt in gm-areas-tab.js).
+     * Stores the request as pending so it survives the create-then-reload
+     * race: it's applied from _applySnapshot the first time that area id
+     * exists in a laid-out snapshot, then the offset is persisted like any
+     * manual drag (surviving later occupancy-only re-renders). */
+    placeAreaAt(areaId, worldX, worldY) {
+        this._pendingPlacement = { areaId, worldX, worldY };
+        this._applyPendingPlacement();
+    }
+
+    _applyPendingPlacement() {
+        const p = this._pendingPlacement;
+        if (!p) return;
+        const base = this._baseLayout.get(p.areaId);
+        const node = this._nodes.get(p.areaId);
+        if (!base || !node) return;
+        const offX = p.worldX - base.x;
+        const offY = p.worldY - base.y;
+        this._offsets.set(this._offsetKey(node.area), { x: offX, y: offY });
+        node.x = base.x + offX;
+        node.y = base.y + offY;
+        this._saveOffsets();
+        this._pendingPlacement = null;
     }
 
     // --- offset persistence (per-area manual drag positions) -------------
@@ -1554,6 +1660,25 @@ class GraphRenderer {
         }
         g.appendChild(chipsGroup);
 
+        // Drag-a-link source port (see _bindLinkHandle): a small circular
+        // handle on the node's right edge. Grabbing it starts a link-drag
+        // gesture (not a node move); dropping it anywhere on another node
+        // creates a link from this area (real /link-backed data -- the
+        // owning tab fires the API call).
+        const handleG = grEl('g', {
+            class: 'gr-link-handle',
+            transform: `translate(${this._nodeW}, ${this._nodeH / 2})`,
+        });
+        const handleBg = grEl('circle', { r: 8, class: 'gr-link-handle-bg' });
+        const handleIcon = grEl('path', { d: 'M-3,-4 L3,0 L-3,4', class: 'gr-link-handle-icon' });
+        const handleTitle = grEl('title');
+        handleTitle.textContent = 'Drag to link this area to another';
+        handleG.appendChild(handleBg);
+        handleG.appendChild(handleIcon);
+        handleG.appendChild(handleTitle);
+        g.appendChild(handleG);
+        this._bindLinkHandle(handleG, area);
+
         this._bindNodeDrag(g, area);
         return g;
     }
@@ -1682,6 +1807,198 @@ class GraphRenderer {
         };
         this._svg.addEventListener('pointerup', endNodeDrag);
         this._svg.addEventListener('pointercancel', endNodeDrag);
+    }
+
+    /** pointerdown on a node's link handle ONLY -- a thin gesture-starter,
+     * the same split as _bindNodeDrag vs _bindNodeDragMove: the move/up/
+     * cancel handlers and the actual pointer capture live on the
+     * persistent <svg> root (_bindLinkDrag), so a re-render landing mid-
+     * drag can't destroy the captured element out from under the gesture.
+     * The effective two-way mode is `_linkTwoWay` XOR Shift -- holding
+     * Shift FLIPS the 2-way checkbox for that gesture (see
+     * _syncLinkDragMode). stopPropagation keeps the node's own drag
+     * (`_bindNodeDrag`) and the svg's pan from hijacking the pointer. */
+    _bindLinkHandle(handle, area) {
+        handle.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            e.stopPropagation();
+            e.preventDefault();
+            const node = this._nodes.get(area.id);
+            if (!node) return;
+            this._linkDrag = {
+                pointerId: e.pointerId,
+                sourceId: area.id,
+                twoWay: this._linkTwoWay !== e.shiftKey,
+                startClientX: e.clientX,
+                startClientY: e.clientY,
+                hoverId: null,
+                moved: false,
+                lastX: undefined,
+                lastY: undefined,
+            };
+            try { this._svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+            const cursor = this._screenToWorld(e.clientX, e.clientY);
+            this._updateLinkDragLine(cursor.x, cursor.y);
+            this._syncLinkDragMode(!!e.shiftKey);
+        });
+    }
+
+    /** Ensure the transient rubber-band <path> exists (in the tokens layer,
+     * which lives inside the pan/zoom viewport and survives node/edge re-
+     * renders) and is visible. pointer-events:none so it never intercepts
+     * the drop-target hit-testing in _bindLinkDrag. */
+    _ensureLinkDragEl() {
+        if (this._linkDragEl && this._linkDragEl.isConnected && this._linkDragEl.parentNode === this._layerTokens) {
+            return this._linkDragEl;
+        }
+        const path = grEl('path', { class: 'gr-link-drag-line', fill: 'none', 'marker-end': 'url(#gr-arrow-accent)' });
+        path.style.pointerEvents = 'none';
+        this._layerTokens.appendChild(path);
+        this._linkDragEl = path;
+        return path;
+    }
+
+    /** Re-stamp the rubber band from the source area's rectangle edge (in
+     * the cursor's direction -- see _rectEdgePoint) to the current cursor,
+     * both in world coordinates (the path lives inside the viewport). The
+     * arrowhead is stamped at both ends when the gesture is two-way and
+     * only at the cursor end when one-way, so holding Shift visibly flips
+     * the mode mid-drag. */
+    _updateLinkDragLine(cx, cy) {
+        const d = this._linkDrag;
+        if (!d) return;
+        const node = this._nodes.get(d.sourceId);
+        if (!node) return;
+        const start = this._rectEdgePoint(node.x, node.y, cx - node.x, cy - node.y);
+        const path = this._ensureLinkDragEl();
+        path.setAttribute('d', `M ${start.x} ${start.y} L ${cx} ${cy}`);
+        if (d.twoWay) {
+            path.setAttribute('marker-start', 'url(#gr-arrow-accent)');
+        } else {
+            path.removeAttribute('marker-start');
+        }
+    }
+
+    /** Highlight the node currently under a link-drag cursor (or clear the
+     * previous highlight when `areaId` is null). The source node is never
+     * highlighted -- dropping on it is a no-op (no self-links). */
+    _setLinkTargetHighlight(areaId) {
+        const current = this._linkDrag ? this._linkDrag.hoverId : null;
+        if (current === areaId) return;
+        if (current !== null && current !== undefined) {
+            const g = this._layerNodes.querySelector(`[data-area-id="${current}"]`);
+            if (g) g.classList.remove('gr-link-target');
+        }
+        if (this._linkDrag) this._linkDrag.hoverId = areaId;
+        if (areaId !== null && areaId !== undefined) {
+            const g = this._layerNodes.querySelector(`[data-area-id="${areaId}"]`);
+            if (g) g.classList.add('gr-link-target');
+        }
+    }
+
+    /** Tear down the link-drag gesture's visuals and state: remove the
+     * rubber band, clear any target highlight, restore the 2-way checkbox
+     * to its persisted (non-Shift) state, null the gesture. */
+    _clearLinkDrag() {
+        this._setLinkTargetHighlight(null);
+        if (this._linkModeCheckbox) this._linkModeCheckbox.checked = !!this._linkTwoWay;
+        if (this._linkDragEl) {
+            this._linkDragEl.remove();
+            this._linkDragEl = null;
+        }
+        this._linkDrag = null;
+    }
+
+    /** Recompute a live link-drag's effective two-way mode as `_linkTwoWay`
+     * XOR `shiftKey` (holding Shift flips the 2-way checkbox for that one
+     * gesture) and mirror the result on the checkbox + rubber band. */
+    _syncLinkDragMode(shiftKey) {
+        const d = this._linkDrag;
+        if (!d) return;
+        const eff = this._linkTwoWay !== !!shiftKey;
+        if (d.twoWay !== eff) {
+            d.twoWay = eff;
+            if (this._linkModeCheckbox) this._linkModeCheckbox.checked = eff;
+        }
+        if (d.lastX !== undefined && d.lastY !== undefined) {
+            this._updateLinkDragLine(d.lastX, d.lastY);
+        }
+    }
+
+    /** The other half of drag-a-link (see _bindLinkHandle's doc block):
+     * pointermove/up/cancel, bound once to the persistent <svg> root like
+     * _bindNodeDragMove. pointermove tracks the rubber band + hover
+     * highlight; pointerup resolves the drop target via elementFromPoint
+     * (unaffected by pointer capture or the rubber band's pointer-events)
+     * and fires `_onLinkDragComplete(sourceId, targetId, twoWay)` -- the
+     * owning tab's link-add callback (see _addLink in gm-areas-tab.js). */
+    _bindLinkDrag() {
+        this._svg.addEventListener('pointermove', (e) => {
+            const d = this._linkDrag;
+            if (!d || d.pointerId !== e.pointerId) return;
+            const dxScreen = e.clientX - d.startClientX;
+            const dyScreen = e.clientY - d.startClientY;
+            if (!d.moved && (Math.abs(dxScreen) > 2 || Math.abs(dyScreen) > 2)) d.moved = true;
+            const cursor = this._screenToWorld(e.clientX, e.clientY);
+            d.lastX = cursor.x;
+            d.lastY = cursor.y;
+            // Shift flips the 2-way checkbox for this gesture -- effective
+            // mode + rubber-band arrowheads + checkbox all stay in sync.
+            this._syncLinkDragMode(e.shiftKey);
+            this._updateLinkDragLine(cursor.x, cursor.y);
+            const hit = document.elementFromPoint(e.clientX, e.clientY);
+            const g = hit && hit.closest ? hit.closest('.gr-node') : null;
+            const hoverId = g ? parseInt(g.getAttribute('data-area-id'), 10) : null;
+            this._setLinkTargetHighlight(hoverId !== null && hoverId !== d.sourceId ? hoverId : null);
+        });
+
+        // The release-time Shift state is what finalizes the mode (covers
+        // a Shift press right at release with no pointer movement), and
+        // Shift held without any mouse movement also updates the visuals.
+        const keySync = (e) => {
+            if (e.key !== 'Shift') return;
+            this._syncLinkDragMode(!!e.shiftKey);
+        };
+        window.addEventListener('keydown', keySync);
+        window.addEventListener('keyup', keySync);
+
+        const endLinkDrag = (e) => {
+            const d = this._linkDrag;
+            if (!d || (e && d.pointerId !== e.pointerId)) return;
+            let targetId = null;
+            if (d.moved && e) {
+                const hit = document.elementFromPoint(e.clientX, e.clientY);
+                const g = hit && hit.closest ? hit.closest('.gr-node') : null;
+                if (g) {
+                    const id = parseInt(g.getAttribute('data-area-id'), 10);
+                    if (Number.isInteger(id) && id !== d.sourceId) targetId = id;
+                }
+            }
+            const twoWay = this._linkTwoWay !== !!e.shiftKey;
+            const sourceId = d.sourceId;
+            const dropWorld = this._screenToWorld(e.clientX, e.clientY);
+            this._clearLinkDrag();
+            try { this._svg.releasePointerCapture(d.pointerId); } catch (err) { /* ignore */ }
+            if (targetId !== null && targetId !== undefined) {
+                // Dropping on an already-directly-linked area is interpreted
+                // as wanting to remove that link (not stack a duplicate);
+                // the owning tab confirms and runs /unlink or its one-way
+                // primitive per the gesture's two-way state.
+                if (this._hasLink(this._lastAreas, sourceId, targetId)) {
+                    this._onLinkDragExisting(sourceId, targetId, twoWay);
+                } else {
+                    this._onLinkDragComplete(sourceId, targetId, twoWay);
+                }
+            } else if (d.moved) {
+                // Dropped on empty canvas -- the owning tab offers to
+                // create a brand-new area at this world position (see
+                // GraphRenderer.placeAreaAt) and link it to the source.
+                this._onLinkDragEmpty(sourceId, twoWay, dropWorld.x, dropWorld.y);
+            }
+            this._endGesture();
+        };
+        this._svg.addEventListener('pointerup', endLinkDrag);
+        this._svg.addEventListener('pointercancel', endLinkDrag);
     }
 
     getNodeCenter(areaId) {

@@ -45,6 +45,9 @@ class CharactersTab extends TabBase {
         this._slotsTbody.addEventListener('click', (e) => this._onSlotsTableClick(e));
         this._slotsTbody.addEventListener('change', (e) => this._onSlotsTableChange(e));
 
+        this._slotSearchQuery = '';
+        this._buildCharacterSearch();
+
         this._ensureSlotsColumns();
     }
 
@@ -104,12 +107,46 @@ class CharactersTab extends TabBase {
             ? slots.map((s) => this._slotRowHtml(s)).join('')
             : '<tr><td colspan="5" class="gm-empty">No characters.</td></tr>';
         if (slots.length) this._loadSlotIcons(slots);
+        this._applySlotSearch({ scroll: false });
+    }
+
+    /** Toolbar search in the Character List box: live-filter the slots by
+     * folder name or char id, highlight the first match and scroll it into
+     * view on typed changes. Re-applies after every reload so the filter
+     * survives refreshes. */
+    _buildCharacterSearch() {
+        const toolbar = this._charListRefEl ? this._charListRefEl.closest('.gm-toolbar') : null;
+        if (!toolbar) return;
+        const input = createGmSearchBox('Find character…', (v) => {
+            this._slotSearchQuery = v;
+            this._applySlotSearch({ scroll: true });
+        });
+        toolbar.appendChild(input);
+        this._slotSearchInput = input;
+    }
+
+    _applySlotSearch(opts) {
+        opts = opts || {};
+        const q = (this._slotSearchQuery || '').trim().toLowerCase();
+        const rows = Array.from(this._slotsTbody.querySelectorAll('tr[data-cid]'));
+        let firstMatch = null;
+        rows.forEach((row) => {
+            const hay = [row.dataset.folder || '', row.dataset.cid || ''].join(' ').toLowerCase();
+            const match = !q || hay.includes(q);
+            row.classList.toggle('gm-search-row-hidden', !match);
+            if (q && match && firstMatch === null) firstMatch = row;
+        });
+        rows.forEach((row) => {
+            if (q) row.classList.toggle('gm-search-match', row === firstMatch);
+            else row.classList.remove('gm-search-match');
+        });
+        if (opts.scroll && firstMatch) firstMatch.scrollIntoView({ block: 'nearest' });
     }
 
     _slotRowHtml(s) {
         const folder = s.folder || '';
         const color = this._localContent ? this._localContent.getClientColor(folder) : null;
-        return `<tr>
+        return `<tr data-folder="${esc(folder)}" data-cid="${s.char_id}">
             <td class="mono">${s.char_id}</td>
             <td>
                 <span class="gm-icon-slot" data-role="icon"><span class="gm-icon-fallback">${esc((folder || '?').slice(0, 1).toUpperCase())}</span></span>

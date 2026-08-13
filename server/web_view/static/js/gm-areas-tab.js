@@ -101,6 +101,9 @@ class AreasGraphTab extends TabBase {
         this._renderer = new GraphRenderer(this._svg, {
             onNodeClick: (areaId) => this._openInspector(areaId),
             onToast: (message, kind) => this.shell.toast(message, kind),
+            onLinkDragComplete: (sourceId, targetId, twoWay) => this._addLink(sourceId, targetId, twoWay),
+            onLinkDragExisting: (sourceId, targetId, twoWay) => this._confirmRemoveLink(sourceId, targetId, twoWay),
+            onLinkDragEmpty: (sourceId, twoWay, dropX, dropY) => this._promptCreateAreaLink(sourceId, twoWay, dropX, dropY),
         });
         this._localContentUnsubscribe = null;
         if (this._localContent) {
@@ -109,6 +112,7 @@ class AreasGraphTab extends TabBase {
         }
 
         this._buildManagementBar();
+        this._buildAreaSearch();
 
         root.querySelector('#areasRefreshBtn').addEventListener('click', () => this.reload());
         document.addEventListener('mousedown', (e) => {
@@ -344,6 +348,84 @@ class AreasGraphTab extends TabBase {
         bar.querySelector('#areaCreateBtn').addEventListener('click', () => this._createArea());
     }
 
+    // --- area search (find + focus + select) ------------------------------
+
+    /** Search box in the Areas toolbar with an autocomplete dropdown of
+     * matching areas; picking one (click or Enter) focuses the graph
+     * camera on the node and opens its inspector. */
+    _buildAreaSearch() {
+        const toolbar = this.root.querySelector('.gm-toolbar');
+        if (!toolbar) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'gm-search-wrap';
+        const input = createGmSearchBox('Find area…', () => this._renderAreaMatches());
+        const menu = document.createElement('div');
+        menu.className = 'gm-search-menu hidden';
+        wrap.appendChild(input);
+        wrap.appendChild(menu);
+        toolbar.appendChild(wrap);
+
+        this._areaSearchInput = input;
+        this._areaSearchMenu = menu;
+        this._areaSearchMatches = [];
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') this._hideAreaMenu();
+            else if (e.key === 'Enter' && this._areaSearchMatches.length) this._pickAreaResult(this._areaSearchMatches[0].id);
+            else if (e.key === 'ArrowDown' && this._areaSearchMatches.length) {
+                e.preventDefault();
+                this._focusAreaResult();
+            }
+        });
+        document.addEventListener('pointerdown', (e) => {
+            if (this._areaSearchMenu && !wrap.contains(e.target)) this._hideAreaMenu();
+        });
+    }
+
+    _renderAreaMatches() {
+        const q = (this._areaSearchInput.value || '').trim().toLowerCase();
+        const menu = this._areaSearchMenu;
+        if (!menu) return;
+        if (!q) { this._hideAreaMenu(); return; }
+        const areas = (this._hubData && this._hubData.areas) || [];
+        const matches = areas.filter((a) =>
+            String(a.name).toLowerCase().includes(q) || String(a.id) === q);
+        this._areaSearchMatches = matches;
+        if (!matches.length) {
+            menu.innerHTML = '<div class="gm-search-menu-empty">No areas match.</div>';
+        } else {
+            menu.innerHTML = matches.slice(0, 12).map((a) => `
+                <button type="button" class="gm-search-item" data-id="${a.id}">
+                    ${esc(a.name)} <span class="mono">A${a.id}</span>
+                </button>`).join('');
+            menu.querySelectorAll('.gm-search-item').forEach((btn) =>
+                btn.addEventListener('click', () => this._pickAreaResult(btn.dataset.id)));
+        }
+        menu.classList.remove('hidden');
+    }
+
+    _hideAreaMenu() {
+        if (this._areaSearchMenu) this._areaSearchMenu.classList.add('hidden');
+        this._areaSearchMatches = [];
+    }
+
+    _pickAreaResult(id) {
+        const areaId = Number(id);
+        if (!Number.isInteger(areaId)) return;
+        this._hideAreaMenu();
+        this._areaSearchInput.value = '';
+        this._renderer.focusArea(areaId);
+        this._openInspector(areaId);
+    }
+
+    /** Keyboard helper: move focus onto the first dropdown item after an
+     * ArrowDown so the keyboard can complete the selection (Enter) or Tab
+     * onwards without an extra click. */
+    _focusAreaResult() {
+        const btn = this._areaSearchMenu && this._areaSearchMenu.querySelector('.gm-search-item');
+        if (btn) btn.focus();
+    }
+
     _populateCreatePositionSelect() {
         if (!this._createPositionSelect) return;
         const areas = (this._hubData && this._hubData.areas) || [];
@@ -381,6 +463,147 @@ class AreasGraphTab extends TabBase {
         } catch (e) {
             this.shell.toast('Failed to create area: ' + e.message, 'error');
         }
+    }
+
+    // --- drag-to-new-area ("create a new area" drop) -----------------------
+
+    /** `/api/gm/hub/areas/create` with a name (+ optional insert position),
+     * returning the new area's id when created, else null. Reloads on
+     * success like _createArea. */
+    async _createAreaNamed(name, insertAt) {
+        try {
+            const body = { name };
+            if (insertAt !== null && insertAt !== undefined) body.insert_at = insertAt;
+            const result = await this.api.post('/api/gm/hub/areas/create', body);
+            if (!result || !result.ok) {
+                this.shell.toast((result && result.output || []).join(' ') || 'Failed to create area.', 'error');
+                return null;
+            }
+            this.shell.toast((result.output || []).join(' ') || 'Area created.', 'success');
+            await this.reload();
+            // Prefer the response's authoritative `area_id` (new in this
+            // change); fall back to locating the fresh area in the bundled
+            // areas snapshot when talking to an older server process that
+            // doesn't send it yet.
+            if (result.area_id !== null && result.area_id !== undefined
+                && Number.isInteger(Number(result.area_id))) {
+                return Number(result.area_id);
+            }
+            const matches = (result.areas || []).filter((a) => a.name === name);
+            if (matches.length === 0) return null;
+            return matches[matches.length - 1].id;
+        } catch (e) {
+            this.shell.toast('Failed to create area: ' + e.message, 'error');
+            return null;
+        }
+    }
+
+    /** End of the GraphRenderer `onLinkDragEmpty` gesture: the GM dropped
+     * a link line onto empty canvas. Prompt (name + Cancel) to create a
+     * brand-new area, then link it from the source area -- two-way when
+     * the gesture was, so the new area links straight back too. The new
+     * area's node is pinned to the world position the drop was released
+     * at (see GraphRenderer.placeAreaAt) so it doesn't snap into the grid
+     * far away from where the GM was aiming. */
+    _promptCreateAreaLink(sourceId, twoWay, dropX, dropY) {
+        const sourceName = this._areaName(sourceId);
+        const modal = document.createElement('div');
+        modal.className = 'gm-modal-backdrop';
+        modal.innerHTML = `
+            <div class="gm-modal">
+                <div class="gm-modal-header"><h3>Create new area</h3></div>
+                <div class="gm-modal-body">
+                    <div class="gm-modal-sub">Link from "${esc(sourceName)}" (${twoWay ? '2-way' : '1-way'}).${
+                        twoWay ? ' The new area will link back too.' : ''}</div>
+                    <input type="text" class="gm-modal-input" placeholder="new area name" maxlength="60"
+                        autocomplete="off">
+                    <div class="gm-modal-actions">
+                        <button type="button" class="gm-modal-btn gm-modal-btn-cancel">Cancel</button>
+                        <button type="button" class="gm-modal-btn gm-modal-btn-primary">Create & link</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        const close = () => modal.remove();
+        modal.addEventListener('pointerdown', (e) => { if (e.target === modal) close(); });
+
+        const input = modal.querySelector('.gm-modal-input');
+        const confirmBtn = modal.querySelector('.gm-modal-btn-primary');
+        const cancelBtn = modal.querySelector('.gm-modal-btn-cancel');
+        cancelBtn.addEventListener('click', close);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') confirmBtn.click();
+            if (e.key === 'Escape') close();
+        });
+        confirmBtn.addEventListener('click', () => {
+            const name = input.value.trim();
+            if (!name) {
+                input.classList.add('invalid');
+                input.focus();
+                return;
+            }
+            confirmBtn.disabled = true;
+            cancelBtn.disabled = true;
+            this._createAreaNamed(name, null).then((newAreaId) => {
+                if (newAreaId !== null && newAreaId !== undefined) {
+                    // Place the fresh node where the release happened
+                    // first (survives the _addLink reload below).
+                    if (this._renderer.placeAreaAt) this._renderer.placeAreaAt(newAreaId, dropX, dropY);
+                    this._addLink(sourceId, newAreaId, twoWay);
+                }
+                close();
+            });
+        });
+
+        document.body.appendChild(modal);
+        input.focus();
+    }
+
+    /** End of the GraphRenderer `onLinkDragExisting` gesture: the GM
+     * dropped a link line on a node that's already directly linked from
+     * the source. Confirm before removing -- 2-way gestures remove both
+     * directions (/unlink), 1-way gestures remove only the source's
+     * outgoing link. */
+    _confirmRemoveLink(sourceId, targetId, twoWay) {
+        const modal = document.createElement('div');
+        modal.className = 'gm-modal-backdrop';
+        modal.innerHTML = `
+            <div class="gm-modal">
+                <div class="gm-modal-header"><h3>Already linked</h3></div>
+                <div class="gm-modal-body">
+                    <div class="gm-modal-sub">"${esc(this._areaName(sourceId))}" is already linked to "${esc(this._areaName(targetId))}".${
+                        twoWay
+                            ? ' Remove the link in both directions?'
+                            : ' Remove only this one-way link?'}</div>
+                    <div class="gm-modal-actions">
+                        <button type="button" class="gm-modal-btn gm-modal-btn-cancel">Cancel</button>
+                        <button type="button" class="gm-modal-btn gm-modal-btn-danger">Remove link</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        const close = () => modal.remove();
+        modal.addEventListener('pointerdown', (e) => { if (e.target === modal) close(); });
+        modal.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+        const cancelBtn = modal.querySelector('.gm-modal-btn-cancel');
+        const removeBtn = modal.querySelector('.gm-modal-btn-danger');
+        cancelBtn.addEventListener('click', close);
+        removeBtn.addEventListener('click', () => {
+            removeBtn.disabled = true;
+            cancelBtn.disabled = true;
+            close();
+            this._removeLink(sourceId, targetId, twoWay);
+        });
+
+        document.body.appendChild(modal);
+        cancelBtn.focus();
+    }
+
+    /** Area display name helper for the drag-to-new-area modal. */
+    _areaName(areaId) {
+        const a = (this._hubData.areas || []).find((x) => x.id === areaId);
+        return a ? a.name : `#${areaId}`;
     }
 
     // --- area inspector ---------------------------------------------------
@@ -1189,6 +1412,58 @@ class AreasGraphTab extends TabBase {
             }
             .gr-ctrl-iconscale-label { font-size: 0.68rem; color: var(--gm-text-dim); white-space: nowrap; }
             .gr-ctrl-iconscale-slider { width: 64px; accent-color: var(--gm-accent); cursor: pointer; }
+
+            /* 2-way/1-way toggle for drag-created links (see
+             * GraphRenderer._buildLinkModeControl in gm-graph.js): a compact
+             * checkbox pill under the icon-scale slider. */
+            .gr-ctrl-linkmode {
+                display: flex; align-items: center; gap: 0.3rem; background: var(--gm-panel);
+                border: 1px solid var(--gm-border); border-radius: 4px; padding: 0.15rem 0.4rem;
+            }
+            .gr-ctrl-linkmode-cb { accent-color: var(--gm-accent); cursor: pointer; }
+            .gr-ctrl-linkmode-label { font-size: 0.68rem; color: var(--gm-text-dim); white-space: nowrap; }
+
+            /* Drag-a-link UI: the source port on each node frame + the
+             * drop-target highlight on the node under the cursor. The
+             * transient rubber band's arrowhead accent marker is defined in
+             * gm-graph.js's _buildDefs as #gr-arrow-accent; its head gets
+             * painted here. */
+            .gr-link-handle { cursor: crosshair; }
+            .gr-link-handle-bg { fill: var(--gm-panel); stroke: var(--gm-border); stroke-width: 1.2; }
+            .gr-link-handle-icon { fill: none; stroke: var(--gm-text-dim); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+            .gr-link-handle:hover .gr-link-handle-bg { fill: #26304a; stroke: var(--gm-accent); }
+            .gr-link-handle:hover .gr-link-handle-icon { stroke: var(--gm-accent); }
+            .gr-node.gr-link-target .gr-node-card { stroke: var(--gm-accent); stroke-width: 2.4; }
+            .gr-link-drag-line { stroke: var(--gm-accent); stroke-width: 1.8; stroke-dasharray: 5 4; }
+            .gr-arrowhead-accent { fill: var(--gm-accent); }
+
+            /* Dragged-link dialogs (create-new-area on an empty drop, and the
+             * remove-existing-link confirmation) reuse the panel's shared
+             * .gm-modal-backdrop (full-screen darken + centering) and
+             * .gm-modal card from gm.css -- only the form/action bits are
+             * injected here. */
+            .gm-modal-sub { font-size: 0.72rem; color: var(--gm-text-dim); line-height: 1.35; }
+            .gm-modal-input {
+                background: var(--gm-panel-alt); color: var(--gm-text); border: 1px solid var(--gm-border);
+                border-radius: 4px; padding: 0.45rem 0.55rem; font-size: 0.85rem; width: 100%;
+                box-sizing: border-box;
+            }
+            .gm-modal-input:focus { outline: none; border-color: var(--gm-accent); }
+            .gm-modal-input.invalid { border-color: var(--gm-danger); }
+            .gm-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+            .gm-modal-btn {
+                border: none; border-radius: 4px; padding: 0.45rem 0.85rem; font-size: 0.8rem;
+                font-weight: 700; cursor: pointer;
+            }
+            .gm-modal-btn-cancel {
+                background: transparent; color: var(--gm-text-dim); border: 1px solid var(--gm-border);
+            }
+            .gm-modal-btn-cancel:hover { color: var(--gm-text); border-color: var(--gm-text-dim); }
+            .gm-modal-btn-primary { background: var(--gm-accent); color: #1a1206; }
+            .gm-modal-btn-primary:hover { background: var(--gm-accent-dark); }
+            .gm-modal-btn-danger { background: var(--gm-danger); color: #fff; }
+            .gm-modal-btn-danger:hover { filter: brightness(1.15); }
+            .gm-modal-btn:disabled { opacity: 0.5; cursor: default; }
 
             /* ITEM 2 (v6 brief): the shared occupant/client label's mini
              * char-icon placeholder (see buildClientLabel in gm-utils.js) --

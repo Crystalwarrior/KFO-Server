@@ -38,6 +38,8 @@ class ClientsTab extends TabBase {
         this._tbody.addEventListener('click', (e) => this._onTableClick(e));
         this._tbody.addEventListener('change', (e) => this._onTableChange(e));
 
+        this._searchQuery = '';
+        this._buildClientSearch();
         this._buildMoveModal();
     }
 
@@ -117,6 +119,46 @@ class ClientsTab extends TabBase {
         }
         this._tbody.innerHTML = this._clients.map((c) => this._rowHtml(c)).join('');
         this._loadIcons();
+        this._applyClientSearch({ scroll: false });
+    }
+
+    /** Toolbar search: live-filter the roster, highlight the first match
+     * and (on user-typed changes) scroll it into view. The query matches
+     * showname, OOC name, character folder (incl. iniswap), client id, or
+     * area ("A3"). Filters re-apply after every poll-driven re-render so
+     * the search survives refreshes without the user doing anything. */
+    _buildClientSearch() {
+        const toolbar = this.root.querySelector('.gm-toolbar');
+        if (!toolbar) return;
+        const input = createGmSearchBox('Find client…', (v) => {
+            this._searchQuery = v;
+            this._applyClientSearch({ scroll: true });
+        });
+        toolbar.appendChild(input);
+        this._clientSearchInput = input;
+    }
+
+    _applyClientSearch(opts) {
+        opts = opts || {};
+        const q = (this._searchQuery || '').trim().toLowerCase();
+        const rows = Array.from(this._tbody.querySelectorAll('tr[data-id]'));
+        let firstMatch = null;
+        rows.forEach((row) => {
+            const c = this._clients.find((x) => String(x.id) === String(row.dataset.id));
+            let hay = '';
+            if (c) {
+                hay = [c.showname, c.name, this._folderKey(c), String(c.id), c.area_id !== undefined && c.area_id !== null ? 'A' + c.area_id : '']
+                    .filter(Boolean).join(' ').toLowerCase();
+            }
+            const match = !q || hay.includes(q);
+            row.classList.toggle('gm-search-row-hidden', !match);
+            if (q && match && firstMatch === null) firstMatch = row;
+        });
+        rows.forEach((row) => {
+            if (q) row.classList.toggle('gm-search-match', row === firstMatch);
+            else row.classList.remove('gm-search-match');
+        });
+        if (opts.scroll && firstMatch) firstMatch.scrollIntoView({ block: 'nearest' });
     }
 
     /** The character folder to key icon/color lookups on -- accounts for

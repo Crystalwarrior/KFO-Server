@@ -216,13 +216,14 @@ class AreaRoutes:
 
         hub = session.current_hub()
         # `/area_create` always appends, so the new area is the last one.
+        new_area_id = len(hub.areas) - 1
         if insert_at is not None:
             try:
                 target = int(insert_at)
             except (TypeError, ValueError):
                 target = None
             if target is not None:
-                idx = len(hub.areas) - 1
+                idx = new_area_id
                 target = max(0, min(target, idx))
                 while idx > target:
                     swap_output = session.execute_command("area_swap", f"{idx} {idx - 1}")
@@ -230,10 +231,12 @@ class AreaRoutes:
                     if not _command_ok(swap_output):
                         break
                     idx -= 1
+                new_area_id = idx
 
         self._push_areas_changed(session)
         return web.json_response({
             "ok": True, "output": output,
+            "area_id": new_area_id,
             "hub_id": hub.id, "hub_name": hub.name, "areas": self._areas_snapshot(hub),
         })
 
