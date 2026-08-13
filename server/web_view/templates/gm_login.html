@@ -24,6 +24,11 @@
     }
     .gm-login-box button:hover { background: var(--gm-accent-dark); }
     .gm-login-box button:disabled { opacity: 0.5; cursor: default; }
+    .gm-login-box select {
+        width: 100%; padding: 0.6rem; margin-bottom: 1rem; border: 1px solid var(--gm-border);
+        border-radius: 4px; background: var(--gm-panel-alt); color: var(--gm-text); font-size: 0.9rem;
+    }
+    .gm-hub-picker.hidden { display: none; }
     .gm-login-error {
         color: var(--gm-danger); text-align: center; margin-top: 0.9rem; font-size: 0.82rem; min-height: 1.2rem;
     }
@@ -48,6 +53,13 @@
         <input type="password" id="gmPwPassword" name="password" autocomplete="current-password">
         <button type="submit" id="gmPwLoginSubmit">Sign In</button>
     </form>
+    <div class="gm-hub-picker hidden" id="gmHubPicker">
+        <label for="gmHubSelect">Choose which hub to GM</label>
+        <select id="gmHubSelect"></select>
+        <button type="button" id="gmHubSubmit">Take this hub</button>
+        <p class="hint">You may GM one hub at a time. Hubs that already have a GM are unavailable.</p>
+        <div class="gm-login-error" id="gmHubError"></div>
+    </div>
     <div class="gm-login-error" id="gmPwLoginError"></div>
     <div class="gm-login-error" id="gmLoginError"></div>
 </div>
@@ -113,6 +125,52 @@
     var pwPass = document.getElementById('gmPwPassword');
     var pwError = document.getElementById('gmPwLoginError');
     var pwSubmit = document.getElementById('gmPwLoginSubmit');
+    var hubPicker = document.getElementById('gmHubPicker');
+    var hubSelect = document.getElementById('gmHubSelect');
+    var hubSubmit = document.getElementById('gmHubSubmit');
+    var hubError = document.getElementById('gmHubError');
+    var pendingPreAuth = '';
+
+    function loginErrorMessage(code) {
+        if (code === 'all_hubs_occupied') {
+            return 'Every hub you are allowed to GM already has a GM. Try again later.';
+        }
+        if (code === 'hub_occupied') {
+            return 'That hub already has a GM. Pick another.';
+        }
+        if (code === 'already_bound_hub') {
+            return 'You are already GMing a different hub. You may only GM one hub at a time.';
+        }
+        return code || 'Login failed.';
+    }
+
+    function showHubPicker(hubs) {
+        hubSelect.innerHTML = '';
+        var hasSelectable = false;
+        hubs.forEach(function (hub) {
+            var opt = document.createElement('option');
+            var label = '[' + hub.id + '] ' + hub.name;
+            if (hub.occupied) {
+                opt.textContent = label + ' (has a GM)';
+                opt.disabled = true;
+            } else if (hub.blocked) {
+                opt.textContent = label + ' (you already GM another hub)';
+                opt.disabled = true;
+            } else if (hub.self_bound) {
+                opt.textContent = label + ' (your current hub)';
+            } else {
+                opt.textContent = label;
+            }
+            opt.value = hub.id;
+            hubSelect.appendChild(opt);
+            if (!opt.disabled) hasSelectable = true;
+        });
+        hubSelect.disabled = !hasSelectable;
+        hubSubmit.disabled = !hasSelectable;
+        pwForm.classList.add('hidden');
+        hubPicker.classList.remove('hidden');
+        hubError.textContent = '';
+    }
 
     async function submitPassword(username, password) {
         pwSubmit.disabled = true;
@@ -125,11 +183,16 @@
                 body: JSON.stringify({ username: username, password: password }),
             });
             var data = await resp.json();
+            if (resp.ok && data.ok && data.needs_hub) {
+                pendingPreAuth = data.pre_auth;
+                showHubPicker(data.hubs || []);
+                return;
+            }
             if (resp.ok && data.ok) {
                 window.location.href = '/';
                 return;
             }
-            pwError.textContent = (data && data.error) || 'Login failed.';
+            pwError.textContent = loginErrorMessage(data && data.error);
         } catch (err) {
             pwError.textContent = 'Request failed: ' + err.message;
         } finally {
@@ -137,9 +200,38 @@
         }
     }
 
+    async function submitHub() {
+        var hubId = hubSelect.value;
+        if (!pendingPreAuth || hubId === '') return;
+        hubSubmit.disabled = true;
+        hubError.textContent = '';
+        try {
+            var resp = await fetch('/api/gm/login/hub', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ pre_auth: pendingPreAuth, hub_id: parseInt(hubId, 10) }),
+            });
+            var data = await resp.json();
+            if (resp.ok && data.ok) {
+                window.location.href = '/';
+                return;
+            }
+            hubError.textContent = loginErrorMessage(data && data.error);
+        } catch (err) {
+            hubError.textContent = 'Request failed: ' + err.message;
+        } finally {
+            hubSubmit.disabled = false;
+        }
+    }
+
     pwForm.addEventListener('submit', function (e) {
         e.preventDefault();
         submitPassword(pwUser.value, pwPass.value);
+    });
+
+    hubSubmit.addEventListener('click', function () {
+        submitHub();
     });
 
     var params = new URLSearchParams(window.location.search);

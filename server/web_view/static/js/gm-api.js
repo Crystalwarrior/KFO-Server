@@ -95,6 +95,7 @@ class ApiClient {
     // Only admin-role sessions can reach these endpoints; gm/live sessions
     // get a 403 from the server.
     login(username, password) { return this.post('/api/gm/login', { username, password }); }
+    loginHub(preAuth, hubId) { return this.post('/api/gm/login/hub', { pre_auth: preAuth, hub_id: hubId }); }
     getLogHubs() { return this.get('/api/gm/logs/hubs'); }
     getLogEventTypes(category) { return this.get('/api/gm/logs/event_types?category=' + encodeURIComponent(category || 'area')); }
     getAreaEvents(params) { return this.get('/api/gm/logs/area_events?' + this._qs(params)); }
