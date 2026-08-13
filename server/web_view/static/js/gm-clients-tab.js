@@ -41,6 +41,7 @@ class ClientsTab extends TabBase {
         this._searchQuery = '';
         this._buildClientSearch();
         this._buildMoveModal();
+        this._buildForceSwitchModal();
     }
 
     /** Late-inject local content resolution (mirrors AreasGraphTab). */
@@ -184,11 +185,23 @@ class ClientsTab extends TabBase {
         if (c.is_hub_gm) {
             actionBtns.push(`<button class="btn-sm danger" data-action="ungm" data-id="${c.id}" title="Remove from hub GM roster">Demote</button>`);
         } else {
-            actionBtns.push(`<button class="btn-sm" data-action="gm" data-id="${c.id}" ${c.is_mod ? 'disabled title="Already staff"' : ''} title="Add to hub GM roster">Promote to GM</button>`);
+            actionBtns.push(`<button class="btn-sm danger" data-action="gm" data-id="${c.id}" ${c.is_mod ? 'disabled title="Already staff"' : ''} title="Add to hub GM roster">Promote to GM</button>`);
         }
         actionBtns.push(`<button class="btn-sm" data-action="pm" data-id="${c.id}" title="Private message this player">PM</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="teleport-here" data-id="${c.id}" title="Move this player to your current area">Bring here</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="teleport-area" data-id="${c.id}" title="Move this player to a chosen area">Send to…</button>`);
+        // GM moderation actions (every panel user -- the commands themselves
+        // are mod_only-gated, so an actor without the right rank gets the same
+        // rejection the in-game command layer would produce). All of these
+        // target by client id, never by ipid.
+        actionBtns.push(`<button class="btn-sm danger" data-action="kill" data-id="${c.id}" title="Force into spectator (death)">Kill</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="freeze" data-id="${c.id}" title="Freeze from moving between areas">Freeze</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="unfreeze" data-id="${c.id}" title="Unfreeze">Unfreeze</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="blind" data-id="${c.id}" title="Blind from seeing/talking IC">Blind</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="unblind" data-id="${c.id}" title="Unblind">Unblind</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="${c.hidden ? 'unhide' : 'hide'}" data-id="${c.id}" title="${c.hidden ? 'Unhide from /getarea and playercounts' : 'Hide from /getarea and playercounts'}">${c.hidden ? 'Unhide' : 'Hide'}</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="move-delay" data-id="${c.id}" title="Set this player's move delay">Move delay…</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="force-switch" data-id="${c.id}" title="Force this player to switch character">Force switch…</button>`);
         // Admin-only moderation quick actions (admin sessions only -- the
         // server only sends ipid/mute state to admin role sessions, and these
         // buttons are gated on the same check below). They dispatch through the
@@ -325,7 +338,36 @@ class ClientsTab extends TabBase {
             } else if (action === 'ungm') {
                 if (!window.confirm(`Demote ${label} from GM?`)) return;
                 result = await this.api.demoteClient(id);
-            } else { // 'gm'
+            } else if (['kill', 'freeze', 'unfreeze', 'blind', 'unblind', 'hide', 'unhide', 'move-delay', 'force-switch'].includes(action)) {
+                // GM moderation actions, dispatched through the shared command
+                // runner so the real command layer's mod_only gates apply.
+                const cmdMap = {
+                    kill: 'kill', freeze: 'freeze', unfreeze: 'unfreeze',
+                    blind: 'blind', unblind: 'unblind',
+                    hide: 'player_hide', unhide: 'player_unhide',
+                    'move-delay': 'player_move_delay', 'force-switch': 'force_switch',
+                };
+                const cmd = cmdMap[action];
+                let arg = String(id);
+                if (action === 'move-delay') {
+                    const delay = window.prompt(`Move delay for ${label} in seconds (-1800..1800; blank = show current):`, '');
+                    if (delay === null) return;
+                    if (delay.trim() !== '') arg += ' ' + delay.trim();
+                } else if (action === 'force-switch') {
+                    if (opts.char !== undefined) {
+                        if (opts.char !== '') arg += ' ' + opts.char;
+                    } else {
+                        // Pull the target hub's character list and let the GM
+                        // pick (see _openForceSwitchModal); no prompt fallback.
+                        this._openForceSwitchModal(client || null, id);
+                        return;
+                    }
+                } else if (!window.confirm(`${action} ${label}?`)) {
+                    return;
+                }
+                result = await this.api.runCommand(cmd, arg);
+            } else if (action === 'gm') {
+                if (!window.confirm(`Promote ${label} to hub GM?`)) return;
                 result = await this.api.promoteClient(id);
             }
             const text = (result.output || []).join(' ') || (result.ok ? 'Done.' : 'Command failed.');
@@ -479,5 +521,86 @@ class ClientsTab extends TabBase {
         this._closeMoveModal();
         if (areaId === '') return;
         await this._runAction('teleport-area', client.id, { area_id: areaId, pos });
+    }
+
+    // --- "Force switch…" (character picker) modal --------------------------
+
+    _buildForceSwitchModal() {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'gm-modal-backdrop hidden';
+        backdrop.id = 'clientsForceSwitchModal';
+        backdrop.innerHTML = `
+            <div class="gm-modal">
+                <div class="gm-modal-header">
+                    <h3>Force Character Switch</h3>
+                    <button type="button" class="btn-sm" data-action="close">Close</button>
+                </div>
+                <div class="gm-modal-body">
+                    <p class="dim" id="clientsForceSwitchTargetLabel"></p>
+                    <div class="gm-inline-form">
+                        <span class="dim">Switch to:</span>
+                        <select id="clientsForceSwitchSelect"></select>
+                    </div>
+                    <div class="gm-toolbar">
+                        <button class="btn-sm" id="clientsForceSwitchConfirmBtn">Force switch</button>
+                        <button class="btn-sm" data-action="close">Cancel</button>
+                    </div>
+                </div>
+            </div>`;
+        this.root.appendChild(backdrop);
+
+        this._forceSwitchModal = backdrop;
+        this._forceSwitchTarget = null;
+        this._forceSwitchTargetLabel = backdrop.querySelector('#clientsForceSwitchTargetLabel');
+        this._forceSwitchSelect = backdrop.querySelector('#clientsForceSwitchSelect');
+
+        backdrop.querySelectorAll('[data-action="close"]').forEach((b) =>
+            b.addEventListener('click', () => this._closeForceSwitchModal()));
+        backdrop.querySelector('#clientsForceSwitchConfirmBtn').addEventListener('click', () => this._confirmForceSwitch());
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) this._closeForceSwitchModal(); });
+    }
+
+    async _openForceSwitchModal(client, clientId) {
+        // The target comes from the roster row, but tolerate a missing entry.
+        const target = client || { id: clientId, showname: '', name: '' };
+        let data;
+        try {
+            data = await this.api.getCharacters();
+        } catch (e) {
+            this.shell.toast('Failed to load the character list: ' + e.message, 'error');
+            return;
+        }
+        const label = target.showname || target.name || ('#' + target.id);
+        this._forceSwitchTarget = target;
+        this._forceSwitchTargetLabel.textContent =
+            `Force ${label} (#${target.id}) to switch to:`;
+        // Empty value = dump them on the character select screen; '-1' and
+        // 'spectator' both resolve to spectator on the server.
+        const options = [
+            '<option value="">Character select screen</option>',
+            '<option value="spectator">Spectator</option>',
+        ];
+        const slots = (data.slots || [])
+            .slice()
+            .sort((a, b) => a.char_id - b.char_id);
+        for (const slot of slots) {
+            options.push(
+                `<option value="${esc(slot.folder)}">[${slot.char_id}] ${esc(slot.folder)}${slot.taken ? ' (taken)' : ''}</option>`);
+        }
+        this._forceSwitchSelect.innerHTML = options.join('');
+        this._forceSwitchModal.classList.remove('hidden');
+    }
+
+    _closeForceSwitchModal() {
+        this._forceSwitchModal.classList.add('hidden');
+        this._forceSwitchTarget = null;
+    }
+
+    async _confirmForceSwitch() {
+        const client = this._forceSwitchTarget;
+        if (!client) return;
+        const value = this._forceSwitchSelect.value;
+        this._closeForceSwitchModal();
+        await this._runAction('force-switch', client.id, { char: value });
     }
 }
