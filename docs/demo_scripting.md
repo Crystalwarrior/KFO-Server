@@ -488,6 +488,7 @@ character list, music list and movement delay. It's spelled `hub` in paths -
 | `max_areas`             | The most areas allowed                             |
 | `arup_enabled`          | `1` if the player-count announcement is on         |
 | `can_gm`                | `1` if players can become GM                       |
+| `remote_gm_only`        | `1` if the hub can only be claimed by a remote GM  |
 | `single_cm`             | `1` if only one CM per area is allowed             |
 | `hide_clients`          | `1` if player lists are hidden                     |
 | `replace_music`         | `1` if server music overrides hub music            |

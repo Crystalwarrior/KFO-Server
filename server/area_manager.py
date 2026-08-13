@@ -28,6 +28,7 @@ class AreaManager:
         self.hide_clients = False
         self.info = ""
         self.can_gm = False
+        self.remote_gm_only = False
         self.music_ref = ""
         self.replace_music = False
         self.client_music = True
@@ -131,6 +132,7 @@ class AreaManager:
             "hide_clients",
             "info",
             "can_gm",
+            "remote_gm_only",
             "music_ref",
             "replace_music",
             "client_music",
@@ -234,6 +236,7 @@ class AreaManager:
             "hide_clients",
             "info",
             "can_gm",
+            "remote_gm_only",
             "music_ref",
             "replace_music",
             "client_music",
@@ -521,6 +524,15 @@ class AreaManager:
         if len(self.real_owners()) > 0:
             return True
         return len(self.remote_gms()) > 0
+
+    def can_claim_in_game(self):
+        """
+        True if an in-game client may claim this hub via /gm.
+
+        A hub flagged ``remote_gm_only`` can only be claimed through the remote
+        GM panel, so in-game claiming is refused even while it is unoccupied.
+        """
+        return not self.remote_gm_only and not self.hub_has_gm()
 
     def get_gms(self):
         """

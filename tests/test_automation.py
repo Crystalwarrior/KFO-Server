@@ -47,6 +47,7 @@ class FakeAreaManager:
         self.music_ref = ""
         self.move_delay = 0
         self.can_gm = True
+        self.remote_gm_only = False
         self.single_cm = False
         self.arup_enabled = True
         self.hide_clients = False
@@ -2045,6 +2046,7 @@ def test_live_get_hub_fields_all_readable(make_area):
         "hide_clients",
         "info",
         "can_gm",
+        "remote_gm_only",
         "music_ref",
         "replace_music",
         "client_music",
@@ -2549,3 +2551,126 @@ def test_ooc_set_char_data_unknown_char():
         ooc_cmd_set_char_data(client, "999 title x")
     with pytest.raises(ArgumentError, match="Unknown character"):
         ooc_cmd_set_char_data(client, "Bogus title x")
+
+
+# --- Hub GM claiming: remote_gm_only gate ---
+
+
+def _gm_claim_hub(manager):
+    """Build a single-area hub from a real AreaManager (has claim predicates)."""
+    area = Area(manager, "Test Area")
+    manager.areas.append(area)
+    return area
+
+
+def _gm_claim_client(area, *, is_mod=False):
+    """Minimal client that can self-claim its hub via /gm."""
+    client = SimpleNamespace(
+        is_mod=is_mod,
+        id=1,
+        ipid="1",
+        hdid="1",
+        area=area,
+        server=SimpleNamespace(
+            client_manager=SimpleNamespace(
+                get_targets=lambda *a, **k: [client],
+                get_multiclients=lambda *a, **k: [],
+            ),
+        ),
+        send_ooc=lambda m: None,
+    )
+    return client
+
+
+def test_remote_gm_only_default_and_round_trip():
+    """remote_gm_only defaults False and persists through load()/save()."""
+    from server.area_manager import AreaManager
+
+    manager = AreaManager(FakeHubManager(), "Test Hub")
+    assert manager.remote_gm_only is False
+
+    manager.load({"remote_gm_only": True})
+    assert manager.remote_gm_only is True
+
+    assert manager.save()["remote_gm_only"] is True
+
+
+def test_can_claim_in_game_respects_remote_gm_only():
+    """A remote-GM-only hub can't be claimed in-game, even while unoccupied."""
+    from server.area_manager import AreaManager
+
+    manager = AreaManager(FakeHubManager(), "Test Hub")
+    manager.can_gm = True
+    assert manager.can_claim_in_game() is True
+
+    manager.remote_gm_only = True
+    assert manager.can_claim_in_game() is False
+
+
+def test_can_claim_in_game_false_when_occupied():
+    """An already-claimed hub can't be claimed in-game regardless of the flag."""
+    from server.area_manager import AreaManager
+
+    manager = AreaManager(FakeHubManager(), "Test Hub")
+    manager.can_gm = True
+    manager.owners.add(SimpleNamespace())
+    assert manager.can_claim_in_game() is False
+
+
+def test_gm_refused_in_remote_gm_only_hub():
+    """A non-mod, non-owner can't /gm a vacant remote-GM-only hub."""
+    from server.area_manager import AreaManager
+    from server.commands.hubs import ooc_cmd_gm
+    from server.exceptions import ClientError
+
+    manager = AreaManager(FakeHubManager(), "Test Hub")
+    manager.can_gm = True
+    manager.remote_gm_only = True
+
+    client = SimpleNamespace(is_mod=False, area=SimpleNamespace(area_manager=manager))
+
+    with pytest.raises(ClientError, match="You must be authorized"):
+        ooc_cmd_gm(client, "")
+
+
+def test_gm_allowed_in_normal_unoccupied_hub(monkeypatch):
+    """A vacant non-remote-GM-only hub can be claimed in-game via /gm."""
+    from server import database
+    from server.area_manager import AreaManager
+    from server.commands.hubs import ooc_cmd_gm
+
+    manager = AreaManager(FakeHubManager(), "Test Hub")
+    manager.can_gm = True
+
+    added = []
+    monkeypatch.setattr(manager, "add_owner", lambda c: added.append(c))
+    monkeypatch.setattr(database, "log_area", lambda *a, **k: None)
+
+    area = _gm_claim_hub(manager)
+    client = _gm_claim_client(area)
+    area.clients.add(client)
+
+    ooc_cmd_gm(client, "")
+    assert added == [client]
+
+
+def test_gm_mod_still_allowed_in_remote_gm_only_hub(monkeypatch):
+    """Mods bypass the remote-GM-only restriction and may still /gm."""
+    from server import database
+    from server.area_manager import AreaManager
+    from server.commands.hubs import ooc_cmd_gm
+
+    manager = AreaManager(FakeHubManager(), "Test Hub")
+    manager.can_gm = True
+    manager.remote_gm_only = True
+
+    added = []
+    monkeypatch.setattr(manager, "add_owner", lambda c: added.append(c))
+    monkeypatch.setattr(database, "log_area", lambda *a, **k: None)
+
+    area = _gm_claim_hub(manager)
+    client = _gm_claim_client(area, is_mod=True)
+    area.clients.add(client)
+
+    ooc_cmd_gm(client, "")
+    assert added == [client]
