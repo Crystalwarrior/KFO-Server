@@ -319,7 +319,9 @@ class EvidenceTab extends TabBase {
             this._nameInput.value = d.name || '';
             this._imageInput.value = d.image || '';
             this._editor.value = d.desc || '';
-            this._editor.readOnly = !d.editable;
+            // note: just because evidence is not "player editable" doesn't mean we should lock out
+            // the literal game master from editing it too
+            this._editor.readOnly = false;
             this._renderWarnings(d.parse_warnings || []);
             this._populateProps(d);
             this._renderList();
