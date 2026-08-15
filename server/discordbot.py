@@ -168,7 +168,7 @@ class Bridgebot(commands.Bot):
     def queue_message(self, name, message, charname="", anim=""):
         base = None
         avatar_url = None
-        anim_url = None
+        anim_urls = None
         embed_emotes = False
         if "base_url" in self.server.config["bridgebot"]:
             base = self.server.config["bridgebot"]["base_url"]
@@ -179,46 +179,51 @@ class Bridgebot(commands.Bot):
             char_url = base + parse.quote("characters/" + charname.lower() + "/")
             avatar_url = char_url + "char_icon"
             if embed_emotes and anim != "":
-                anim_url = char_url + anim.lower()
+                anim_urls = [char_url + "(b)" + anim.lower(), char_url + anim.lower()]
 
         self.pending_messages.append(
             [
                 self.cleanup_text(name),
                 self.cleanup_text(message),
                 avatar_url,
-                anim_url,
+                anim_urls,
                 self.server.charicon_extensions,
                 self.server.emote_extensions if embed_emotes else None,
             ]
         )
 
-    async def _resolve_url(self, base, extensions):
+    async def _resolve_url(self, asset, extensions):
         """
-        Probe base + each extension and return the first reachable URL.
-        Falls back to the first extension in the list when none respond.
+        Probe each candidate asset URL with each extension and return the
+        first reachable URL. A single asset URL string is treated as one
+        candidate. Falls back to the last candidate with the first extension
+        when nothing responds (for emotes that is the raw, non-prefixed one).
         """
-        if base is None or not extensions:
-            return base
-        key = (base, tuple(extensions))
+        if asset is None or not extensions:
+            return asset
+        if isinstance(asset, str):
+            asset = [asset]
+        key = (tuple(asset), tuple(extensions))
         if key in self._asset_url_cache:
             return self._asset_url_cache[key]
         async with aiohttp.ClientSession() as session:
-            for ext in extensions:
-                if ext == ".webp.static":
-                    ext = ".webp"
-                url = base + ext
-                try:
-                    async with session.head(
-                        url,
-                        timeout=aiohttp.ClientTimeout(total=5),
-                        allow_redirects=True,
-                    ) as resp:
-                        if resp.status == 200:
-                            self._asset_url_cache[key] = url
-                            return url
-                except aiohttp.ClientError:
-                    continue
-        return base + extensions[0]
+            for candidate in asset:
+                for ext in extensions:
+                    if ext == ".webp.static":
+                        continue
+                    url = candidate + ext
+                    try:
+                        async with session.head(
+                            url,
+                            timeout=aiohttp.ClientTimeout(total=5),
+                            allow_redirects=True,
+                        ) as resp:
+                            if resp.status == 200:
+                                self._asset_url_cache[key] = url
+                                return url
+                    except aiohttp.ClientError:
+                        continue
+        return asset[-1] + extensions[0]
 
     async def on_ready(self):
         print("Discord Bridge Successfully logged in.")
@@ -257,7 +262,6 @@ class Bridgebot(commands.Bot):
                 image = await self._resolve_url(image, emote_exts)
                 embed = discord.Embed()
                 embed.set_image(url=image)
-                print(avatar, image)
             await webhook.send(message, username=name, avatar_url=avatar, embed=embed)
             print(
                 f'[DiscordBridge] Sending message from "{name}" to "{self.channel.name}"'
