@@ -179,7 +179,7 @@ class Bridgebot(commands.Bot):
             char_url = base + parse.quote("characters/" + charname.lower() + "/")
             avatar_url = char_url + "char_icon"
             if embed_emotes and anim != "":
-                anim_urls = [char_url + "(b)" + anim.lower(), char_url + anim.lower()]
+                anim_urls = [char_url + "(b)/" + anim.lower(), char_url + "(b)" + anim.lower(), char_url + anim.lower()]
 
         self.pending_messages.append(
             [
