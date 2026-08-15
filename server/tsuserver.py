@@ -6,6 +6,7 @@ import traceback
 
 import websockets
 import geoip2.database
+import aiohttp
 import yaml
 
 from aiohttp import web
@@ -50,6 +51,10 @@ class TsuServer3:
         self.backgrounds = None
         self.backgrounds_categories = None
         self.server_links = None
+        self.charicon_extensions = [".png", ".webp"]
+        self.emote_extensions = [".gif", ".png", ".apng", ".webp", ".webp.static"]
+        self.emotions_extensions = [".png", ".webp"]
+        self.background_extensions = [".png", ".gif", ".webp", ".apng"]
         self.zalgo_tolerance = None
         self.ipRange_bans = []
         self.geoIpReader = None
@@ -130,6 +135,9 @@ class TsuServer3:
         logger.info("Starting server")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+
+        if self.config.get("asset_url"):
+            loop.run_until_complete(self.load_extensions())
 
         bound_ip = "0.0.0.0"
         if self.config["local"]:
@@ -374,6 +382,33 @@ class TsuServer3:
             self.config["global_chat"] = True
         if "music_allow_url" not in self.config:
             self.config["music_allow_url"] = True
+
+    async def load_extensions(self):
+        """
+        Fetch the asset file-extension lists from {asset_url}/extensions.json
+        once at server start, if an asset URL is configured. Falls back to
+        sensible defaults when the file is missing or unreachable.
+        """
+        asset_url = self.config.get("asset_url", "")
+        if not asset_url:
+            return
+        url = asset_url.rstrip("/") + "/extensions.json"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status != 200:
+                        logger.debug("extensions.json fetch returned %s from %s", resp.status, url)
+                        return
+                    data = await resp.json(content_type=None)
+        except Exception as e:
+            logger.debug("Failed to fetch extensions.json from %s: %s", url, e)
+            return
+        self.charicon_extensions = data.get("charicon_extensions", self.charicon_extensions)
+        self.emote_extensions = data.get("emote_extensions", self.emote_extensions)
+        self.emotions_extensions = data.get("emotions_extensions", self.emotions_extensions)
+        self.background_extensions = data.get("background_extensions", self.background_extensions)
 
     def load_command_aliases(self):
         """Load a list of alternative command names."""

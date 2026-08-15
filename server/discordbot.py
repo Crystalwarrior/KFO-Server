@@ -1,5 +1,6 @@
 from urllib import parse
 import asyncio
+import aiohttp
 import discord
 from discord.ext import commands
 from discord.utils import escape_markdown
@@ -16,6 +17,7 @@ class Bridgebot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
         self.server = server
         self.pending_messages = []
+        self._asset_url_cache = {}
         self.hub_id = hub_id
         self.area_id = area_id
         self.target_channel = target_chanel
@@ -173,14 +175,50 @@ class Bridgebot(commands.Bot):
         if "embed_emotes" in self.server.config["bridgebot"]:
             embed_emotes = self.server.config["bridgebot"]["embed_emotes"]
         if base is not None and charname != "":
-            avatar_url = base + \
-                parse.quote("characters/" + charname.lower() + "/char_icon.png")
+            base = base.rstrip("/") + "/"
+            char_url = base + parse.quote("characters/" + charname.lower() + "/")
+            avatar_url = char_url + "char_icon"
             if embed_emotes and anim != "":
-                anim_url = base + parse.quote(
-                    "characters/" + charname.lower() + "/" + anim.lower() + ".png"
-                )
+                anim_url = char_url + anim.lower()
 
-        self.pending_messages.append([self.cleanup_text(name), self.cleanup_text(message), avatar_url, anim_url])
+        self.pending_messages.append(
+            [
+                self.cleanup_text(name),
+                self.cleanup_text(message),
+                avatar_url,
+                anim_url,
+                self.server.charicon_extensions,
+                self.server.emote_extensions if embed_emotes else None,
+            ]
+        )
+
+    async def _resolve_url(self, base, extensions):
+        """
+        Probe base + each extension and return the first reachable URL.
+        Falls back to the first extension in the list when none respond.
+        """
+        if base is None or not extensions:
+            return base
+        key = (base, tuple(extensions))
+        if key in self._asset_url_cache:
+            return self._asset_url_cache[key]
+        async with aiohttp.ClientSession() as session:
+            for ext in extensions:
+                if ext == ".webp.static":
+                    ext = ".webp"
+                url = base + ext
+                try:
+                    async with session.head(
+                        url,
+                        timeout=aiohttp.ClientTimeout(total=5),
+                        allow_redirects=True,
+                    ) as resp:
+                        if resp.status == 200:
+                            self._asset_url_cache[key] = url
+                            return url
+                except aiohttp.ClientError:
+                    continue
+        return base + extensions[0]
 
     async def on_ready(self):
         print("Discord Bridge Successfully logged in.")
@@ -203,7 +241,7 @@ class Bridgebot(commands.Bot):
 
             await asyncio.sleep(max(0.1, self.server.config["bridgebot"]["tickspeed"]))
 
-    async def send_char_message(self, name, message, avatar=None, image=None):
+    async def send_char_message(self, name, message, avatar=None, image=None, charicon_exts=None, emote_exts=None):
         webhook = None
         embed = None
         try:
@@ -214,7 +252,9 @@ class Bridgebot(commands.Bot):
                     break
             if webhook is None:
                 webhook = await self.channel.create_webhook(name="AO2_Bridgebot")
+            avatar = await self._resolve_url(avatar, charicon_exts)
             if image is not None:
+                image = await self._resolve_url(image, emote_exts)
                 embed = discord.Embed()
                 embed.set_image(url=image)
                 print(avatar, image)
