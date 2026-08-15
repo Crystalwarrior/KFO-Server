@@ -174,10 +174,10 @@ class Bridgebot(commands.Bot):
             embed_emotes = self.server.config["bridgebot"]["embed_emotes"]
         if base is not None and charname != "":
             avatar_url = base + \
-                parse.quote("characters/" + charname + "/char_icon.png")
+                parse.quote("characters/" + charname.lower() + "/char_icon.png")
             if embed_emotes and anim != "":
                 anim_url = base + parse.quote(
-                    "characters/" + charname + "/" + anim + ".png"
+                    "characters/" + charname.lower() + "/" + anim.lower() + ".png"
                 )
 
         self.pending_messages.append([self.cleanup_text(name), self.cleanup_text(message), avatar_url, anim_url])
