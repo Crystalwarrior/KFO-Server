@@ -7,7 +7,7 @@ from server import database
 from server.constants import TargetType, derelative, contains_URL
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
-from . import mod_only
+from . import mod_only, command, Arg
 
 __all__ = [
     "ooc_cmd_currentmusic",
@@ -30,13 +30,12 @@ __all__ = [
 ]
 
 
-def ooc_cmd_currentmusic(client, arg):
+@command()
+def ooc_cmd_currentmusic(client):
     """
     Show the current music playing.
     Usage: /currentmusic
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
     if client.area.music == "":
         raise ClientError("There is no music currently playing.")
     if client.is_mod:
@@ -55,13 +54,12 @@ def ooc_cmd_currentmusic(client, arg):
         )
 
 
-def ooc_cmd_getmusic(client, arg):
+@command()
+def ooc_cmd_getmusic(client):
     """
     Grab the last played track in this area.
     Usage: /getmusic
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
     if client.area.music == "":
         raise ClientError("There is no music currently playing.")
     client.send_command(
@@ -77,14 +75,13 @@ def ooc_cmd_getmusic(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_jukebox_toggle(client, arg):
+@command()
+def ooc_cmd_jukebox_toggle(client):
     """
     Toggle jukebox mode. While jukebox mode is on, all music changes become
     votes for the next track, rather than changing the track immediately.
     Usage: /jukebox_toggle
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
     client.area.jukebox = not client.area.jukebox
     client.area.jukebox_votes = []
     client.area.broadcast_ooc(
@@ -98,13 +95,12 @@ def ooc_cmd_jukebox_toggle(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_jukebox_skip(client, arg):
+@command()
+def ooc_cmd_jukebox_skip(client):
     """
     Skip the current track.
     Usage: /jukebox_skip
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
     if not client.area.jukebox:
         raise ClientError("This area does not have a jukebox.")
     if len(client.area.jukebox_votes) == 0:
@@ -126,13 +122,12 @@ def ooc_cmd_jukebox_skip(client, arg):
     database.log_area("jukebox_skip", client, client.area)
 
 
-def ooc_cmd_jukebox(client, arg):
+@command()
+def ooc_cmd_jukebox(client):
     """
     Show information about the jukebox's queue and votes.
     Usage: /jukebox
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
     if not client.area.jukebox:
         raise ClientError("This area does not have a jukebox.")
     if len(client.area.jukebox_votes) == 0:
@@ -178,42 +173,36 @@ def ooc_cmd_jukebox(client, arg):
         client.send_ooc(f"The jukebox has the following songs in it:{message}")
 
 
+@command(Arg("arg", rest=True, default="", help="track name"))
 def ooc_cmd_play(client, arg):
     """
     Play a track and loop it. See /play_once for this command without looping.
     Usage: /play <name>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a song.")
     client.change_music(arg, client.char_id, "", 2,
                         True)  # looped change music
 
 
+@command(Arg("arg", rest=True, default="", help="track name"))
 def ooc_cmd_play_once(client, arg):
     """
     Play a track without looping it. See /play for this command with looping.
     Usage: /play_once <name>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a song.")
     client.change_music(arg, client.char_id, "", 2,
                         False)  # non-looped change music
 
 
 @mod_only()
-def ooc_cmd_blockdj(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_blockdj(client, id):
     """
     Prevent a user from changing music.
     Usage: /blockdj <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target. Use /blockdj <id>.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must enter a number. Use /blockdj <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if not targets:
         raise ArgumentError("Target not found. Use /blockdj <id>.")
     for target in targets:
@@ -225,19 +214,15 @@ def ooc_cmd_blockdj(client, arg):
 
 
 @mod_only()
-def ooc_cmd_unblockdj(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_unblockdj(client, id):
     """
     Unblock a user from changing music.
     Usage: /unblockdj <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target. Use /unblockdj <id>.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must enter a number. Use /unblockdj <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if not targets:
         raise ArgumentError("Target not found. Use /blockdj <id>.")
     for target in targets:
@@ -247,7 +232,8 @@ def ooc_cmd_unblockdj(client, arg):
     client.send_ooc("Unblockdj'd {}.".format(targets[0].char_name))
 
 
-def ooc_cmd_musiclists(client, arg):
+@command()
+def ooc_cmd_musiclists(client):
     """
     Displays all the available musiclists.
     Usage: /musiclists
@@ -283,6 +269,7 @@ def ooc_cmd_musiclists(client, arg):
     client.send_ooc(msg)
 
 
+@command(Arg("arg", rest=True, default="", help="musiclist path (blank resets)"))
 def ooc_cmd_musiclist(client, arg):
     """
     Load a client-side musiclist. Pass no arguments to reset. /musiclists to see available lists.
@@ -309,6 +296,7 @@ def ooc_cmd_musiclist(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="musiclist path (blank resets)"))
 def ooc_cmd_area_musiclist(client, arg):
     """
     Load an area-wide musiclist. Pass no arguments to reset. /musiclists to see available lists.
@@ -335,6 +323,7 @@ def ooc_cmd_area_musiclist(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="musiclist path (blank resets)"))
 def ooc_cmd_hub_musiclist(client, arg):
     """
     Load a hub-wide musiclist. Pass no arguments to reset. /musiclists to see available lists.
@@ -361,6 +350,7 @@ def ooc_cmd_hub_musiclist(client, arg):
         client.send_ooc("File not found!")
 
 
+@command(Arg("arg", rest=True, default="", help="category name (blank = any)"))
 def ooc_cmd_random_music(client, arg):
     """
     Play a random track from your current musiclist. If supplied, [category] will pick the song from that category.
@@ -400,6 +390,7 @@ def musiclist_rebuild(musiclist, path):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="<local/area/hub> [name] [read_only]"))
 def ooc_cmd_musiclist_save(client, arg):
     """
     Allow you to save a musiclist on server list!
@@ -451,6 +442,9 @@ def ooc_cmd_musiclist_save(client, arg):
     client.send_ooc(f"Musiclist '{name}' saved on server list!")
 
 
+@command(
+    Arg("arg", rest=True, default="", help="<local/area/hub> <Category> <MusicName>"),
+)
 def ooc_cmd_musiclist_remove(client, arg):
     """
     Allow you to remove a song from a musiclist!
@@ -535,6 +529,9 @@ def ooc_cmd_musiclist_remove(client, arg):
     client.send_ooc(f"'{args[2]}' song has been removed to '{path}' musiclist.")
 
 
+@command(
+    Arg("arg", rest=True, default="", help="<local/area/hub> <Category> <MusicName> [Length] [Path]"),
+)
 def ooc_cmd_musiclist_add(client, arg):
     """
     Allow you to add a song in a loaded musiclist!

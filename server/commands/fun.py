@@ -1,8 +1,7 @@
 from server import database
 from server.constants import TargetType
-from server.exceptions import ClientError, ArgumentError
 
-from . import mod_only
+from . import mod_only, command, Arg
 
 __all__ = [
     "ooc_cmd_disemvowel",
@@ -17,19 +16,15 @@ __all__ = [
 
 
 @mod_only()
-def ooc_cmd_disemvowel(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_disemvowel(client, id):
     """
     Remove all vowels from a user's IC chat.
     Usage: /disemvowel <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /disemvowel <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if targets:
         for c in targets:
             database.log_area("disemvowel", client, client.area, target=c)
@@ -40,20 +35,15 @@ def ooc_cmd_disemvowel(client, arg):
 
 
 @mod_only()
-def ooc_cmd_undisemvowel(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_undisemvowel(client, id):
     """
     Give back the freedom of vowels to a user.
     Usage: /undisemvowel <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError(
-            "You must specify a target. Use /undisemvowel <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if targets:
         for c in targets:
             database.log_area("undisemvowel", client, client.area, target=c)
@@ -64,19 +54,15 @@ def ooc_cmd_undisemvowel(client, arg):
 
 
 @mod_only()
-def ooc_cmd_shake(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_shake(client, id):
     """
     Scramble the words in a user's IC chat.
     Usage: /shake <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /shake <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if targets:
         for c in targets:
             database.log_area("shake", client, client.area, target=c)
@@ -87,19 +73,15 @@ def ooc_cmd_shake(client, arg):
 
 
 @mod_only()
-def ooc_cmd_unshake(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_unshake(client, id):
     """
     Give back the freedom of coherent grammar to a user.
     Usage: /unshake <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /unshake <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if targets:
         for c in targets:
             database.log_area("unshake", client, client.area, target=c)
@@ -109,12 +91,13 @@ def ooc_cmd_unshake(client, arg):
         client.send_ooc("No targets found.")
 
 
-def ooc_cmd_rainbow(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_rainbow(client, tog):
     """
     rainbow text is back baybee
     Usage: /rainbow [true/false]
     """
-    client.rainbow = not client.rainbow
+    client.rainbow = not client.rainbow if tog is None else tog
     toggle = "now" if client.rainbow else "no longer"
     client.send_ooc(
         f"You will {toggle} have rainbowtext."
@@ -122,19 +105,15 @@ def ooc_cmd_rainbow(client, arg):
 
 
 @mod_only()
-def ooc_cmd_medieval(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_medieval(client, id):
     """
     Transform a user's IC chat into Ye Olde English.
     Usage: /medieval <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /medieval <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if targets:
         for c in targets:
             if c.medieval:
@@ -149,19 +128,15 @@ def ooc_cmd_medieval(client, arg):
 
 
 @mod_only()
-def ooc_cmd_unmedieval(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_unmedieval(client, id):
     """
     Return a user's IC chat to normal speech.
     Usage: /unmedieval <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /unmedieval <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if targets:
         for c in targets:
             if not c.medieval:
@@ -176,23 +151,12 @@ def ooc_cmd_unmedieval(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_medieval_mode(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_medieval_mode(client, tog):
     """
     Toggle medieval mode for this area. All IC messages will be transformed into Ye Olde English.
     Usage: /medieval_mode [on/off]
     """
-    if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
-    if arg:
-        if arg == "on":
-            client.area.medieval_mode = True
-        elif arg == "off":
-            client.area.medieval_mode = False
-        else:
-            raise ArgumentError("Invalid argument: {}".format(arg))
-    else:
-        client.area.medieval_mode = not client.area.medieval_mode
+    client.area.medieval_mode = not client.area.medieval_mode if tog is None else tog
     stat = "now" if client.area.medieval_mode else "no longer"
-    client.area.broadcast_ooc(f"This area is {stat} in Medieval Mode. Hark!")
+    client.area.broadcast_ooc(f"This area is {stat} in Medieval Mode. Hark!")

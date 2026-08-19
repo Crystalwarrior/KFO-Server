@@ -8,7 +8,7 @@ from server import database
 from server.constants import TargetType, derelative
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
-from . import mod_only
+from . import mod_only, command, Arg, tokens_str
 
 __all__ = [
     "ooc_cmd_doc",
@@ -51,6 +51,7 @@ __all__ = [
     "ooc_cmd_evidence_lists",
 ]
 
+@command(Arg("arg", rest=True, default="", help="url (blank shows current)"))
 def ooc_cmd_doc(client, arg):
     """
     Show or change the link for the current case document.
@@ -75,13 +76,12 @@ def ooc_cmd_doc(client, arg):
         database.log_area("doc.change", client, client.area, message=arg)
 
 
-def ooc_cmd_cleardoc(client, arg):
+@command()
+def ooc_cmd_cleardoc(client):
     """
     Clear the link for the current case document.
     Usage: /cleardoc
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
     if client.area.cannot_ic_interact(client):
         raise ClientError("You are not on the area's invite list!")
     if (
@@ -96,6 +96,7 @@ def ooc_cmd_cleardoc(client, arg):
     database.log_area("doc.clear", client, client.area)
 
 
+@command(Arg("arg", rest=True, default="", help="evidence name or id (blank lists all)"))
 def ooc_cmd_evidence(client, arg):
     """
     Use /evidence to read all evidence in the area.
@@ -140,39 +141,26 @@ def ooc_cmd_evidence(client, arg):
         raise
 
 
-def ooc_cmd_evidence_add(client, arg):
+@command(
+    Arg("name", default="<name>", help="evidence name"),
+    Arg("description", default="<description>", help="evidence description"),
+    Arg("image", default="empty.png", help="evidence image"),
+)
+def ooc_cmd_evidence_add(client, name, description, image):
     """
     Add a piece of evidence.
     For sentences with spaces the arg should be surrounded in ""'s, for example /evidence_add Chair "It's a chair." chair.png
     Usage: /evidence_add [name] [desc] [image]
     """
-    try:
-        max_args = 3
-        # Get the user input
-        args = shlex.split(arg)
-        if len(args) > 3:
-            raise ArgumentError(
-                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/evidence_add {arg})")
-        # fill the rest of it with asterisk to fill to max_args
-        args = args + ([""] * (max_args - len(args)))
-        if args[0] == "":
-            args[0] = "<name>"
-        if args[1] == "":
-            args[1] = "<description>"
-        if args[2] == "":
-            args[2] = "empty.png"
-    except ValueError as ex:
-        client.send_ooc(f'{ex} (/evidence_add {arg})')
-        return
-
     client.area.evi_list.add_evidence(
-        client, args[0], args[1], args[2]
+        client, name, description, image
     )
     database.log_area("evidence.add", client, client.area)
     client.area.broadcast_evidence_list()
-    client.send_ooc(f"You have added evidence '{args[0]}'.")
+    client.send_ooc(f"You have added evidence '{name}'.")
 
 
+@command(Arg("arg", rest=True, default="", help="evidence name or id"))
 def ooc_cmd_evidence_remove(client, arg):
     """
     Remove a piece of evidence.
@@ -204,51 +192,40 @@ def ooc_cmd_evidence_remove(client, arg):
         raise
 
 
-def ooc_cmd_evidence_edit(client, arg):
+@command(
+    Arg("target_evi", help="evidence name or id"),
+    Arg("name", default="*", help="new evidence name"),
+    Arg("description", default="*", help="new evidence description"),
+    Arg("image", default="*", help="new evidence image"),
+)
+def ooc_cmd_evidence_edit(client, target_evi, name, description, image):
     """
     Edit a piece of evidence.
     If you don't want to change something, put an * there.
     For sentences with spaces the arg should be surrounded in ""'s, for example /evidence_edit * "It's a chair." chair.png
     Usage: /evidence_edit <evi_name/id> [name] [desc] [image]
     """
-    if arg == "":
-        raise ArgumentError(
-            "Use /evidence_edit <evi_name/id> [name] [desc] [image] to edit that piece of evidence."
-        )
-
-    try:
-        max_args = 4
-        # Get the user input
-        args = shlex.split(arg)
-        if len(args) > 4:
-            raise ArgumentError(
-                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/evidence_edit {arg})")
-        # fill the rest of it with asterisk to fill to max_args
-        args = args + (["*"] * (max_args - len(args)))
-    except ValueError as ex:
-        client.send_ooc(f'{ex} (/evidence_edit {arg})')
-        return
-
     try:
         evi_list = client.area.get_evidence_list(client)
         evidence = None
         for i, evi in enumerate(evi_list):
-            if (args[0].isnumeric() and int(args[0]) - 1 == i) or args[0].lower() == evi[0].lower():
+            if (target_evi.isnumeric() and int(target_evi) - 1 == i) or target_evi.lower() == evi[0].lower():
                 evidence = evi
                 break
         if evidence is None:
             raise AreaError(
-                f"Target evidence not found! (/evidence_edit {arg})"
+                f"Target evidence not found! (/evidence_edit {target_evi})"
             )
         evi_name = evidence[0]
-        evi = (args[1], args[2], args[3], "all")
+        evi = (name, description, image, "all")
 
         if client.area.evi_list.edit_evidence(client, i, evi):
             database.log_area("evidence.edit", client, client.area)
             client.area.broadcast_evidence_list()
             if evi[0] != "*" and evi_name != evi[0]:
                 client.send_ooc(
-                    f"You have edited evidence '{evi_name}' to '{evi[0]}'.")
+                    f"You have edited evidence '{evi_name}' to '{evi[0]}'."
+                )
             else:
                 client.send_ooc(f"You have edited evidence '{evi_name}'.")
     except ValueError:
@@ -257,6 +234,7 @@ def ooc_cmd_evidence_edit(client, arg):
         raise
 
 
+@command(Arg("arg", rest=True, default="", help="evidence name or id (blank stops)"))
 def ooc_cmd_evidence_present(client, arg):
     """
     Present a piece of evidence on your next IC message.
@@ -291,53 +269,54 @@ def ooc_cmd_evidence_present(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_evidence_mod(client, arg):
+@command(
+    Arg("mode", choices=["FFA", "Mods", "CM", "HiddenCM"], default=None, help="mode (blank shows current)"),
+)
+def ooc_cmd_evidence_mod(client, mode):
     """
     Change the evidence privilege mode. Refer to the documentation
     for more information on the function of each mode.
     Usage: /evidence_mod <FFA|Mods|CM|HiddenCM>
     """
-    if not arg or arg == client.area.evidence_mod:
+    if mode is None or mode == client.area.evidence_mod:
         client.send_ooc(f"current evidence mod: {client.area.evidence_mod}")
-    elif arg in ["FFA", "Mods", "CM", "HiddenCM"]:
+    else:
         if not client.is_mod:
             if client.area.evidence_mod == "Mods":
                 raise ClientError(
                     "You must be authorized to change this area's evidence mod from Mod-only."
                 )
-            if arg == "Mods":
+            if mode == "Mods":
                 raise ClientError(
                     "You must be authorized to set the area's evidence to Mod-only."
                 )
-        client.area.evidence_mod = arg
+        client.area.evidence_mod = mode
         client.area.broadcast_evidence_list()
         client.send_ooc(f"current evidence mod: {client.area.evidence_mod}")
-        database.log_area("evidence_mod", client, client.area, message=arg)
-    else:
-        raise ArgumentError(
-            "Wrong Argument. Use /evidence_mod <MOD>. Possible values: FFA, CM, Mods, HiddenCM"
-        )
+        database.log_area("evidence_mod", client, client.area, message=mode)
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_evidence_swap(client, arg):
+@command(
+    Arg("a", int, help="evidence id"),
+    Arg("b", int, help="evidence id"),
+)
+def ooc_cmd_evidence_swap(client, a, b):
     """
     Swap the positions of two evidence items on the evidence list.
     The ID of each evidence can be displayed by mousing over it in 2.8 client,
     or simply its number starting from 1.
     Usage: /evidence_swap <id> <id>
     """
-    args = list(arg.split(" "))
-    if len(args) != 2:
-        raise ClientError("you must specify 2 numbers")
     try:
         client.area.evi_list.evidence_swap(
-            client, int(args[0]) - 1, int(args[1]) - 1)
+            client, a - 1, b - 1)
         client.area.broadcast_evidence_list()
     except Exception:
         raise ClientError("you must specify 2 numbers")
 
 
+@command(Arg("arg", rest=True, default="", help="client ID(s) or * (blank = self)"))
 def ooc_cmd_cm(client, arg):
     """
     Add a case manager for the current area.
@@ -391,6 +370,7 @@ def ooc_cmd_cm(client, arg):
 
 # TODO: allow running this command from outside the area you're a CM of in hubs that allow multiple CMed areas
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="client ID(s) (blank = self)"))
 def ooc_cmd_uncm(client, arg):
     """
     Remove a case manager from the current area.
@@ -420,6 +400,7 @@ def ooc_cmd_uncm(client, arg):
 
 
 # LEGACY
+@command(Arg("arg", rest=True, default="", help="internal"))
 def ooc_cmd_setcase(client, arg):
     """
     Set the positions you are interested in taking for a case.
@@ -439,6 +420,7 @@ def ooc_cmd_setcase(client, arg):
 
 
 # LEGACY
+@command(Arg("arg", rest=True, default="", help="<message> <def> <pro> <jud> <jur> <steno>"))
 def ooc_cmd_anncase(client, arg):
     """
     Announce that a case is currently taking place in this area,
@@ -501,20 +483,16 @@ def ooc_cmd_anncase(client, arg):
 
 
 @mod_only()
-def ooc_cmd_blockwtce(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_blockwtce(client, id):
     """
     Prevent a user from using Witness Testimony/Cross Examination buttons
     as a judge.
     Usage: /blockwtce <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target. Use /blockwtce <id>.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must enter a number. Use /blockwtce <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if not targets:
         raise ArgumentError("Target not found. Use /blockwtce <id>.")
     for target in targets:
@@ -525,20 +503,15 @@ def ooc_cmd_blockwtce(client, arg):
 
 
 @mod_only()
-def ooc_cmd_unblockwtce(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_unblockwtce(client, id):
     """
     Allow a user to use WT/CE again.
     Usage: /unblockwtce <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError(
-            "You must specify a target. Use /unblockwtce <id>.")
-    try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
-    except Exception:
-        raise ArgumentError("You must enter a number. Use /unblockwtce <id>.")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, id, False
+    )
     if not targets:
         raise ArgumentError("Target not found. Use /unblockwtce <id>.")
     for target in targets:
@@ -549,13 +522,12 @@ def ooc_cmd_unblockwtce(client, arg):
 
 
 @mod_only()
-def ooc_cmd_judgelog(client, arg):
+@command()
+def ooc_cmd_judgelog(client):
     """
     List the last 10 uses of judge controls in the current area.
     Usage: /judgelog
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command does not take any arguments.")
     jlog = client.area.judgelog
     if len(jlog) > 0:
         jlog_msg = "== Judge Log =="
@@ -568,12 +540,16 @@ def ooc_cmd_judgelog(client, arg):
         )
 
 
-def ooc_cmd_afk(client, arg):
+@command()
+def ooc_cmd_afk(client):
     client.server.client_manager.toggle_afk(client)
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_remote_listen(client, arg):
+@command(
+    Arg("option", choices=["NONE", "IC", "OOC", "ALL"], default=None, help="option (blank shows current)"),
+)
+def ooc_cmd_remote_listen(client, option):
     """
     Change the remote listen logs to either NONE, IC, OOC or ALL.
     It will send you those messages from the areas you are an owner of.
@@ -586,19 +562,15 @@ def ooc_cmd_remote_listen(client, arg):
         "OOC": 2,
         "ALL": 3,
     }
-    if arg != "":
-        try:
-            client.remote_listen = options[arg.upper()]
-        except KeyError:
-            raise ArgumentError(
-                "Invalid option! Your options are NONE, IC, OOC or ALL."
-            )
+    if option is not None:
+        client.remote_listen = options[option]
     reversed_options = dict(map(reversed, options.items()))
     opt = reversed_options[client.remote_listen]
     client.send_ooc(f"Your current remote listen option is: {opt}")
 
 
-def ooc_cmd_testimony(client, arg):
+@command(Arg("id", int, default=None, help="statement id to move to"))
+def ooc_cmd_testimony(client, id):
     """
     Display the currently recorded testimony.
     Optionally, id can be passed to move to that statement.
@@ -607,19 +579,16 @@ def ooc_cmd_testimony(client, arg):
     if len(client.area.testimony) <= 0:
         client.send_ooc("There is no testimony recorded!")
         return
-    args = arg.split()
-    if len(args) > 0:
+    if id is not None:
         try:
             if client.area.recording is True:
                 client.send_ooc("It is not cross-examination yet!")
                 return
-            idx = int(args[0]) - 1
+            idx = id - 1
             client.area.testimony_send(idx)
             client.area.broadcast_ooc(
                 f"{client.showname} has moved to Statement {idx+1}."
             )
-        except ValueError:
-            raise ArgumentError("Index must be a number!")
         except ClientError:
             raise
         return
@@ -641,6 +610,7 @@ def ooc_cmd_testimony(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="testimony title"))
 def ooc_cmd_testimony_start(client, arg):
     """
     Manually start a testimony with the given title.
@@ -648,7 +618,8 @@ def ooc_cmd_testimony_start(client, arg):
     """
     if arg == "":
         raise ArgumentError(
-            "You must provite a title! /testimony_start <title>.")
+            "You must provite a title! /testimony_start <title>."
+        )
     if len(arg) < 3:
         raise ArgumentError("Title must contain at least 3 characters!")
     client.area.testimony.clear()
@@ -661,7 +632,8 @@ def ooc_cmd_testimony_start(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_testimony_continue(client, arg):
+@command()
+def ooc_cmd_testimony_continue(client):
     """
     Continue an existing testimony, restarting the recording so new statements may be added.
     Usage: /testimony_continue
@@ -675,7 +647,8 @@ def ooc_cmd_testimony_continue(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_testimony_clear(client, arg):
+@command()
+def ooc_cmd_testimony_clear(client):
     """
     Clear the current testimony.
     Usage: /testimony_clear
@@ -683,8 +656,6 @@ def ooc_cmd_testimony_clear(client, arg):
     if len(client.area.testimony) <= 0:
         client.send_ooc("There is no testimony recorded!")
         return
-    if len(arg) != 0:
-        raise ArgumentError("This command does not take any arguments.")
     client.area.testimony.clear()
     client.area.testimony_title = ""
     client.area.broadcast_ooc(
@@ -692,7 +663,8 @@ def ooc_cmd_testimony_clear(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_testimony_remove(client, arg):
+@command(Arg("idx", int, help="statement index"))
+def ooc_cmd_testimony_remove(client, idx):
     """
     Remove the statement at index.
     Usage: /testimony_remove <id>
@@ -700,11 +672,8 @@ def ooc_cmd_testimony_remove(client, arg):
     if len(client.area.testimony) <= 0:
         client.send_ooc("There is no testimony recorded!")
         return
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError("Usage: /testimony_remove <idx>.")
     try:
-        idx = int(args[0]) - 1
+        idx = idx - 1
         client.area.testimony.pop(idx)
         if client.area.testimony_index == idx:
             client.area.testimony_index = -1
@@ -719,7 +688,11 @@ def ooc_cmd_testimony_remove(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_testimony_amend(client, arg):
+@command(
+    Arg("id", int, help="statement index"),
+    Arg("msg", rest=True, default="", help="new message"),
+)
+def ooc_cmd_testimony_amend(client, id, msg):
     """
     Edit the spoken message of the statement at id.
     Usage: /testimony_amend <id> <msg>
@@ -727,13 +700,10 @@ def ooc_cmd_testimony_amend(client, arg):
     if len(client.area.testimony) <= 0:
         client.send_ooc("There is no testimony recorded!")
         return
-    args = arg.split()
-    if len(args) < 2:
-        raise ArgumentError("Usage: /testimony_remove <id> <msg>.")
     try:
-        idx = int(args[0]) - 1
+        idx = id - 1
         lst = list(client.area.testimony[idx])
-        lst[4] = "}}}" + " ".join(args[1:])
+        lst[4] = "}}}" + msg
         client.area.testimony[idx] = tuple(lst)
         client.area.broadcast_ooc(
             f"{client.showname} has amended Statement {idx+1}.")
@@ -746,7 +716,11 @@ def ooc_cmd_testimony_amend(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_testimony_swap(client, arg):
+@command(
+    Arg("idx1", int, help="statement index"),
+    Arg("idx2", int, help="statement index"),
+)
+def ooc_cmd_testimony_swap(client, idx1, idx2):
     """
     Swap the two statements by idx.
     Usage: /testimony_swap <id> <id>
@@ -754,12 +728,9 @@ def ooc_cmd_testimony_swap(client, arg):
     if len(client.area.testimony) <= 0:
         client.send_ooc("There is no testimony recorded!")
         return
-    args = arg.split()
-    if len(args) < 2:
-        raise ArgumentError("Usage: /testimony_remove <id> <id>.")
     try:
-        idx1 = int(args[0]) - 1
-        idx2 = int(args[1]) - 1
+        idx1 = idx1 - 1
+        idx2 = idx2 - 1
         client.area.testimony[idx2], client.area.testimony[idx1] = (
             client.area.testimony[idx1],
             client.area.testimony[idx2],
@@ -776,7 +747,11 @@ def ooc_cmd_testimony_swap(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_testimony_insert(client, arg):
+@command(
+    Arg("idx1", int, help="statement index"),
+    Arg("idx2", int, help="statement index"),
+)
+def ooc_cmd_testimony_insert(client, idx1, idx2):
     """
     Insert the targeted statement at idx.
     Usage: /testimony_insert <id> <id>
@@ -784,12 +759,9 @@ def ooc_cmd_testimony_insert(client, arg):
     if len(client.area.testimony) <= 0:
         client.send_ooc("There is no testimony recorded!")
         return
-    args = arg.split()
-    if len(args) < 2:
-        raise ArgumentError("Usage: /testimony_insert <id> <id>.")
     try:
-        idx1 = int(args[0]) - 1
-        idx2 = int(args[1]) - 1
+        idx1 = idx1 - 1
+        idx2 = idx2 - 1
         statement = client.area.testimony.pop(idx1)
         client.area.testimony.insert(idx2, statement)
 
@@ -804,7 +776,11 @@ def ooc_cmd_testimony_insert(client, arg):
         raise
 
 
-def ooc_cmd_cs(client, arg):
+@command(
+    Arg("id", int, default=None, help="target client ID (blank shows current)"),
+    Arg("pta", default="", help="internal"),
+)
+def ooc_cmd_cs(client, id, pta):
     """
     Start a one-on-one "Cross Swords" debate with targeted player!
     Expires in 5 minutes. If there's an ongoing cross-swords already,
@@ -812,7 +788,7 @@ def ooc_cmd_cs(client, arg):
     with you joining the side *against* the <id>.
     Usage: /cs <id>
     """
-    if arg == "":
+    if id is None:
         if (
             client.area.minigame_schedule
             and not client.area.minigame_schedule.cancelled()
@@ -840,18 +816,15 @@ def ooc_cmd_cs(client, arg):
         else:
             client.send_ooc("There is no minigame running right now.")
         return
-    args = arg.split()
     try:
         target = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[0]), True
+            client, TargetType.ID, id, True
         )[0]
     except Exception:
         raise ArgumentError("Target not found.")
     else:
         try:
-            pta = False
-            if len(args) > 1:
-                pta = args[1] == "1"
+            pta = pta == "1"
             prev_mini = client.area.minigame
             client.area.start_debate(client, target, pta=pta)
             if prev_mini != client.area.minigame:
@@ -872,15 +845,15 @@ def ooc_cmd_cs(client, arg):
             raise ex
 
 
-def ooc_cmd_pta(client, arg):
+@command(Arg("id", int, help="target client ID"))
+def ooc_cmd_pta(client, id):
     """
     Start a one-on-one "Panic Talk Action" debate with targeted player!
     Unlike /cs, a Panic Talk Action (PTA) cannot evolve into a Scrum Debate.
     Expires in 5 minutes.
     Usage: /pta <id>
     """
-    args = arg.split()
-    ooc_cmd_cs(client, f"{args[0]} 1")
+    ooc_cmd_cs(client, f"{id} 1")
 
 
 def set_minigame_song(client, minigame="", song="", condition=0):
@@ -932,42 +905,46 @@ def set_minigame_song(client, minigame="", song="", condition=0):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_minigame_start_song(client, arg):
+@command(
+    Arg("minigame", default="", help="cs/sd/pta"),
+    Arg("song", rest=True, default="", type=tokens_str, help="song name (blank to pick)"),
+)
+def ooc_cmd_minigame_start_song(client, minigame, song):
     """
     Edit a starting song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
     Usage: /minigame_start_song <cs/sd/pta> [songname]
     """
-    args = arg.split()
-    minigame = args[0] if len(args) > 0 else ""
-    song = " ".join(args[1:]) if len(args) > 1 else ""
     print(minigame, song)
     set_minigame_song(client, minigame, song, condition=0)
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_minigame_end_song(client, arg):
+@command(
+    Arg("minigame", default="", help="cs/sd/pta"),
+    Arg("song", rest=True, default="", type=tokens_str, help="song name (blank to pick)"),
+)
+def ooc_cmd_minigame_end_song(client, minigame, song):
     """
     Edit a ending song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
     Usage: /minigame_end_song <cs/sd/pta> [songname]
     """
-    args = arg.split()
-    minigame = args[0] if len(args) > 0 else ""
-    song = " ".join(args[1:]) if len(args) > 1 else ""
     set_minigame_song(client, minigame, song, condition=1)
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_minigame_concede_song(client, arg):
+@command(
+    Arg("minigame", default="", help="cs/sd/pta"),
+    Arg("song", rest=True, default="", type=tokens_str, help="song name (blank to pick)"),
+)
+def ooc_cmd_minigame_concede_song(client, minigame, song):
     """
     Edit a concede song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
     Usage: /minigame_concede_song <cs/sd/pta> [songname]
     """
-    args = arg.split()
-    minigame = args[0] if len(args) > 0 else ""
-    song = " ".join(args[1:]) if len(args) > 1 else ""
     set_minigame_song(client, minigame, song, condition=2)
 
 
+@command(Arg("arg", default="", help="not-pta (internal)"))
 def ooc_cmd_concede(client, arg):
     """
     Concede a trial minigame and withdraw from either team you're part of.
@@ -999,6 +976,7 @@ def ooc_cmd_concede(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="subtheme name"))
 def ooc_cmd_subtheme(client, arg):
     """
     Change the subtheme (DRO gamemode) for the hub.
@@ -1013,6 +991,7 @@ def ooc_cmd_subtheme(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="time of day name"))
 def ooc_cmd_time_of_day(client, arg):
     """
     Change the time of day for the hub.
@@ -1027,7 +1006,8 @@ def ooc_cmd_time_of_day(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_evidence_lists(client, arg):
+@command()
+def ooc_cmd_evidence_lists(client):
     """
     Show all evidence lists available on the server.
     Usage: /evidence_lists
@@ -1060,6 +1040,7 @@ def evidence_load(client, name, overlay = False):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="evidence list name"))
 def ooc_cmd_evidence_load(client, arg):
     """
     Allow you to load an evidence list from the server.
@@ -1072,6 +1053,7 @@ def ooc_cmd_evidence_load(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="evidence list name"))
 def ooc_cmd_evidence_overlay(client, arg):
     """
     Allow you to load and overlay an evidence list from the server to the existing evidence.
@@ -1084,6 +1066,7 @@ def ooc_cmd_evidence_overlay(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="evidence list name"))
 def ooc_cmd_evidence_save(client, arg):
     """
     Allow you to save evidence in a list stored in the server files!

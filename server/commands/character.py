@@ -6,7 +6,7 @@ from server import database
 from server.constants import TargetType, derelative
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
-from . import mod_only
+from . import mod_only, command, Arg, tokens_str
 
 __all__ = [
     "ooc_cmd_switch",
@@ -64,6 +64,7 @@ __all__ = [
 ]
 
 
+@command(Arg("arg", rest=True, default="", help="character download URL"))
 def ooc_cmd_set_url(client, arg):
     """
     This command sets the URL of the current character.
@@ -78,7 +79,8 @@ def ooc_cmd_set_url(client, arg):
     for c in client.area.clients:
         c.get_new_area_user_links()
 
-def ooc_cmd_get_urls(client, arg):
+@command()
+def ooc_cmd_get_urls(client):
     """
     This command returns the server's URL List.
     Usage: /get_urls
@@ -90,6 +92,7 @@ def ooc_cmd_get_urls(client, arg):
         f_server_links += f"{name}: {url} \n"
     client.send_ooc(f_server_links)
 
+@command(Arg("arg", rest=True, default="", help="character name/ID (blank = char select)"))
 def ooc_cmd_switch(client, arg):
     """
     Switch to another character. If moderator and the specified character is
@@ -118,6 +121,7 @@ def ooc_cmd_switch(client, arg):
     client.send_ooc("Character changed.")
 
 
+@command(Arg("arg", rest=True, default="", help="pos name (blank shows current)"))
 def ooc_cmd_pos(client, arg):
     """
     Set the place your character resides in the area.
@@ -134,6 +138,7 @@ def ooc_cmd_pos(client, arg):
         client.send_ooc("Position changed.")
 
 
+@command(Arg("arg", rest=True, default="", help="client ID or char name (blank checks)"))
 def ooc_cmd_pair(client, arg):
     """
     Pair with someone. Overrides client pairing choice.
@@ -169,7 +174,8 @@ def ooc_cmd_pair(client, arg):
         client.send_ooc("Pairing target not found!")
 
 
-def ooc_cmd_unpair(client, arg):
+@command()
+def ooc_cmd_unpair(client):
     """
     Stop pairing with someone. Stops overriding client pairing choice.
     Usage: /unpair
@@ -182,6 +188,7 @@ def ooc_cmd_unpair(client, arg):
         client.send_ooc("Serverside force-pairing is already disabled, check your client pairing settings!")
 
 
+@command(Arg("arg", default="", help="front/0 or behind/1 (blank toggles)"))
 def ooc_cmd_pair_order(client, arg):
     """
     Choose if you'll appear in front or behind someone when pairing. Only works when using serverside /pair
@@ -205,40 +212,34 @@ def ooc_cmd_pair_order(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_forcepos(client, arg):
+@command(
+    Arg("pos", help="pos, RANDOM or comma-separated list"),
+    Arg("targets", variadic=True, default=None, help="targets (blank = everyone)"),
+)
+def ooc_cmd_forcepos(client, pos, targets):
     """
     Set the place another character resides in the area.
     Usage: /forcepos <pos> <target>
     if <pos> = RANDOM, all the <target>s will be forced into a random pos, pulled from the area's pos_lock.
     if <pos> contains the "," symbol then it will be treated as a list of positions to randomize by.
     """
-    args = shlex.split(arg)
-
-    if len(args) < 1:
-        raise ArgumentError(
-            'Not enough arguments. Use /forcepos <pos> <target>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".'
-        )
-
-    targets = []
-
-    pos = args[0]
-    if len(args) > 1:
+    if targets is None:
+        targets = list(client.area.clients)
+    else:
+        target_text = " ".join(targets)
         targets = client.server.client_manager.get_targets(
-            client, TargetType.CHAR_NAME, " ".join(args[1:]), True
+            client, TargetType.CHAR_NAME, target_text, True
         )
-        if len(targets) == 0 and args[1].isdigit():
+        if len(targets) == 0 and targets[0].isdigit():
             targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[1]), True
+                client, TargetType.ID, int(targets[0]), True
             )
         if len(targets) == 0:
             targets = client.server.client_manager.get_targets(
-                client, TargetType.OOC_NAME, " ".join(args[1:]), True
+                client, TargetType.OOC_NAME, target_text, True
             )
         if len(targets) == 0:
             raise ArgumentError("No targets found.")
-    else:
-        for c in client.area.clients:
-            targets.append(c)
 
     for t in targets:
         try:
@@ -266,27 +267,27 @@ def ooc_cmd_forcepos(client, arg):
             raise
 
 
-def ooc_cmd_force_switch(client, arg):
+@command(
+    Arg("target", help="target id or char name"),
+    Arg("char", rest=True, default="", type=tokens_str, help="character to force (blank = char select)"),
+)
+def ooc_cmd_force_switch(client, target, char):
     """
     Force another user to select another character.
     Optional [char] forces them into a specific character.
     Usage: /force_switch <id> [char]
     """
-    if not arg:
-        raise ArgumentError(
-            'Not enough arguments. Usage: /force_switch <id> [char]')
-    args = shlex.split(arg)
     try:
-        if args[0].isnumeric():
+        if target.isnumeric():
             targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
+                client, TargetType.ID, int(target), False
             )
         else:
             targets = client.server.client_manager.get_targets(
-                client, TargetType.CHAR_NAME, args[0], False
+                client, TargetType.CHAR_NAME, target, False
             )
-        for target in targets:
-            force_switch(client, target, " ".join(args[1:]))
+        for t in targets:
+            force_switch(client, t, char)
     except Exception as ex:
         raise ArgumentError(
             f"Error encountered: {ex}. Use /force_switch <target's id> [character] as a mod or area owner."
@@ -321,24 +322,19 @@ def force_switch(client, target, char=""):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_kill(client, arg):
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_kill(client, ids):
     """
     Force the character into spectator mode with a message that they have died.
     Usage: /kill <id(s)>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = []
-        ids = [int(s) for s in arg.split(" ")]
-        for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
-            if c:
-                targets = targets + c
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /kill <id(s)>.")
+    targets = []
+    for targ_id in ids:
+        c = client.server.client_manager.get_targets(
+            client, TargetType.ID, targ_id, False
+        )
+        if c:
+            targets = targets + c
 
     try:
         for target in targets:
@@ -349,13 +345,12 @@ def ooc_cmd_kill(client, arg):
             f"Error encountered: {ex}. Use /kill <id(s)> as a mod or area owner."
         )
 
-def ooc_cmd_randomchar(client, arg):
+@command()
+def ooc_cmd_randomchar(client):
     """
     Select a random character.
     Usage: /randomchar
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
     if len(client.charcurse) > 0:
         free_id = random.choice(client.charcurse)
     else:
@@ -371,23 +366,18 @@ def ooc_cmd_randomchar(client, arg):
 
 
 @mod_only()
-def ooc_cmd_charcurse(client, arg):
+@command(
+    Arg("target", int, help="client ID"),
+    Arg("charids", int, variadic=True, help="character IDs"),
+)
+def ooc_cmd_charcurse(client, target, charids):
     """
     Lock a user into being able to choose only from a list of characters.
     Usage: /charcurse <id> [charids...]
     """
-    if len(arg) == 0:
-        raise ArgumentError(
-            "You must specify a target (an ID) and at least one character ID. Consult /charids for the character IDs."
-        )
-    elif len(arg) == 1:
-        raise ArgumentError(
-            "You must specific at least one character ID. Consult /charids for the character IDs."
-        )
-    args = arg.split()
     try:
         targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[0]), False
+            client, TargetType.ID, target, False
         )
     except Exception:
         raise ArgumentError(
@@ -397,9 +387,8 @@ def ooc_cmd_charcurse(client, arg):
         for c in targets:
             log_msg = ""
             part_msg = " [" + str(c.id) + "] to"
-            for raw_cid in args[1:]:
+            for cid in charids:
                 try:
-                    cid = int(raw_cid)
                     c.charcurse.append(cid)
                     part_msg += " " + \
                         str(client.area.area_manager.char_list[cid]) + ","
@@ -407,7 +396,7 @@ def ooc_cmd_charcurse(client, arg):
                         str(client.area.area_manager.char_list[cid]) + ","
                 except:
                     ArgumentError(
-                        "" + str(raw_cid) +
+                        "" + str(cid) +
                         " does not look like a valid character ID."
                     )
             part_msg = part_msg[:-1]
@@ -423,17 +412,15 @@ def ooc_cmd_charcurse(client, arg):
 
 
 @mod_only()
-def ooc_cmd_uncharcurse(client, arg):
+@command(Arg("id", int, help="client ID"))
+def ooc_cmd_uncharcurse(client, id):
     """
     Remove the character choice restrictions from a user.
     Usage: /uncharcurse <id>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target (an ID).")
-    args = arg.split()
     try:
         targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[0]), False
+            client, TargetType.ID, id, False
         )
     except Exception:
         raise ArgumentError(
@@ -452,26 +439,24 @@ def ooc_cmd_uncharcurse(client, arg):
         client.send_ooc("No targets found.")
 
 
-def ooc_cmd_charids(client, arg):
+@command()
+def ooc_cmd_charids(client):
     """
     Show character IDs corresponding to each character name.
     Usage: /charids
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
     msg = "Here is a list of all available characters on the server:"
     for c in range(0, len(client.area.area_manager.char_list)):
         msg += "\n[" + str(c) + "] " + client.area.area_manager.char_list[c]
     client.send_ooc(msg)
 
 
-def ooc_cmd_reload(client, arg):
+@command()
+def ooc_cmd_reload(client):
     """
     Reload a character to its default position and state.
     Usage: /reload
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
     try:
         client.reload_character()
     except ClientError:
@@ -480,24 +465,19 @@ def ooc_cmd_reload(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_blind(client, arg):
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_blind(client, ids):
     """
     Blind the targeted player(s) from being able to see or talk IC.
     Usage: /blind <id(s)>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = []
-        ids = [int(s) for s in arg.split(" ")]
-        for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
-            if c:
-                targets = targets + c
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /blind <id>.")
+    targets = []
+    for targ_id in ids:
+        c = client.server.client_manager.get_targets(
+            client, TargetType.ID, targ_id, False
+        )
+        if c:
+            targets = targets + c
 
     if targets:
         for c in targets:
@@ -513,24 +493,19 @@ def ooc_cmd_blind(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_unblind(client, arg):
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_unblind(client, ids):
     """
     Undo effects of the /blind command.
     Usage: /unblind <id(s)>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = []
-        ids = [int(s) for s in arg.split(" ")]
-        for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
-            if c:
-                targets = targets + c
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /unblind <id>.")
+    targets = []
+    for targ_id in ids:
+        c = client.server.client_manager.get_targets(
+            client, TargetType.ID, targ_id, False
+        )
+        if c:
+            targets = targets + c
 
     if targets:
         for c in targets:
@@ -543,35 +518,38 @@ def ooc_cmd_unblind(client, arg):
         raise ArgumentError("No targets found.")
 
 
-def ooc_cmd_player_move_delay(client, arg):
+@command(
+    Arg("target", default="", help="target (blank = yourself)"),
+    Arg("delay", int, default=None, help="delay in seconds (-1800..1800)"),
+)
+def ooc_cmd_player_move_delay(client, target, delay):
     """
     Set the player's move delay to a value in seconds. Can be negative.
     Delay must be from -1800 to 1800 in seconds or empty to check.
     Usage: /player_move_delay <id> [delay]
     """
-    args = shlex.split(arg)
     try:
-        if len(args) > 0 and (
+        if target and (
             client.is_mod or client in client.area.area_manager.owners
         ):
             # Try to find by char name first
             targets = client.server.client_manager.get_targets(
-                client, TargetType.CHAR_NAME, args[0]
+                client, TargetType.CHAR_NAME, target
             )
             # If that doesn't work, find by client ID
-            if len(targets) == 0 and args[0].isdigit():
+            if len(targets) == 0 and target.isdigit():
                 targets = client.server.client_manager.get_targets(
-                    client, TargetType.ID, int(args[0])
+                    client, TargetType.ID, int(target)
                 )
             # If that doesn't work, find by OOC Name
             if len(targets) == 0:
                 targets = client.server.client_manager.get_targets(
-                    client, TargetType.OOC_NAME, args[0]
+                    client, TargetType.OOC_NAME, target
                 )
             c = targets[0]
-            if len(args) > 1:
+            if delay is not None:
                 move_delay = min(
-                    1800, max(-1800, int(args[1]))
+                    1800, max(-1800, delay)
                 )  # Move delay is limited between -1800 and 1800
                 c.move_delay = move_delay
                 client.send_ooc(
@@ -581,8 +559,6 @@ def ooc_cmd_player_move_delay(client, arg):
                     f"Move delay for {c.char_name} is {c.move_delay}.")
         else:
             client.send_ooc(f"Your current move delay is {client.move_delay}.")
-    except ValueError:
-        raise ArgumentError("Delay must be an integer between -1800 and 1800.")
     except IndexError:
         raise ArgumentError(
             "Target client not found. Use /player_move_delay <id> [delay]."
@@ -592,33 +568,25 @@ def ooc_cmd_player_move_delay(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_player_hide(client, arg):
+@command(Arg("ids", variadic=True, help="client ID(s) or *"))
+def ooc_cmd_player_hide(client, ids):
     """
     Hide player(s) from /getarea and playercounts.
     If <id> is *, it will hide everyone in the area excluding yourself and CMs.
     Usage: /player_hide <id(s)>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    args = arg.split()
-    if args[0] == "*":
+    if ids[0] == "*":
         targets = [
             c for c in client.area.clients if c != client and c != client.area.owners
         ]
     else:
-        try:
-            targets = []
-            ids = [int(s) for s in args]
-            for targ_id in ids:
-                c = client.server.client_manager.get_targets(
-                    client, TargetType.ID, targ_id, False
-                )
-                if c:
-                    targets = targets + c
-        except Exception:
-            raise ArgumentError(
-                "You must specify a target. Use /player_unhide <id> [id(s)]."
+        targets = []
+        for targ_id in ids:
+            c = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(targ_id), False
             )
+            if c:
+                targets = targets + c
     if targets:
         for c in targets:
             if c.hidden:
@@ -633,33 +601,25 @@ def ooc_cmd_player_hide(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_player_unhide(client, arg):
+@command(Arg("ids", variadic=True, help="client ID(s) or *"))
+def ooc_cmd_player_unhide(client, ids):
     """
     Unhide player(s) from /getarea and playercounts.
     If <id> is *, it will unhide everyone in the area excluding yourself and CMs.
     Usage: /player_unhide <id(s)>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    args = arg.split()
-    if args[0] == "*":
+    if ids[0] == "*":
         targets = [
             c for c in client.area.clients if c != client and c != client.area.owners
         ]
     else:
-        try:
-            targets = []
-            ids = [int(s) for s in args]
-            for targ_id in ids:
-                c = client.server.client_manager.get_targets(
-                    client, TargetType.ID, targ_id, False
-                )
-                if c:
-                    targets = targets + c
-        except Exception:
-            raise ArgumentError(
-                "You must specify a target. Use /player_unhide <id> [id(s)]."
+        targets = []
+        for targ_id in ids:
+            c = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(targ_id), False
             )
+            if c:
+                targets = targets + c
     if targets:
         for c in targets:
             if not c.hidden:
@@ -673,6 +633,7 @@ def ooc_cmd_player_unhide(client, arg):
         client.send_ooc("No targets found.")
 
 
+@command(Arg("arg", rest=True, default="", help="evidence name or id"))
 def ooc_cmd_hide(client, arg):
     """
     Try to hide in the targeted evidence name or ID.
@@ -693,7 +654,8 @@ def ooc_cmd_hide(client, arg):
         raise
 
 
-def ooc_cmd_unhide(client, arg):
+@command()
+def ooc_cmd_unhide(client):
     """
     Stop hiding.
     Usage: /unhide
@@ -702,6 +664,7 @@ def ooc_cmd_unhide(client, arg):
     client.area.broadcast_area_list(client)
 
 
+@command(Arg("arg", rest=True, default="", help="target (blank = yourself)"))
 def ooc_cmd_sneak(client, arg):
     """
     Begin sneaking a.k.a. hide your area moving messages from the OOC.
@@ -731,6 +694,7 @@ def ooc_cmd_sneak(client, arg):
                 f"Error encountered: {ex}. Use /sneak [id]")
 
 
+@command(Arg("arg", rest=True, default="", help="target (blank = yourself)"))
 def ooc_cmd_unsneak(client, arg):
     """
     Stop sneaking a.k.a. show your area moving messages in the OOC.
@@ -771,24 +735,19 @@ def force_unsneak(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_freeze(client, arg):
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_freeze(client, ids):
     """
     Freeze targeted player(s) from being able to move between areas.
     Usage: /freeze <id(s)>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = []
-        ids = [int(s) for s in arg.split(" ")]
-        for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
-            if c:
-                targets = targets + c
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /freeze <id>.")
+    targets = []
+    for targ_id in ids:
+        c = client.server.client_manager.get_targets(
+            client, TargetType.ID, targ_id, False
+        )
+        if c:
+            targets = targets + c
 
     if targets:
         for c in targets:
@@ -804,24 +763,19 @@ def ooc_cmd_freeze(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_unfreeze(client, arg):
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_unfreeze(client, ids):
     """
     Undo effects of the /freeze command.
     Usage: /unfreeze <id(s)>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    try:
-        targets = []
-        ids = [int(s) for s in arg.split(" ")]
-        for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
-            if c:
-                targets = targets + c
-    except Exception:
-        raise ArgumentError("You must specify a target. Use /unfreeze <id>.")
+    targets = []
+    for targ_id in ids:
+        c = client.server.client_manager.get_targets(
+            client, TargetType.ID, targ_id, False
+        )
+        if c:
+            targets = targets + c
 
     if targets:
         for c in targets:
@@ -834,17 +788,15 @@ def ooc_cmd_unfreeze(client, arg):
         raise ArgumentError("No targets found.")
 
 
-def ooc_cmd_listen_pos(client, arg):
+@command(Arg("pos", variadic=True, default=None, help="pos(s) (blank = your own)"))
+def ooc_cmd_listen_pos(client, pos):
     """
     Start only listening to your currently occupied pos.
     All messages outside of that pos will be reflected in the OOC.
     Optional argument is a list of positions you want to listen to.
     Usage: /listen_pos [pos(s)]
     """
-    args = arg.split()
-    value = "self"
-    if len(args) > 0:
-        value = args
+    value = "self" if pos is None else pos
 
     client.listen_pos = value
     if value == "self":
@@ -855,7 +807,8 @@ def ooc_cmd_listen_pos(client, arg):
     client.send_ooc(f"You are {value}. Use /unlisten_pos to stop listening.")
 
 
-def ooc_cmd_unlisten_pos(client, arg):
+@command()
+def ooc_cmd_unlisten_pos(client):
     """
     Undo the effects of /listen_pos command so you stop listening to the position(s).
     Usage: /unlisten_pos
@@ -869,6 +822,7 @@ def ooc_cmd_unlisten_pos(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="save path"))
 def ooc_cmd_save_character_data(client, arg):
     """
     Save the move_delay, keys, etc. for characters into a file in the storage/character_data/ folder.
@@ -888,6 +842,7 @@ def ooc_cmd_save_character_data(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="load path"))
 def ooc_cmd_load_character_data(client, arg):
     """
     Load the move_delay, keys, etc. for characters from a file in the storage/character_data/ folder.
@@ -916,19 +871,19 @@ def _resolve_char_arg(hub, text):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_get_char_data(client, arg):
+@command(
+    Arg("target", help="char id or folder name"),
+    Arg("key", default="", help="data key (blank = all)"),
+)
+def ooc_cmd_get_char_data(client, target, key):
     """
     View the custom data saved for a character (or a single key of it).
     Usage: /get_char_data <char id|folder> [key]
     """
-    args = arg.split()
-    if len(args) < 1:
-        raise ArgumentError("Please provide a character id or folder name.")
     hub = client.area.area_manager
-    folder = hub.char_list[_resolve_char_arg(hub, args[0])]
+    folder = hub.char_list[_resolve_char_arg(hub, target)]
     data = hub.character_data.get(folder, {})
-    if len(args) >= 2:
-        key = args[1]
+    if key:
         if key not in data:
             raise ArgumentError(f"Character '{folder}' has no data key '{key}'.")
         client.send_ooc(f"{folder}.{key} = {data[key]}")
@@ -941,26 +896,26 @@ def ooc_cmd_get_char_data(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_set_char_data(client, arg):
+@command(
+    Arg("target", help="char id or folder name"),
+    Arg("key", help="data key"),
+    Arg("value", rest=True, default="", help="new value (blank removes the key)"),
+)
+def ooc_cmd_set_char_data(client, target, key, value):
     """
     Set (or clear) a custom data key for a character; omit the value to remove the key.
     Usage: /set_char_data <char id|folder> <key> [value...]
     """
-    parts = arg.split(None, 2)
-    if len(parts) < 2:
-        raise ArgumentError("Usage: /set_char_data <char id|folder> <key> [value...]")
     hub = client.area.area_manager
-    folder = hub.char_list[_resolve_char_arg(hub, parts[0])]
-    key = parts[1]
+    folder = hub.char_list[_resolve_char_arg(hub, target)]
     data = hub.character_data.setdefault(folder, {})
-    if len(parts) < 3 or not parts[2].strip():
+    if not value.strip():
         if key in data:
             del data[key]
             client.send_ooc(f"Removed '{folder}.{key}'.")
         else:
             client.send_ooc(f"Character '{folder}' has no data key '{key}'.")
     else:
-        value = parts[2]
         hub.set_character_data(folder, key, value)
         client.send_ooc(f"Set '{folder}.{key}' = {value}.")
     hub.save_character_data()
@@ -1022,6 +977,7 @@ def mod_keys(client, arg, mod=0):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="<char> [key(s)]"))
 def ooc_cmd_keys_set(client, arg):
     """
     Sets the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
@@ -1034,6 +990,7 @@ def ooc_cmd_keys_set(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="<char> [key(s)]"))
 def ooc_cmd_keys_add(client, arg):
     """
     Adds the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
@@ -1046,6 +1003,7 @@ def ooc_cmd_keys_add(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="<char> [key(s)]"))
 def ooc_cmd_keys_remove(client, arg):
     """
     Remvove the keys of the target client/character folder/character id from the key(s). Keys must be a number like 5 or a link eg. 1-5.
@@ -1059,6 +1017,7 @@ def ooc_cmd_keys_remove(client, arg):
     mod_keys(client, arg, 2)
 
 
+@command(Arg("arg", rest=True, default="", help="target (blank = your own)"))
 def ooc_cmd_keys(client, arg):
     """
     Check your own keys, or someone else's (if admin).
@@ -1099,14 +1058,13 @@ def ooc_cmd_keys(client, arg):
         raise ArgumentError("Usage: /keys [target_id].")
 
 
-def ooc_cmd_kms(client, arg):
+@command()
+def ooc_cmd_kms(client):
     """
     Stands for Kick MySelf - Kick other instances of the client opened by you.
     Useful if you lose connection and the old client is ghosting.
     Usage: /kms
     """
-    if arg != "":
-        raise ArgumentError("This command takes no arguments!")
     for target in client.server.client_manager.get_multiclients(
         client.ipid, client.hdid
     ):
@@ -1116,6 +1074,7 @@ def ooc_cmd_kms(client, arg):
     database.log_misc("kms", client)
 
 
+@command(Arg("arg", rest=True, default="", help="description or ID (blank shows yours)"))
 def ooc_cmd_chardesc(client, arg):
     """
     Look at your own character description if no arugments are provided.
@@ -1166,7 +1125,8 @@ def ooc_cmd_chardesc(client, arg):
         database.log_area("chardesc.change", client, client.area, message=arg)
 
 
-def ooc_cmd_chardesc_clear(client, arg):
+@command()
+def ooc_cmd_chardesc_clear(client):
     """
     Clear your chardesc.
     Usage: /chardesc_clear
@@ -1185,33 +1145,31 @@ def ooc_cmd_chardesc_clear(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_chardesc_set(client, arg):
+@command(
+    Arg("target", help="client ID, char id or char name"),
+    Arg("desc", rest=True, default="", help="new description (blank clears)"),
+)
+def ooc_cmd_chardesc_set(client, target, desc):
     """
     Set someone else's character description to desc or clear it.
     Usage: /chardesc_set <id> [desc]
     """
-    args = arg.split(" ")
-    if len(args) < 1:
-        raise ArgumentError(
-            "Not enough arguments. Usage: /chardesc_set <id> [desc]")
     try:
-        if args[0].isnumeric():
-            target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
+        if target.isnumeric():
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(target), False
             )
-            if target:
-                target = target[0].char_id
+            if targets:
+                target = targets[0].char_id
             else:
-                if args[0] != "-1" and (int(args[0]) in client.area.area_manager.char_list):
-                    target = int(args[0])
+                if target != "-1" and (int(target) in client.area.area_manager.char_list):
+                    target = int(target)
         else:
             try:
-                target = client.area.area_manager.get_char_id_by_name(arg)
+                target = client.area.area_manager.get_char_id_by_name(target)
             except (ServerError):
                 raise
-        desc = ""
-        if len(args) > 1:
-            desc = " ".join(args[1:]).strip()
+        desc = desc.strip()
         client.area.area_manager.set_character_data(target, "desc", desc)
         target = client.area.area_manager.char_list[target]
         client.send_ooc(f"📜{target} Description: {desc}")
@@ -1225,6 +1183,7 @@ def ooc_cmd_chardesc_set(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="client ID, char id or char name"))
 def ooc_cmd_chardesc_get(client, arg):
     """
     Get someone else's character description.
@@ -1255,26 +1214,15 @@ def ooc_cmd_chardesc_get(client, arg):
         raise ArgumentError("Target not found.")
 
 
-def ooc_cmd_narrate(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_narrate(client, tog):
     """
     Speak as a Narrator for your next emote.
     If using 2.9.1, when you speak IC only the chat box will be affected, making you "narrate" over the current visuals.
     tog can be `on`, `off` or empty.
     Usage: /narrate [tog]
     """
-    if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
-    if arg:
-        if arg == "on":
-            client.narrator = True
-        elif arg == "off":
-            client.narrator = False
-        else:
-            raise ArgumentError("Invalid argument: {}".format(arg))
-    else:
-        client.narrator = not client.narrator
+    client.narrator = not client.narrator if tog is None else tog
     if client.blankpost is True:
         client.blankpost = False
         client.send_ooc(
@@ -1286,25 +1234,14 @@ def ooc_cmd_narrate(client, arg):
     client.send_ooc(f"You will {stat}.")
 
 
-def ooc_cmd_blankpost(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_blankpost(client, tog):
     """
     Use a blank image for your next emote (base/misc/blank.png, will be a missingno if you don't have it)
     tog can be `on`, `off` or empty.
     Usage: /blankpost [tog]
     """
-    if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
-    if arg:
-        if arg == "on":
-            client.blankpost = True
-        elif arg == "off":
-            client.blankpost = False
-        else:
-            raise ArgumentError("Invalid argument: {}".format(arg))
-    else:
-        client.blankpost = not client.blankpost
+    client.blankpost = not client.blankpost if tog is None else tog
     if client.narrator is True:
         client.narrator = False
         client.send_ooc(
@@ -1316,26 +1253,15 @@ def ooc_cmd_blankpost(client, arg):
     client.send_ooc(f"You will {stat}.")
 
 
-def ooc_cmd_firstperson(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_firstperson(client, tog):
     """
     Speak as a Narrator for your next emote, but only to yourself. Everyone else will see the emote you used.
     If using 2.9.1, when you speak IC only the chat box will be affected.
     tog can be `on`, `off` or empty.
     Usage: /firstperson [tog]
     """
-    if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
-    if arg:
-        if arg == "on":
-            client.firstperson = True
-        elif arg == "off":
-            client.firstperson = False
-        else:
-            raise ArgumentError("Invalid argument: {}".format(arg))
-    else:
-        client.firstperson = not client.firstperson
+    client.firstperson = not client.firstperson if tog is None else tog
     if client.narrator is True:
         client.narrator = False
         client.send_ooc(
@@ -1347,6 +1273,7 @@ def ooc_cmd_firstperson(client, arg):
     client.send_ooc(f"You will {stat}.")
 
 
+@command(Arg("arg", rest=True, default="", help="showname (blank resets)"))
 def ooc_cmd_showname(client, arg):
     """
     Set your own showname similar to the showname box in the client.
@@ -1377,7 +1304,8 @@ def ooc_cmd_showname(client, arg):
         client.area.broadcast_player_list()
 
 
-def ooc_cmd_charlists(client, arg):
+@command()
+def ooc_cmd_charlists(client):
     """
     Displays all the available charlists.
     Usage: /charlists
@@ -1392,6 +1320,7 @@ def ooc_cmd_charlists(client, arg):
     client.send_ooc(text)
 
 
+@command(Arg("arg", rest=True, default="", help="client ID or *"))
 def ooc_cmd_webfiles(client, arg):
     """
     Gives a link to download each characters files from webAO
@@ -1421,6 +1350,7 @@ def ooc_cmd_webfiles(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="charlist path (blank resets)"))
 def ooc_cmd_charlist(client, arg):
     """
     Load a character list. /charlists to see available character lists.
@@ -1439,6 +1369,7 @@ def ooc_cmd_charlist(client, arg):
         client.send_ooc("File not found!")
 
 
+@command(Arg("arg", rest=True, default="", help="client ID or char name (blank checks)"))
 def ooc_cmd_triple_pair(client, arg):
     """
     Triple Pair with someone.
@@ -1489,6 +1420,7 @@ def get_latest_area(client, char_id: int):
     return target_area
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="client ID or char name (blank = yours)"))
 def ooc_cmd_get_latest_area(client, arg):
     """
     Get a character's latest occupied area. Lobby area is always excluded.
@@ -1516,6 +1448,7 @@ def ooc_cmd_get_latest_area(client, arg):
         client.send_ooc(f"Area not found!")
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="client ID or char name (blank = yours)"))
 def ooc_cmd_kick_to_latest_area(client, arg):
     """
     Kick the occupied character in current area to their latest occupied area.
@@ -1562,6 +1495,7 @@ def ooc_cmd_kick_to_latest_area(client, arg):
             raise
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="<cid|charname> [area_id]"))
 def ooc_cmd_set_latest_area(client, arg):
     """
     Set a character's latest occupied area. Lobby area is always excluded.

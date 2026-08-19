@@ -1,7 +1,5 @@
 from server.exceptions import ClientError, ArgumentError, AreaError
-from . import mod_only
-
-import shlex
+from . import mod_only, command, Arg, tokens_str
 
 __all__ = [
     "ooc_cmd_area_lock",
@@ -31,17 +29,17 @@ __all__ = [
 ]
 
 
-def ooc_cmd_area_lock(client, arg):
+@command(Arg("areas", variadic=True, default=None, help="area IDs (blank = current)"))
+def ooc_cmd_area_lock(client, areas):
     """
     Prevent users from joining the current area.
     Usage: /area_lock
     """
-    args = shlex.split(arg)
-    if len(args) == 0:
-        args = [str(client.area.id)]
+    if not areas:
+        areas = [str(client.area.id)]
 
     try:
-        area_list = client.area.area_manager.get_areas_by_args(args)
+        area_list = client.area.area_manager.get_areas_by_args(areas)
         for area in area_list:
             if not client.is_mod and client not in area.owners:
                 if not str(area.id) in client.keys:
@@ -79,17 +77,17 @@ def ooc_cmd_area_lock(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_area_mute(client, arg):
+@command(Arg("areas", variadic=True, default=None, help="area IDs (blank = current)"))
+def ooc_cmd_area_mute(client, areas):
     """
     Makes this area impossible to speak for normal users unlesss /invite is used.
     Usage: /area_mute
     """
-    args = shlex.split(arg)
-    if len(args) == 0:
-        args = [str(client.area.id)]
+    if not areas:
+        areas = [str(client.area.id)]
 
     try:
-        area_list = client.area.area_manager.get_areas_by_args(args)
+        area_list = client.area.area_manager.get_areas_by_args(areas)
         for area in area_list:
             if not client.is_mod and client not in area.owners:
                 client.send_ooc(f"You don't own area [{area.id}] {area.name}.")
@@ -110,17 +108,17 @@ def ooc_cmd_area_mute(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_area_unmute(client, arg):
+@command(Arg("areas", variadic=True, default=None, help="area IDs (blank = current)"))
+def ooc_cmd_area_unmute(client, areas):
     """
     Undo the effects of /area_mute.
     Usage: /area_unmute
     """
-    args = shlex.split(arg)
-    if len(args) == 0:
-        args = [str(client.area.id)]
+    if not areas:
+        areas = [str(client.area.id)]
 
     try:
-        area_list = client.area.area_manager.get_areas_by_args(args)
+        area_list = client.area.area_manager.get_areas_by_args(areas)
         for area in area_list:
             if not client.is_mod and client not in area.owners:
                 client.send_ooc(f"You don't own area [{area.id}] {area.name}.")
@@ -140,17 +138,17 @@ def ooc_cmd_area_unmute(client, arg):
         raise
 
 
-def ooc_cmd_area_unlock(client, arg):
+@command(Arg("areas", variadic=True, default=None, help="area IDs (blank = current)"))
+def ooc_cmd_area_unlock(client, areas):
     """
     Allow anyone to freely join the current area.
     Usage: /area_unlock
     """
-    args = shlex.split(arg)
-    if len(args) == 0:
-        args = [str(client.area.id)]
+    if not areas:
+        areas = [str(client.area.id)]
 
     try:
-        area_list = client.area.area_manager.get_areas_by_args(args)
+        area_list = client.area.area_manager.get_areas_by_args(areas)
         for area in area_list:
             if not client.is_mod and client not in area.owners:
                 if not str(area.id) in client.keys:
@@ -187,15 +185,16 @@ def ooc_cmd_area_unlock(client, arg):
         raise
 
 
-def ooc_cmd_lock(client, arg):
+@command(Arg("targets", rest=True, type=tokens_str, default="", help="area IDs and/or !link IDs"))
+def ooc_cmd_lock(client, targets):
     """
     Context-sensitive function to lock area(s) and/or area link(s).
     Usage: /lock - lock current area. /lock [id] - lock target area. /lock !5 - lock the link from current area to area 5.
     Multiple targets may be passed.
     """
-    if arg == "":
-        arg = str(client.area.id)
-    args = arg.split()
+    if targets == "":
+        targets = str(client.area.id)
+    args = targets.split()
     areas = args.copy()
     links = []
     for a in args:
@@ -212,15 +211,16 @@ def ooc_cmd_lock(client, arg):
         ooc_cmd_link_lock(client, links)
 
 
-def ooc_cmd_unlock(client, arg):
+@command(Arg("targets", rest=True, type=tokens_str, default="", help="area IDs and/or !link IDs"))
+def ooc_cmd_unlock(client, targets):
     """
     Context-sensitive function to unlock area(s) and/or area link(s).
     Usage: /unlock - unlock current area. /unlock [id] - unlock target area. /unlock !5 - unlock the link from current area to area 5.
     Multiple targets may be passed.
     """
-    if arg == "":
-        arg = str(client.area.id)
-    args = arg.split()
+    if targets == "":
+        targets = str(client.area.id)
+    args = targets.split()
     areas = args.copy()
     links = []
     for a in args:
@@ -237,18 +237,18 @@ def ooc_cmd_unlock(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link(client, arg):
+@command(Arg("areas", variadic=True, default=None, help="area IDs (blank shows links)"))
+def ooc_cmd_link(client, areas):
     """
     Set up a two-way link from your current area with targeted area(s).
     Usage:  /link <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        ooc_cmd_links(client, arg)
+    if not areas:
+        ooc_cmd_links(client, "")
         return
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 area = client.area.area_manager.get_area_by_abbreviation(aid)
                 target_id = area.id
@@ -277,17 +277,15 @@ def ooc_cmd_link(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_unlink(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_unlink(client, areas):
     """
     Remove a two-way link from your current area with targeted area(s).
     Usage:  /unlink <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError("Invalid number of arguments. Use /unlink <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 area = client.area.area_manager.get_area_by_abbreviation(aid)
                 target_id = area.id
@@ -318,7 +316,8 @@ def ooc_cmd_unlink(client, arg):
         raise
 
 
-def ooc_cmd_links(client, arg):
+@command()
+def ooc_cmd_links(client):
     """
     Display this area's information about area links.
     Usage:  /links
@@ -363,18 +362,18 @@ def ooc_cmd_links(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_onelink(client, arg):
+@command(Arg("areas", variadic=True, default=None, help="area IDs (blank shows links)"))
+def ooc_cmd_onelink(client, areas):
     """
     Set up a one-way link from your current area with targeted area(s).
     Usage:  /onelink <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        ooc_cmd_links(client, arg)
+    if not areas:
+        ooc_cmd_links(client, "")
         return
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 area = client.area.area_manager.get_area_by_abbreviation(aid)
                 target_id = area.id
@@ -400,18 +399,15 @@ def ooc_cmd_onelink(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_oneunlink(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_oneunlink(client, areas):
     """
     Remove a one-way link from your current area with targeted area(s).
     Usage:  /oneunlink <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /oneunlink <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -434,18 +430,15 @@ def ooc_cmd_oneunlink(client, arg):
         raise
 
 
-def ooc_cmd_link_lock(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_link_lock(client, areas):
     """
     Lock the path leading to target area(s).
     Usage:  /link_lock <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /link_lock <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -479,18 +472,15 @@ def ooc_cmd_link_lock(client, arg):
         raise
 
 
-def ooc_cmd_link_unlock(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_link_unlock(client, areas):
     """
     Unlock the path leading to target area(s).
     Usage:  /link_unlock <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /link_unlock <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -525,18 +515,15 @@ def ooc_cmd_link_unlock(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link_hide(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_link_hide(client, areas):
     """
     Hide the path leading to target area(s).
     Usage:  /link_hide <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /link_hide <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -555,18 +542,15 @@ def ooc_cmd_link_hide(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link_unhide(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_link_unhide(client, areas):
     """
     Unhide the path leading to target area(s).
     Usage:  /link_unhide <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /link_unhide <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -585,23 +569,22 @@ def ooc_cmd_link_unhide(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link_pos(client, arg):
+@command(
+    Arg("id", help="area ID or abbreviation"),
+    Arg("pos", rest=True, type=tokens_str, default="", help="target pos (blank resets)"),
+)
+def ooc_cmd_link_pos(client, id, pos):
     """
     Set the link's targeted pos when using it. Leave blank to reset.
     Usage:  /link_pos <id> [pos]
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /link_unhide <aid>")
     try:
         try:
             target_id = client.area.area_manager.get_area_by_abbreviation(
-                args[0]).id
+                id).id
         except Exception:
-            target_id = int(args[0])
+            target_id = int(id)
 
-        pos = ' '.join(args[1:])
         client.area.links[str(target_id)]["target_pos"] = pos
         client.send_ooc(
             f'Area {client.area.name} link {target_id}\'s target pos set to "{pos}".'
@@ -613,18 +596,15 @@ def ooc_cmd_link_pos(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link_peekable(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_link_peekable(client, areas):
     """
     Make the path(s) leading to target area(s) /peek-able.
     Usage:  /link_peekable <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /link_peekable <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -644,18 +624,15 @@ def ooc_cmd_link_peekable(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link_unpeekable(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_link_unpeekable(client, areas):
     """
     Make the path(s) leading to target area(s) no longer /peek-able.
     Usage:  /link_unpeekable <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /link_unpeekable <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -676,18 +653,16 @@ def ooc_cmd_link_unpeekable(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link_seethrough(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_link_seethrough(client, areas):
     """
     Make the path(s) leading to target area(s) see-through. Clients in this
     area automatically see the target's presence and passing messages.
     Usage:  /link_seethrough <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError("Invalid number of arguments. Use /link_seethrough <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -707,17 +682,15 @@ def ooc_cmd_link_seethrough(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link_unseethrough(client, arg):
+@command(Arg("areas", variadic=True, help="area IDs"))
+def ooc_cmd_link_unseethrough(client, areas):
     """
     Make the path(s) leading to target area(s) no longer see-through.
     Usage:  /link_unseethrough <id(s)>
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError("Invalid number of arguments. Use /link_unseethrough <aid>")
     try:
         links = []
-        for aid in args:
+        for aid in areas:
             try:
                 target_id = client.area.area_manager.get_area_by_abbreviation(
                     aid).id
@@ -738,28 +711,24 @@ def ooc_cmd_link_unseethrough(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_link_evidence(client, arg):
+@command(
+    Arg("id", help="area ID"),
+    Arg("evidences", int, variadic=True, default=[], help="evidence IDs (blank shows current)"),
+)
+def ooc_cmd_link_evidence(client, id, evidences):
     """
     Make specific link only accessible from evidence ID(s).
     Pass evidence ID's which you can see by mousing over evidence, or blank to see current evidences.
     Usage:  /link_evidence <id> [evi_id(s)]
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /link_evidence <id> [evi_id(s)]"
-        )
     link = None
-    evidences = []
+    evidences = [evi - 1 for evi in evidences]
     try:
-        link = client.area.links[args[0]]
-        if len(args) > 1:
-            for evi_id in args[1:]:
-                evi_id = int(evi_id) - 1
-                client.area.evi_list.evidences[
-                    evi_id
-                ]  # Test if we can access target evidence
-                evidences.append(evi_id)
+        link = client.area.links[id]
+        for evi_id in evidences:
+            client.area.evi_list.evidences[
+                evi_id
+            ]  # Test if we can access target evidence
     except IndexError:
         raise ArgumentError("Evidence not found.")
     except (ValueError, KeyError):
@@ -773,34 +742,29 @@ def ooc_cmd_link_evidence(client, arg):
         if len(link["evidence"]) > 0:
             evi_list = ", ".join(str(evi + 1) for evi in link["evidence"])
             client.send_ooc(
-                f"Area {client.area.name} link {args[0]} associated evidence IDs: {evi_list}."
+                f"Area {client.area.name} link {id} associated evidence IDs: {evi_list}."
             )
         else:
             client.send_ooc(
-                f"Area {client.area.name} link {args[0]} has no associated evidence."
+                f"Area {client.area.name} link {id} has no associated evidence."
             )
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_unlink_evidence(client, arg):
+@command(
+    Arg("id", help="area ID"),
+    Arg("evidences", int, variadic=True, default=[], help="evidence IDs (blank clears all)"),
+)
+def ooc_cmd_unlink_evidence(client, id, evidences):
     """
     Unlink evidence from links.
     Pass evidence ID's which you can see by mousing over evidence.
     Usage:  /unlink_evidence <aid> [evi_id(s)]
     """
-    args = arg.split()
-    if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /unlink_evidence <aid> [evi_id(s)]"
-        )
     link = None
-    evidences = []
+    evidences = [evi - 1 for evi in evidences]
     try:
-        link = client.area.links[args[0]]
-        if len(args) > 1:
-            for evi_id in args[1:]:
-                evi_id = int(evi_id) - 1
-                evidences.append(evi_id)
+        link = client.area.links[id]
     except (ValueError, KeyError):
         raise ArgumentError("Area ID must be a number.")
     except (AreaError, ClientError):
@@ -810,15 +774,16 @@ def ooc_cmd_unlink_evidence(client, arg):
             link["evidence"] = link["evidence"] - evidences
             evi_list = ", ".join(str(evi + 1) for evi in evidences)
             client.send_ooc(
-                f"Area {client.area.name} link {args[0]} is now unlinked from evidence IDs: {evi_list}."
+                f"Area {client.area.name} link {id} is now unlinked from evidence IDs: {evi_list}."
             )
         else:
             link["evidence"] = []
             client.send_ooc(
-                f"Area {client.area.name} link {args[0]} associated evidences cleared."
+                f"Area {client.area.name} link {id} associated evidences cleared."
             )
 
 
+@command(Arg("arg", rest=True, default="", help="<id> [password]"))
 def ooc_cmd_pw(client, arg):
     """
     Enter a passworded area. Password is case-sensitive and must match the set password exactly, otherwise it will fail.
@@ -867,6 +832,7 @@ def ooc_cmd_pw(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="<id/!link> [password]"))
 def ooc_cmd_setpw(client, arg):
     """
     Context-sensitive function to set a password area(s) and/or area link(s).

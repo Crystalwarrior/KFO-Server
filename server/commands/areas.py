@@ -4,7 +4,7 @@ from server import database
 from server.constants import TargetType
 from server.exceptions import ClientError, ArgumentError, AreaError
 
-from . import mod_only
+from . import mod_only, command, Arg
 
 __all__ = [
     "ooc_cmd_overlay",
@@ -40,6 +40,7 @@ __all__ = [
     "ooc_cmd_clear_area_broadcast",
 ]
 
+@command(Arg("arg", rest=True, default="", help="background (blank shows current)"))
 def ooc_cmd_overlay(client, arg):
     """
     Set the overlay of an area.
@@ -72,7 +73,8 @@ def ooc_cmd_overlay(client, arg):
         f"{client.showname} changed the overlay to {arg}.")
     database.log_area("overlay", client, client.area, message=arg)
 
-def ooc_cmd_overlay_clear(client, arg):
+@command()
+def ooc_cmd_overlay_clear(client):
     """
     Clear the overlay of an area.
     Usage: /overlay_clear
@@ -99,6 +101,7 @@ def ooc_cmd_overlay_clear(client, arg):
         f"{client.showname} cleared the overlay.")
     database.log_area("overlay_clear", client, client.area)
 
+@command(Arg("arg", rest=True, default="", help="background (blank shows current)"))
 def ooc_cmd_bg(client, arg):
     """
     Set the background of an area.
@@ -137,6 +140,7 @@ def ooc_cmd_bg(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="<area_id> <background> [overlay]"))
 def ooc_cmd_gm_set_bg(client, arg):
     """
     Change the background of any area in your current hub (hub GMs only).
@@ -159,6 +163,7 @@ def ooc_cmd_gm_set_bg(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="suffix (blank clears)"))
 def ooc_cmd_bg_suffix(client, arg):
     """
     Set the background suffix of an area, which is what will be appended at the end of the area's /bg.
@@ -175,6 +180,7 @@ def ooc_cmd_bg_suffix(client, arg):
     database.log_area("bg", client, client.area, message=arg)
 
 
+@command(Arg("arg", rest=True, default="", help="category (blank lists categories)"))
 def ooc_cmd_bgs(client, arg):
     """
     Display the server's available backgrounds.
@@ -194,6 +200,7 @@ def ooc_cmd_bgs(client, arg):
         client.send_ooc("There is no category with this name in server background list.")
 
 
+@command(Arg("arg", rest=True, default="", help="status (blank shows current)"))
 def ooc_cmd_status(client, arg):
     """
     Show or modify the current status of an area.
@@ -231,6 +238,7 @@ def ooc_cmd_status(client, arg):
             raise
 
 
+@command(Arg("arg", rest=True, default="", help="area id or name (blank lists)"))
 def ooc_cmd_area(client, arg):
     """
     Go to the specified area.
@@ -266,13 +274,12 @@ def ooc_cmd_area(client, arg):
         raise
 
 
-def ooc_cmd_area_visible(client, arg):
+@command()
+def ooc_cmd_area_visible(client):
     """
     Display only linked and non-hidden areas. Useful to GMs.
     Usage: /area_visible
     """
-    if arg != "":
-        raise ArgumentError("This command takes no arguments!")
     client.available_areas_only = not client.available_areas_only
     toggle = "enabled" if client.available_areas_only else "disabled"
     client.area.broadcast_area_list(client)
@@ -281,7 +288,8 @@ def ooc_cmd_area_visible(client, arg):
     )
 
 
-def ooc_cmd_autogetarea(client, arg):
+@command()
+def ooc_cmd_autogetarea(client):
     """
     Automatically /getarea whenever you enter a new area
     Usage: /autogetarea
@@ -293,6 +301,7 @@ def ooc_cmd_autogetarea(client, arg):
     )
 
 
+@command(Arg("arg", default="", help="area id (blank = current)"))
 def ooc_cmd_getarea(client, arg):
     """
     Show information about the current area, or target area id with sufficient permissions.
@@ -310,20 +319,23 @@ def ooc_cmd_getarea(client, arg):
     client.area.broadcast_player_list_to_target(client)
 
 
-def ooc_cmd_getareas(client, arg):
+@command()
+def ooc_cmd_getareas(client):
     """
     Show information about all areas.
     Usage: /getareas
     """
     client.send_areas_clients()
 
-def ooc_cmd_gethubs(client, arg):
+@command()
+def ooc_cmd_gethubs(client):
     """
     Show information about all hubs.
     Usage: /gethubs
     """
     client.send_hubs_clients()
 
+@command(Arg("arg", default="", help="area id (blank = current)"))
 def ooc_cmd_getlink(client, arg):
     """
     Show information about the current area, or target area id with sufficient permissions.
@@ -341,7 +353,8 @@ def ooc_cmd_getlink(client, arg):
     client.send_area_info(aid, show_links=True)
 
 
-def ooc_cmd_getlinks(client, arg):
+@command()
+def ooc_cmd_getlinks(client):
     """
     Show information about all areas.
     Including the client's link.
@@ -349,6 +362,7 @@ def ooc_cmd_getlinks(client, arg):
     """
     client.send_areas_clients(show_links=True)
 
+@command(Arg("arg", default="", help="all or blank"))
 def ooc_cmd_getafk(client, arg):
     """
     Show currently AFK-ing players in the current area or in all areas.
@@ -364,6 +378,7 @@ def ooc_cmd_getafk(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="client ID or * (blank lists invites)"))
 def ooc_cmd_invite(client, arg):
     """
     Allow a particular user to join a locked or speak in spectator-only area.
@@ -411,6 +426,7 @@ def ooc_cmd_invite(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="client ID or *"))
 def ooc_cmd_uninvite(client, arg):
     """
     Revoke an invitation for a particular user.
@@ -453,6 +469,7 @@ def ooc_cmd_uninvite(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="<id> [destination] [target_pos]"))
 def ooc_cmd_area_kick(client, arg):
     """
     Remove a user from the current area and move them to another area.
@@ -569,7 +586,8 @@ def ooc_cmd_area_kick(client, arg):
 
 # TODO: actually finish this command
 @mod_only(area_owners=True)
-def ooc_cmd_shuffle_pos(client, arg):
+@command()
+def ooc_cmd_shuffle_pos(client):
     """
     Randomly shuffle the players into a list of pos separated by space or comma.
     If your pos have spaces in them, it must be a comma-separated list like /shuffle_pos pos one, pos two, pos X
@@ -579,6 +597,7 @@ def ooc_cmd_shuffle_pos(client, arg):
     client.area.broadcast_ooc("Position lock cleared.")
 
 
+@command(Arg("arg", rest=True, default="", help="pos(s) (blank shows current)"))
 def ooc_cmd_pos_lock(client, arg):
     """
     Lock current area's available positions into a list of pos separated by space or comma.
@@ -633,7 +652,8 @@ def ooc_cmd_pos_lock(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_pos_lock_clear(client, arg):
+@command()
+def ooc_cmd_pos_lock_clear(client):
     """
     Clear the current area's position lock and make all positions available.
     Usage:  /pos_lock_clear
@@ -642,6 +662,7 @@ def ooc_cmd_pos_lock_clear(client, arg):
     client.area.broadcast_ooc("Position lock cleared.")
 
 
+@command(Arg("arg", rest=True, default="", help="area name or ID"))
 def ooc_cmd_knock(client, arg):
     """
     Knock on the target area ID to call on their attention to your area.
@@ -716,6 +737,7 @@ def ooc_cmd_knock(client, arg):
         raise
 
 
+@command(Arg("arg", rest=True, default="", help="area name or ID"))
 def ooc_cmd_peek(client, arg):
     """
     Peek into an area to see if there's people in it.
@@ -805,32 +827,27 @@ def ooc_cmd_peek(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_max_players(client, arg):
+@command(Arg("num", int, default=None, help="max players (-1..99, blank shows)"))
+def ooc_cmd_max_players(client, num):
     """
     Set a max amount of players for current area between -1 and 99.
     Usage: /max_players [num]
     """
-    if arg == "":
+    if num is None:
         client.send_ooc(
             f"Max amount of players for the area is {client.area.max_players}."
         )
         return
 
-    try:
-        arg = int(arg)
-        if arg < -1 or arg > 99:
-            raise ClientError("The min-max values are -1 and 99!")
-        client.area.max_players = arg
-        client.send_ooc(
-            f"New max amount of players for the area is now {client.area.max_players}."
-        )
-    except ValueError:
-        raise ArgumentError(
-            "Area ID must be a name, abbreviation or a number.")
-    except (AreaError, ClientError):
-        raise
+    if num < -1 or num > 99:
+        raise ClientError("The min-max values are -1 and 99!")
+    client.area.max_players = num
+    client.send_ooc(
+        f"New max amount of players for the area is now {client.area.max_players}."
+    )
 
 
+@command(Arg("arg", rest=True, default="", help="description (blank shows current)"))
 def ooc_cmd_desc(client, arg):
     """
     Set an area description that appears to the user any time they enter the area.
@@ -873,7 +890,8 @@ def ooc_cmd_desc(client, arg):
         database.log_area("desc.change", client, client.area, message=arg)
 
 
-def ooc_cmd_desc_clear(client, arg):
+@command()
+def ooc_cmd_desc_clear(client):
     """
     Clears the area description that appears to the user any time they enter the area.
     Usage: /desc_clear
@@ -901,25 +919,14 @@ def ooc_cmd_desc_clear(client, arg):
     database.log_area("desc.clear", client, client.area)
 
 @mod_only(area_owners=True)
-def ooc_cmd_edit_ambience(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_edit_ambience(client, tog):
     """
     Toggle edit mode for setting ambience. Playing music will set it as the area's ambience.
     tog can be `on`, `off` or empty.
     Usage: /edit_ambience [tog]
     """
-    if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
-    if arg:
-        if arg == "on":
-            client.edit_ambience = True
-        elif arg == "off":
-            client.edit_ambience = False
-        else:
-            raise ArgumentError("Invalid argument: {}".format(arg))
-    else:
-        client.edit_ambience = not client.edit_ambience
+    client.edit_ambience = not client.edit_ambience if tog is None else tog
     stat = "no longer"
     if client.edit_ambience:
         stat = "now"
@@ -927,7 +934,8 @@ def ooc_cmd_edit_ambience(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_lights(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_lights(client, tog):
     """
     Toggle lights for this area. If lights are off, players will not be able to use /getarea or see evidence.
     Players will also be unable to see area movement messages or use /chardesc.
@@ -935,19 +943,7 @@ def ooc_cmd_lights(client, arg):
     tog can be `on`, `off` or empty.
     Usage: /lights [tog]
     """
-    if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
-    if arg:
-        if arg == "on":
-            client.area.dark = False
-        elif arg == "off":
-            client.area.dark = True
-        else:
-            raise ArgumentError("Invalid argument: {}".format(arg))
-    else:
-        client.area.dark = not client.area.dark
+    client.area.dark = not client.area.dark if tog is None else not tog
     stat = "no longer"
     if client.area.dark:
         stat = "now"
@@ -960,36 +956,34 @@ def ooc_cmd_lights(client, arg):
     client.area.broadcast_evidence_list()
 
 
-def ooc_cmd_auto_pair(client, arg):
+@command(Arg("mode", choices=["double", "triple"]))
+def ooc_cmd_auto_pair(client, mode):
     """
     Set the max of players displayed on the screen.
     Usage: /auto_pair <double/triple>
     """
-    if arg.lower() not in ["double", "triple"]:
-        client.send_ooc("Argument Error!\nUsage: /auto_pair <double/triple>")
-        return
-    client.area.auto_pair_max = arg.lower()
-    if arg.lower() == "triple":
+    client.area.auto_pair_max = mode
+    if mode == "triple":
         client.send_ooc("Pairing will show a maximum of 3 characters on screen now")
     else:
         client.send_ooc("Pairing will show a maximum of 2 characters on screen now")
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_area_broadcast(client, arg):
+@command(Arg("areas", variadic=True, default=None, help="area IDs (blank shows current)"))
+def ooc_cmd_area_broadcast(client, areas):
     """
     Start broadcasting current area's IC, Music and Judge buttons to specified area ID's.
     To include all areas, use /area_broadcast all
     /clear_area_broadcast to clear the list
     Usage: /area_broadcast <id(s)>
     """
-    args = shlex.split(arg)
-    if len(args) <= 0:
+    if not areas:
         a_list = ", ".join([str(a.id) for a in client.area.broadcast_list])
         client.send_ooc(f"Current area broadcast list is {a_list}")
         return
     try:
-        broadcast_list = client.area.area_manager.get_areas_by_args(args)
+        broadcast_list = client.area.area_manager.get_areas_by_args(areas)
         client.area.broadcast_list = broadcast_list
         a_list = ", ".join([str(a.id) for a in client.area.broadcast_list])
         client.send_ooc(f"Area's broadcast list is now {a_list}")
@@ -1000,7 +994,8 @@ def ooc_cmd_area_broadcast(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_clear_area_broadcast(client, arg):
+@command()
+def ooc_cmd_clear_area_broadcast(client):
     """
     Clear the area's broadcasting of IC, Music and Judge buttons.
     Usage: /clear_area_broadcast

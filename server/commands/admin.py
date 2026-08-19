@@ -8,7 +8,7 @@ from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError
 import asyncio
 
-from . import mod_only, list_commands, list_submodules, help
+from . import mod_only, list_commands, list_submodules, help, Arg, command
 
 __all__ = [
     "ooc_cmd_motd",
@@ -36,24 +36,24 @@ __all__ = [
 ]
 
 
-def ooc_cmd_motd(client, arg):
+@command()
+def ooc_cmd_motd(client):
     """
     Show the message of the day.
     Usage: /motd
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
     client.send_motd()
 
 
-def ooc_cmd_help(client, arg):
+@command(Arg("topic", rest=True, default="", help="command or category"))
+def ooc_cmd_help(client, topic):
     """
     Show help for a command, or show general help.
     Usage: /help
     """
     import inspect
 
-    if arg == "":
+    if topic == "":
         msg = inspect.cleandoc(
             """
         Welcome to tsuserver3! You can use /help <command> on any known
@@ -72,7 +72,7 @@ def ooc_cmd_help(client, arg):
         msg += list_submodules()
         client.send_ooc(msg)
     else:
-        arg = arg.lower()
+        arg = topic.lower()
         try:
             if arg in client.server.command_aliases:
                 arg = client.server.command_aliases[arg]
@@ -89,7 +89,11 @@ def ooc_cmd_help(client, arg):
 
 
 @mod_only()
-def ooc_cmd_kick(client, arg):
+@command(
+    Arg("target", help="ipid, *, or **"),
+    Arg("reason", rest=True, default="", help="kick reason"),
+)
+def ooc_cmd_kick(client, target, reason):
     """
     Kick a player.
     Usage: /kick <ipid|*|**> [reason]
@@ -97,29 +101,21 @@ def ooc_cmd_kick(client, arg):
      - "*" kicks everyone in the current area.
      - "**" kicks everyone in the server.
     """
-    if len(arg) == 0:
-        raise ArgumentError(
-            "You must specify a target. Use /kick <ipid> [reason]")
-    elif arg[0] == "*":
+    ipid = None
+    if target == "*":
         targets = [c for c in client.area.clients if c != client]
-    elif arg[0] == "**":
+    elif target == "**":
         targets = [c for c in client.server.client_manager.clients if c != client]
     else:
-        targets = None
-
-    args = list(arg.split(" "))
-    if targets is None:
-        raw_ipid = args[0]
         try:
-            ipid = int(raw_ipid)
-        except Exception:
-            raise ClientError(f"{raw_ipid} does not look like a valid IPID.")
+            ipid = int(target)
+        except ValueError:
+            raise ClientError(f"{target} does not look like a valid IPID.")
         targets = client.server.client_manager.get_targets(
             client, TargetType.IPID, ipid, False
         )
 
     if targets:
-        reason = " ".join(args[1:])
         for c in targets:
             database.log_misc("kick", client, target=c,
                               data={"reason": reason})
@@ -131,7 +127,11 @@ def ooc_cmd_kick(client, arg):
         client.send_ooc(f"No targets with the IPID {ipid} were found.")
 
 
-def ooc_cmd_ban(client, arg):
+@mod_only()
+@command(
+    Arg("args", rest=True, default="", help="<ipid> <reason>/<ban_id> [duration]")
+)
+def ooc_cmd_ban(client, args):
     """
     Ban a user. If a ban ID is specified instead of a reason,
     then the IPID is added to an existing ban record.
@@ -139,19 +139,23 @@ def ooc_cmd_ban(client, arg):
     Usage: /ban <ipid> "reason" ["<N> <minute|hour|day|week|month>(s)|perma"]
     Usage 2: /ban <ipid> <ban_id>
     """
-    kickban(client, arg, False)
+    kickban(client, args, False)
 
 
-def ooc_cmd_banhdid(client, arg):
+@mod_only()
+@command(
+    Arg("args", rest=True, default="", help="<ipid> <reason>/<ban_id> [duration]")
+)
+def ooc_cmd_banhdid(client, args):
     """
     Ban both a user's HDID and IPID.
     Usage: See /ban.
     """
-    kickban(client, arg, True)
+    kickban(client, args, True)
 
 
-@mod_only()
 def kickban(client, arg, ban_hdid):
+    """Shared implementation of /ban and /banhdid."""
     args = shlex.split(arg)
     if len(args) < 2:
         raise ArgumentError("Not enough arguments.")
@@ -218,17 +222,14 @@ def kickban(client, arg, ban_hdid):
 
 
 @mod_only()
-def ooc_cmd_unban(client, arg):
+@command(Arg("ban_ids", variadic=True, type=int, help="one or more ban IDs"))
+def ooc_cmd_unban(client, ban_ids):
     """
     Unban a list of users.
     Usage: /unban <ban_id...>
     """
-    if len(arg) == 0:
-        raise ArgumentError(
-            "You must specify a target. Use /unban <ban_id...>")
-    args = list(arg.split(" "))
-    client.send_ooc(f"Attempting to lift {len(args)} ban(s)...")
-    for ban_id in args:
+    client.send_ooc(f"Attempting to lift {len(ban_ids)} ban(s)...")
+    for ban_id in ban_ids:
         if database.unban(ban_id):
             client.send_ooc(f"Removed ban ID {ban_id}.")
             client.server.webhooks.unban(ban_id, client)
@@ -238,81 +239,70 @@ def ooc_cmd_unban(client, arg):
 
 
 @mod_only()
-def ooc_cmd_mute(client, arg):
+@command(Arg("ipids", variadic=True, type=int, help="one or more IPIDs"))
+def ooc_cmd_mute(client, ipids):
     """
     Prevent a user from speaking in-character.
     Usage: /mute <ipid>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target. Use /mute <ipid>.")
-    args = list(arg.split(" "))
-    client.send_ooc(f"Attempting to mute {len(args)} IPIDs.")
-    for raw_ipid in args:
-        if raw_ipid.isdigit():
-            ipid = int(raw_ipid)
-            clients = client.server.client_manager.get_targets(
-                client, TargetType.IPID, ipid, False
-            )
-            if clients:
-                msg = "Muted the IPID " + str(ipid) + "'s following clients:"
-                for c in clients:
-                    c.is_muted = True
-                    database.log_misc("mute", client, target=c)
-                    msg += " " + c.showname + " [" + str(c.id) + "],"
-                msg = msg[:-1]
-                msg += "."
-                client.send_ooc(msg)
-            else:
-                client.send_ooc(
-                    "No targets found. Use /mute <ipid> <ipid> ... for mute."
-                )
+    client.send_ooc(f"Attempting to mute {len(ipids)} IPIDs.")
+    for ipid in ipids:
+        clients = client.server.client_manager.get_targets(
+            client, TargetType.IPID, ipid, False
+        )
+        if clients:
+            msg = "Muted the IPID " + str(ipid) + "'s following clients:"
+            for c in clients:
+                c.is_muted = True
+                database.log_misc("mute", client, target=c)
+                msg += " " + c.showname + " [" + str(c.id) + "],"
+            msg = msg[:-1]
+            msg += "."
+            client.send_ooc(msg)
         else:
-            client.send_ooc(f"{raw_ipid} does not look like a valid IPID.")
+            client.send_ooc(
+                "No targets found. Use /mute <ipid> <ipid> ... for mute."
+            )
 
 
 @mod_only()
-def ooc_cmd_unmute(client, arg):
+@command(Arg("ipids", variadic=True, type=int, help="one or more IPIDs"))
+def ooc_cmd_unmute(client, ipids):
     """
     Unmute a user.
     Usage: /unmute <ipid>
     """
-    if len(arg) == 0:
-        raise ArgumentError("You must specify a target.")
-    args = list(arg.split(" "))
-    client.send_ooc(f"Attempting to unmute {len(args)} IPIDs.")
-    for raw_ipid in args:
-        if raw_ipid.isdigit():
-            ipid = int(raw_ipid)
-            clients = client.server.client_manager.get_targets(
-                client, TargetType.IPID, ipid, False
-            )
-            if clients:
-                msg = f"Unmuted the IPID ${str(ipid)}'s following clients:"
-                for c in clients:
-                    c.is_muted = False
-                    database.log_misc("unmute", client, target=c)
-                    msg += " " + c.showname + " [" + str(c.id) + "],"
-                msg = msg[:-1]
-                msg += "."
-                client.send_ooc(msg)
-            else:
-                client.send_ooc(
-                    "No targets found. Use /unmute <ipid> <ipid> ... for unmute."
-                )
+    client.send_ooc(f"Attempting to unmute {len(ipids)} IPIDs.")
+    for ipid in ipids:
+        clients = client.server.client_manager.get_targets(
+            client, TargetType.IPID, ipid, False
+        )
+        if clients:
+            msg = f"Unmuted the IPID {ipid}'s following clients:"
+            for c in clients:
+                c.is_muted = False
+                database.log_misc("unmute", client, target=c)
+                msg += " " + c.showname + " [" + str(c.id) + "],"
+            msg = msg[:-1]
+            msg += "."
+            client.send_ooc(msg)
         else:
-            client.send_ooc(f"{raw_ipid} does not look like a valid IPID.")
+            client.send_ooc(
+                "No targets found. Use /unmute <ipid> <ipid> ... for unmute."
+            )
 
 
-def ooc_cmd_login(client, arg):
+@command(Arg("password", rest=True, default="", help="moderator password"))
+def ooc_cmd_login(client, password):
     """
     Login as a moderator.
     Usage: /login <password>
     """
-    if len(arg) == 0:
+    if not password:
         raise ArgumentError("You must specify the password.")
     login_name = None
     try:
-        login_name = client.auth_mod(arg)
+        login_name = client.auth_mod(password)
     except ClientError:
         database.log_misc("login.invalid", client)
         raise
@@ -327,24 +317,23 @@ def ooc_cmd_login(client, arg):
 
 
 @mod_only()
-def ooc_cmd_refresh(client, arg):
+@command()
+def ooc_cmd_refresh(client):
     """
     Reload all moderator credentials, server options, and commands without
     restarting the server.
     Usage: /refresh
     """
-    if len(arg) > 0:
-        raise ClientError("This command does not take in any arguments!")
-    else:
-        try:
-            client.server.refresh()
-            database.log_misc("refresh", client)
-            client.send_ooc("You have reloaded the server.")
-        except ServerError:
-            raise
+    try:
+        client.server.refresh()
+        database.log_misc("refresh", client)
+        client.send_ooc("You have reloaded the server.")
+    except ServerError:
+        raise
 
 
-def ooc_cmd_online(client, _):
+@command()
+def ooc_cmd_online(client):
     """
     Show the number of players online.
     Usage: /online
@@ -352,7 +341,8 @@ def ooc_cmd_online(client, _):
     client.send_player_count()
 
 
-def ooc_cmd_mods(client, arg):
+@command()
+def ooc_cmd_mods(client):
     """
     Show a list of moderators online.
     Usage: /mods
@@ -360,7 +350,8 @@ def ooc_cmd_mods(client, arg):
     client.send_areas_clients(mods=True)
 
 
-def ooc_cmd_unmod(client, arg):
+@command()
+def ooc_cmd_unmod(client):
     """
     Log out as a moderator.
     Usage: /unmod
@@ -407,45 +398,48 @@ def _get_ooc_mute_targets(client, arg):
 
 
 @mod_only()
-def ooc_cmd_ooc_mute(client, arg):
+@command(Arg("target", rest=True, default="", help="ooc-name or client-id"))
+def ooc_cmd_ooc_mute(client, target):
     """
     Prevent a user from talking out-of-character.
     Usage: /ooc_mute <ooc-name|client-id>
     """
-    if len(arg) == 0:
+    if not target:
         raise ArgumentError(
             "You must specify a target. Use /ooc_mute <OOC-name>.")
-    targets = _get_ooc_mute_targets(client, arg)
+    targets = _get_ooc_mute_targets(client, target)
     if not targets:
         raise ArgumentError("Targets not found. Use /ooc_mute <OOC-name>.")
-    for target in targets:
-        target.is_ooc_muted = True
-        database.log_area("ooc_mute", client, client.area, target=target)
+    for t in targets:
+        t.is_ooc_muted = True
+        database.log_area("ooc_mute", client, client.area, target=t)
     client.send_ooc("Muted {} existing client(s).".format(len(targets)))
 
 
 @mod_only()
-def ooc_cmd_ooc_unmute(client, arg):
+@command(Arg("target", rest=True, default="", help="ooc-name or client-id"))
+def ooc_cmd_ooc_unmute(client, target):
     """
     Allow an OOC-muted user to talk out-of-character.
     Usage: /ooc_unmute <ooc-name|client-id>
     """
-    if len(arg) == 0:
+    if not target:
         raise ArgumentError(
             "You must specify a target. Use /ooc_unmute <OOC-name>.")
     targets = [
-        c for c in _get_ooc_mute_targets(client, arg) if c.is_ooc_muted
+        c for c in _get_ooc_mute_targets(client, target) if c.is_ooc_muted
     ]
     if not targets:
         raise ArgumentError("Targets not found. Use /ooc_unmute <OOC-name>.")
-    for target in targets:
-        target.is_ooc_muted = False
-        database.log_area("ooc_unmute", client, client.area, target=target)
+    for t in targets:
+        t.is_ooc_muted = False
+        database.log_area("ooc_unmute", client, client.area, target=t)
     client.send_ooc("Unmuted {} existing client(s).".format(len(targets)))
 
 
 @mod_only()
-def ooc_cmd_bans(client, _arg):
+@command()
+def ooc_cmd_bans(client):
     """
     Get the 5 most recent bans.
     Usage: /bans
@@ -461,24 +455,22 @@ def ooc_cmd_bans(client, _arg):
 
 
 @mod_only()
-def ooc_cmd_baninfo(client, arg):
+@command(
+    Arg("identifier", help="ban id, ipid, or hdid"),
+    Arg(
+        "lookup_type",
+        default="ban_id",
+        choices=("ban_id", "ipid", "hdid"),
+        help="what the id identifies",
+    ),
+)
+def ooc_cmd_baninfo(client, identifier, lookup_type):
     """
     Get information about a ban.
     Usage: /baninfo <id> ['ban_id'|'ipid'|'hdid']
     By default, id identifies a ban_id.
     """
-    args = arg.split(" ")
-    if len(arg) == 0:
-        raise ArgumentError("You must specify an ID.")
-    elif len(args) == 1:
-        lookup_type = "ban_id"
-    else:
-        lookup_type = args[1]
-
-    if lookup_type not in ("ban_id", "ipid", "hdid"):
-        raise ArgumentError("Incorrect lookup type.")
-
-    ban = database.find_ban(**{lookup_type: args[0]})
+    ban = database.find_ban(**{lookup_type: identifier})
     if ban is None:
         client.send_ooc("No ban found for this ID.")
     else:
@@ -499,13 +491,12 @@ def ooc_cmd_baninfo(client, arg):
         client.send_ooc(msg)
 
 
-def ooc_cmd_time(client, arg):
+@command()
+def ooc_cmd_time(client):
     """
     Returns the current server time.
     Usage:  /time
     """
-    if len(arg) > 0:
-        raise ArgumentError("This command takes no arguments")
     from time import asctime, gmtime, time
 
     msg = "The current time in UTC (aka GMT) is:\n["
@@ -515,7 +506,10 @@ def ooc_cmd_time(client, arg):
 
 
 @mod_only()
-def ooc_cmd_whois(client, arg):
+@command(
+    Arg("query", rest=True, default="", help="name, id, ipid, showname, or character")
+)
+def ooc_cmd_whois(client, query):
     """
     Get information about an online user.
     Usage: /whois <name|id|ipid|showname|character>
@@ -523,15 +517,15 @@ def ooc_cmd_whois(client, arg):
     found_clients = set()
     for c in client.server.client_manager.clients:
         if (
-            arg.lower() in c.name.lower()
-            or arg in c.showname.lower()
-            or arg.lower() in c.char_name.lower()
-            or arg in str(c.id)
-            or arg in str(c.ipid)
+            query.lower() in c.name.lower()
+            or query in c.showname.lower()
+            or query.lower() in c.char_name.lower()
+            or query in str(c.id)
+            or query in str(c.ipid)
         ):
             found_clients.add(c)
 
-    info = f"WHOIS lookup for {arg}:"
+    info = f"WHOIS lookup for {query}:"
     for c in found_clients:
         info += f"\n[{c.id}] "
         if c.showname != c.char_name:
@@ -546,12 +540,13 @@ def ooc_cmd_whois(client, arg):
 
 
 @mod_only()
-def ooc_cmd_restart(client, arg):
+@command(Arg("password", rest=True, default="", help="restart password"))
+def ooc_cmd_restart(client, password):
     """
     Restart the server (WARNING: The server will be *stopped* unless you set up a restart batch/bash file!)
     Usage: /restart
     """
-    if arg != client.server.config["restartpass"]:
+    if password != client.server.config["restartpass"]:
         raise ArgumentError("no")
     print(f"!!!{client.name} called /restart!!!")
     client.server.send_all_cmd_pred(
@@ -559,13 +554,12 @@ def ooc_cmd_restart(client, arg):
     asyncio.get_running_loop().stop()
 
 
-def ooc_cmd_myid(client, arg):
+@command()
+def ooc_cmd_myid(client):
     """
     Get information for your current client, such as client ID.
     Usage: /myid
     """
-    if len(arg) > 0:
-        raise ArgumentError("This command takes no arguments")
     info = f"You are: [{client.id}] "
     if client.showname != client.char_name:
         info += f'"{client.showname}" ({client.char_name})'
@@ -579,18 +573,21 @@ def ooc_cmd_myid(client, arg):
 
 
 @mod_only()
-def ooc_cmd_multiclients(client, arg):
+@command(Arg("ipid", type=int, help="IPID to look up"))
+def ooc_cmd_multiclients(client, ipid):
     """
     Get all the multi-clients of the IPID provided, detects multiclients on the same hardware even if the IPIDs are different.
     Usage: /multiclients <ipid>
     """
     found_clients = set()
     for c in client.server.client_manager.clients:
-        if arg == str(c.ipid):
+        if ipid == c.ipid:
             found_clients.add(c)
-            found_clients |= set(client.server.client_manager.get_multiclients(c.ipid, c.hdid))
+            found_clients |= set(
+                client.server.client_manager.get_multiclients(c.ipid, c.hdid)
+            )
 
-    info = f"Clients belonging to {arg}:"
+    info = f"Clients belonging to {ipid}:"
     for c in found_clients:
         info += f"\n[{c.id}] "
         if c.showname != c.char_name:

@@ -6,7 +6,7 @@ import shlex
 from server.client_manager import ClientManager
 from server.constants import derelative
 
-from . import mod_only
+from . import mod_only, command, Arg
 from .. import commands
 
 __all__ = [
@@ -102,6 +102,7 @@ def send_stats_fighter(client):
     client.send_ooc(msg)
 
 
+@command(Arg("arg", rest=True, default="", help="fighter name"))
 def ooc_cmd_choose_fighter(client, arg):
     """
     Allow you to choose a fighter from the list of the server.
@@ -119,7 +120,8 @@ def ooc_cmd_choose_fighter(client, arg):
         client.send_ooc("No fighter has this name!")
 
 
-def ooc_cmd_info_fighter(client, arg):
+@command()
+def ooc_cmd_info_fighter(client):
     """
     Send info about your fighter.
     Usage: /info_fighter
@@ -130,33 +132,29 @@ def ooc_cmd_info_fighter(client, arg):
         client.send_ooc("You have to choose a fighter first!")
 
 
-def ooc_cmd_create_fighter(client, arg):
+@command(
+    Arg("name", help="fighter name"),
+    Arg("hp", float),
+    Arg("mana", float),
+    Arg("atk", float),
+    Arg("def", float),
+    Arg("spa", float),
+    Arg("spd", float),
+    Arg("spe", float),
+)
+def ooc_cmd_create_fighter(client, name, hp, mana, atk, defe, spa, spd, spe):
     """
     Allow you to create a fighter and to customize its stats.
     Usage: /create_fighter FighterName HP MANA ATK DEF SPA SPD SPE
     """
-    args = shlex.split(arg)
-
-    if len(args) > 8:
-        client.send_ooc(
-            "Too many arguments...\nUsage: /create_fighter FighterName HP MANA ATK DEF SPA SPD SPE"
-        )
-        return
-
-    if len(args) < 8:
-        client.send_ooc(
-            "Not enough arguments...\nUsage: /create_fighter FighterName HP MANA ATK DEF SPA SPD SPE"
-        )
-        return
-
     if (
-        float(args[1]) <= 0
-        or float(args[2]) < 0
-        or float(args[3]) < 0
-        or float(args[4]) < 0
-        or float(args[5]) < 0
-        or float(args[6]) < 0
-        or float(args[7]) < 0
+        hp <= 0
+        or mana < 0
+        or atk < 0
+        or defe < 0
+        or spa < 0
+        or spd < 0
+        or spe < 0
     ):
         client.send_ooc(
             "mana, atk, def, spa, spd, spe have to be greater than or equal to zero\nhp has to be greater than zero\nUsage: /create_fighter FighterName HP MANA ATK DEF SPA SPD SPE"
@@ -165,19 +163,19 @@ def ooc_cmd_create_fighter(client, arg):
 
     fighter_list = os.listdir("storage/battlesystem")
 
-    path = derelative(args[0].lower())
+    path = derelative(name.lower())
     if f"{path}.yaml" in fighter_list:
         client.send_ooc("This fighter has already been created.")
         return
 
     fighter = {}
-    fighter["HP"] = float(args[1])
-    fighter["MANA"] = float(args[2])
-    fighter["ATK"] = float(args[3])
-    fighter["DEF"] = float(args[4])
-    fighter["SPA"] = float(args[5])
-    fighter["SPD"] = float(args[6])
-    fighter["SPE"] = float(args[7])
+    fighter["HP"] = hp
+    fighter["MANA"] = mana
+    fighter["ATK"] = atk
+    fighter["DEF"] = defe
+    fighter["SPA"] = spa
+    fighter["SPD"] = spd
+    fighter["SPE"] = spe
     fighter["Moves"] = []
 
     with open(
@@ -189,7 +187,15 @@ def ooc_cmd_create_fighter(client, arg):
         client.send_ooc(f"{path} has been created!")
 
 
-def ooc_cmd_create_move(client, arg):
+@command(
+    Arg("name", help="move name"),
+    Arg("cost", float),
+    Arg("type", choices=["atk", "spa"], help="atk or spa"),
+    Arg("power", float),
+    Arg("accuracy", float, help="1-100"),
+    Arg("effects", variadic=True, default=[], help="battle effects"),
+)
+def ooc_cmd_create_move(client, name, cost, type, power, accuracy, effects):
     """
     Allow you to create a move for a fighter.
     You have to choose a fighter first!
@@ -202,35 +208,21 @@ def ooc_cmd_create_move(client, arg):
         )
         return
 
-    args = shlex.split(arg)
-
-    if len(args) < 5:
-        client.send_ooc(
-            "Not enough arguments...\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
-        )
-        return
-
-    if float(args[1]) < 0:
+    if cost < 0:
         client.send_ooc(
             "ManaCost has to be greater than or equal to zero.\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
         )
         return
 
-    if float(args[3]) < 0:
+    if power < 0:
         client.send_ooc(
             "Power has to be greater than or equal to zero.\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
         )
         return
 
-    if float(args[4]) <= 0 or float(args[4]) > 100:
+    if accuracy <= 0 or accuracy > 100:
         client.send_ooc(
             "Accuracy should be a integer between 1 and 100\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
-        )
-        return
-
-    if args[2].lower() not in ["atk", "spa"]:
-        client.send_ooc(
-            "Move's Type should be atk or spa!\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
         )
         return
 
@@ -243,21 +235,21 @@ def ooc_cmd_create_move(client, arg):
         for i in range(0, len(char["Moves"])):
             move_list.append(char["Moves"][i]["Name"])
 
-        if args[0].lower() in move_list:
+        if name.lower() in move_list:
             client.send_ooc("This move has already been created.")
             return
 
         char["Moves"].append({})
         index = len(char["Moves"]) - 1
-        char["Moves"][index]["Name"] = args[0].lower()
-        char["Moves"][index]["ManaCost"] = float(args[1])
-        char["Moves"][index]["MovesType"] = args[2].lower()
-        char["Moves"][index]["Power"] = float(args[3])
-        char["Moves"][index]["Accuracy"] = float(args[4])
+        char["Moves"][index]["Name"] = name.lower()
+        char["Moves"][index]["ManaCost"] = cost
+        char["Moves"][index]["MovesType"] = type.lower()
+        char["Moves"][index]["Power"] = power
+        char["Moves"][index]["Accuracy"] = accuracy
         char["Moves"][index]["Effects"] = []
-        for i in range(5, len(args)):
-            if args[i].lower() in battle_effects:
-                char["Moves"][index]["Effects"].append(args[i].lower())
+        for effect in effects:
+            if effect.lower() in battle_effects:
+                char["Moves"][index]["Effects"].append(effect.lower())
         with open(
             f"storage/battlesystem/{client.battle.fighter}.yaml",
             "w",
@@ -265,7 +257,7 @@ def ooc_cmd_create_move(client, arg):
         ) as c_save:
             yaml.dump(char, c_save)
 
-        client.send_ooc(f"{args[0]} has been added!")
+        client.send_ooc(f"{name} has been added!")
         client.battle = ClientManager.BattleChar(client, client.battle.fighter, char)
         guild = None
         for g in client.area.battle_guilds:
@@ -276,26 +268,22 @@ def ooc_cmd_create_move(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_modify_stat(client, arg):
+@command(
+    Arg("name", help="fighter name"),
+    Arg("stat", choices=["hp", "mana", "atk", "def", "spa", "spd", "spe"]),
+    Arg("value", float),
+)
+def ooc_cmd_modify_stat(client, name, stat, value):
     """
     Allow you to modify fighter's stats.
     Usage: /modify_stat FighterName Stat Value
     """
-    args = shlex.split(arg)
-    
-    
-    path = derelative(args[0].lower())
+    path = derelative(name.lower())
     if f"{path}.yaml" not in os.listdir("storage/battlesystem"):
         client.send_ooc("No fighter has this name!")
         return
 
-    if args[1].lower() not in ["hp", "mana", "atk", "def", "spa", "spd", "spe"]:
-        client.send_ooc(
-            "You could just modify this stats:\nhp, mana, atk, def, spa, spd, spe"
-        )
-        return
-
-    if float(args[2]) < 0:
+    if value < 0:
         client.send_ooc("The value have to be a number greater than or equal to zero")
         return
 
@@ -303,17 +291,18 @@ def ooc_cmd_modify_stat(client, arg):
         f"storage/battlesystem/{path}.yaml", "r", encoding="utf-8"
     ) as c_load:
         char = yaml.safe_load(c_load)
-        char[args[1].upper()] = float(args[2])
+        char[stat.upper()] = value
         with open(
             f"storage/battlesystem/{path}.yaml", "w", encoding="utf-8"
         ) as c_save:
             yaml.dump(char, c_save)
     client.send_ooc(
-        f"{path}'s {args[1]} has been modified. To check the changes choose again this fighter"
+        f"{path}'s {stat} has been modified. To check the changes choose again this fighter"
     )
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="fighter name"))
 def ooc_cmd_delete_fighter(client, arg):
     """
     Allow you to delete a fighter.
@@ -327,6 +316,7 @@ def ooc_cmd_delete_fighter(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="move name"))
 def ooc_cmd_delete_move(client, arg):
     """
     Delete a move from a fighter.
@@ -370,50 +360,50 @@ def ooc_cmd_delete_move(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_battle_config(client, arg):
+@command(
+    Arg("parameter", default="", help="setting name (blank lists all)"),
+    Arg("value", default="", help="new value"),
+)
+def ooc_cmd_battle_config(client, parameter, value):
    """
    Allow you to customize some battle settings.
    Usage: /custom_battle <parameter> <value>
    """
-   if arg == "":
+   if parameter == "":
        client.send_ooc(
            "paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage, show_hp, min_multishot, max_multishot, burn_damage, freeze_damage, confusion_rate, enraged_bonus, stolen_stat"
        )
        return
-   args = arg.split(" ")
-   if args[0].lower() == "paralysis_rate":
-       client.area.battle_paralysis_rate = int(args[1])
-   elif args[0].lower() == "critical_rate":
-       client.area.battle_critical_rate = int(args[1])
-   elif args[0].lower() == "critical_bonus":
-       client.area.battle_critical_bonus = float(args[1])
-   elif args[0].lower() == "bonus_malus":
-       client.area.battle_bonus_malus = float(args[1])
-   elif args[0].lower() == "poison_damage":
-       client.area.battle_poison_damage = float(args[1])
-   elif args[0].lower() == "min_multishot":
-       client.area.battle_min_multishot = int(args[1])
-   elif args[0].lower() == "max_multishot":
-       client.area.battle_max_multishot = int(args[1])
-   elif args[0].lower() == "burn_damage":
-       client.area.battle_burn_damage = float(args[1])
-   elif args[0].lower() == "freeze_damage":
-       client.area.battle_freeze_damage = float(args[1])
-   elif args[0].lower() == "confusion_rate":
-       client.area.battle_confusion_rate = int(args[1])
-   elif args[0].lower() == "enraged_bonus":
-       client.area.battle_enraged_bonus = float(args[1])
-   elif args[0].lower() == "stolen_stat":
-       client.area.battle_stolen_stat = float(args[1])
-   elif args[1].lower() in ["true", "false"] and args[0].lower() == "show_hp":
-       if args[1].lower() == "true":
-           client.area.battle_show_hp = True
-       else:
-           client.area.battle_show_hp = False
+   if parameter.lower() == "paralysis_rate":
+       client.area.battle_paralysis_rate = int(value)
+   elif parameter.lower() == "critical_rate":
+       client.area.battle_critical_rate = int(value)
+   elif parameter.lower() == "critical_bonus":
+       client.area.battle_critical_bonus = float(value)
+   elif parameter.lower() == "bonus_malus":
+       client.area.battle_bonus_malus = float(value)
+   elif parameter.lower() == "poison_damage":
+       client.area.battle_poison_damage = float(value)
+   elif parameter.lower() == "min_multishot":
+       client.area.battle_min_multishot = int(value)
+   elif parameter.lower() == "max_multishot":
+       client.area.battle_max_multishot = int(value)
+   elif parameter.lower() == "burn_damage":
+       client.area.battle_burn_damage = float(value)
+   elif parameter.lower() == "freeze_damage":
+       client.area.battle_freeze_damage = float(value)
+   elif parameter.lower() == "confusion_rate":
+       client.area.battle_confusion_rate = int(value)
+   elif parameter.lower() == "enraged_bonus":
+       client.area.battle_enraged_bonus = float(value)
+   elif parameter.lower() == "stolen_stat":
+       client.area.battle_stolen_stat = float(value)
+   elif parameter.lower() == "show_hp" and value.lower() in ["true", "false"]:
+       client.area.battle_show_hp = value.lower() == "true"
    else:
        client.send_ooc("value is not valid")
        return
-   client.send_ooc(f"{args[0].lower()} has been changed to {args[1]}")
+   client.send_ooc(f"{parameter.lower()} has been changed to {value}")
 
 
 def send_battle_info(client):
@@ -456,7 +446,8 @@ def send_battle_info(client):
     return msg
 
 
-def ooc_cmd_battle_info(client, arg):
+@command()
+def ooc_cmd_battle_info(client):
     """
     Send you info about the battle.
     Usage: /battle_info
@@ -468,7 +459,8 @@ def ooc_cmd_battle_info(client, arg):
         client.send_ooc("You are not fighting!")
 
 
-def ooc_cmd_fight(client, arg):
+@command()
+def ooc_cmd_fight(client):
     """
     Allow you to join the battle or rejoin if you disconnected!
     Usage: /fight
@@ -529,7 +521,8 @@ def ooc_cmd_fight(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_refresh_battle(client, arg):
+@command()
+def ooc_cmd_refresh_battle(client):
     """
     Refresh the battle
     Usage: /refresh_battle
@@ -542,7 +535,8 @@ def ooc_cmd_refresh_battle(client, arg):
     client.send_ooc("The battle has been refreshed!")
 
 
-def ooc_cmd_surrender(client, arg):
+@command()
+def ooc_cmd_surrender(client):
     """
     A command to surrend from the current battle.
     Usage: /surrender
@@ -579,14 +573,15 @@ def ooc_cmd_surrender(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_remove_fighter(client, arg):
+@command(Arg("id", int, help="target client ID"))
+def ooc_cmd_remove_fighter(client, id):
     """
     Force a fighter to leave the battle.
     Usage: /remove_fighter Target_ID
     """
     fighter_ids = {c.id: c for c in client.area.fighters}
-    if int(arg) in fighter_ids:
-        target = fighter_ids[int(arg)]
+    if id in fighter_ids:
+        target = fighter_ids[id]
         if target.battle.selected_move == -1:
             client.area.fighters.remove(target)
         else:
@@ -620,18 +615,19 @@ def ooc_cmd_remove_fighter(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_force_skip_move(client, arg):
+@command(Arg("id", int, help="target client ID"))
+def ooc_cmd_force_skip_move(client, id):
     """
     Force a fighter to skip the turn
     Usage: /force_skip_move Target_ID
     """
 
     fighter_ids = {c.id: c for c in client.area.fighters}
-    if int(arg) not in fighter_ids:
+    if id not in fighter_ids:
         client.send_ooc("The target is not in the fighter list")
         return
 
-    target = fighter_ids[int(arg)]
+    target = fighter_ids[id]
 
     if target.battle.selected_move == -1:
         target.area.num_selected_move += 1
@@ -650,7 +646,8 @@ def ooc_cmd_force_skip_move(client, arg):
             client.area.battle_started = False
 
 
-def ooc_cmd_skip_move(client, arg):
+@command()
+def ooc_cmd_skip_move(client):
     """
     Allow you to skip the turn
     Usage: /skip_move
@@ -676,6 +673,8 @@ def ooc_cmd_skip_move(client, arg):
             client.area.battle_started = False
 
 
+@mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="guild name (blank closes all)"))
 def ooc_cmd_close_guild(client, arg):
     """
     Allow GM to close all guilds if arg is "", or to close a specific guild is arg is GuildName
@@ -695,7 +694,8 @@ def ooc_cmd_close_guild(client, arg):
         client.send_ooc("Guild not found!")
 
 
-def ooc_cmd_battle_effects(client, arg):
+@command()
+def ooc_cmd_battle_effects(client):
     """
     Show all available battle effects
     Usage: /battle_effects
@@ -706,12 +706,15 @@ def ooc_cmd_battle_effects(client, arg):
     client.send_ooc(msg)
 
 
-def ooc_cmd_leave_guild(client, arg):
+@command(
+    Arg("id", int, default=None, help="target client ID (blank leaves yourself)"),
+)
+def ooc_cmd_leave_guild(client, id):
     """
     Allow you to leave your current guid
     Usage: /leave_guild <Target_ID>
     """
-    if arg == "":
+    if id is None:
         if client.battle.guild is None:
             client.send_ooc("You are not in any guilds!")
             return
@@ -725,8 +728,8 @@ def ooc_cmd_leave_guild(client, arg):
     else:
         if client in client.area.area_manager.owners:
             area_ids = {c.id: c for c in client.area.clients}
-            if int(arg) in area_ids:
-                target = area_ids[int(arg)]
+            if id in area_ids:
+                target = area_ids[id]
                 if target.battle is None or target.battle.guild is None:
                     client.send_ooc("Target has not a fighter or is not in a guild!")
                     return
@@ -743,8 +746,8 @@ def ooc_cmd_leave_guild(client, arg):
             guild_ids = {
                 c.id: c for c in client.area.battle_guilds[client.battle.guild]
             }
-            if int(arg) in guild_ids:
-                target = guild_ids[int(arg)]
+            if id in guild_ids:
+                target = guild_ids[id]
                 guild = target.battle.guild
                 client.area.battle_guilds[guild].remove(target)
                 if len(client.area.battle_guilds[guild]) == 0:
@@ -758,7 +761,8 @@ def ooc_cmd_leave_guild(client, arg):
             client.send_ooc("You are not a GM or a Guild Leader")
 
 
-def ooc_cmd_join_guild(client, arg):
+@command(Arg("id", int, help="target client ID"))
+def ooc_cmd_join_guild(client, id):
     """
     Allow the guild leader to let a fighter to join the guild
     Usage: /join_guild <Target_ID>
@@ -781,11 +785,11 @@ def ooc_cmd_join_guild(client, arg):
 
     area_ids = {c.id: c for c in client.area.clients}
 
-    if int(arg) not in area_ids:
+    if id not in area_ids:
         client.send_ooc("Target not found!")
         return
 
-    target = area_ids[int(arg)]
+    target = area_ids[id]
 
     if target.battle is None:
         client.send_ooc(f"{client.showname} has to choose a fighter first!")
@@ -807,6 +811,7 @@ def ooc_cmd_join_guild(client, arg):
         send_info_guild(client)
 
 
+@command(Arg("arg", rest=True, default="", help="guild name"))
 def ooc_cmd_create_guild(client, arg):
     """
     Allow you to create a guild
@@ -827,7 +832,8 @@ def ooc_cmd_create_guild(client, arg):
     send_info_guild(client)
 
 
-def ooc_cmd_info_guild(client, arg):
+@command()
+def ooc_cmd_info_guild(client):
     """
     Send info about your guild
     Usage: /info_guild
@@ -861,7 +867,11 @@ def send_info_guild(client):
     client.send_ooc(msg)
 
 
-def ooc_cmd_use_move(client, arg):
+@command(
+    Arg("move", help="move name or ID"),
+    Arg("target", int, default=None, help="target client ID"),
+)
+def ooc_cmd_use_move(client, move, target):
     """
     This command will let you use a move during a battle!
     AttAll moves don't need a target!
@@ -879,35 +889,34 @@ def ooc_cmd_use_move(client, arg):
     if client.battle.current_client is None:
         client.battle.current_client = client
 
-    args = shlex.split(arg)
-    if args[0].isnumeric():
-        if int(args[0]) > len(client.battle.moves):
+    if move.isnumeric():
+        if int(move) > len(client.battle.moves):
             client.send_ooc("There is no move with that ID!")
             return
 
-        move_id = int(args[0])
-        args[0] = client.battle.moves[move_id].name
+        move_id = int(move)
+        move = client.battle.moves[move_id].name
     else:
         moves_list = [move.name for move in client.battle.moves]
 
-        if args[0].lower() not in moves_list:
+        if move.lower() not in moves_list:
             client.send_ooc("There is no move with this name!")
             return
 
-        move_id = moves_list.index(args[0].lower())
+        move_id = moves_list.index(move.lower())
 
     if client.battle.moves[move_id].cost > client.battle.mana:
         client.send_ooc("You don't have enough mana to use this move!")
         return
 
-    if len(args) == 2:
+    if target is not None:
         fighter_id_list = {c.id: c for c in client.area.fighters}
-        if int(args[1]) in fighter_id_list:
-            client.battle.target = fighter_id_list[int(args[1])]
+        if target in fighter_id_list:
+            client.battle.target = fighter_id_list[target]
             client.battle.selected_move = move_id
             client.area.num_selected_move += 1
             client.battle.mana += -client.battle.moves[move_id].cost
-            client.send_ooc(f"You have choosen {args[0].lower()}")
+            client.send_ooc(f"You have choosen {move.lower()}")
             client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
         else:
             client.send_ooc("Your target is not in the fighter list")
@@ -916,7 +925,7 @@ def ooc_cmd_use_move(client, arg):
         client.battle.selected_move = move_id
         client.area.num_selected_move += 1
         client.battle.mana += -client.battle.moves[move_id].cost
-        client.send_ooc(f"You have choosen {args[0].lower()}")
+        client.send_ooc(f"You have choosen {move.lower()}")
         client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
     else:
         client.send_ooc("Not enough argument to attack")

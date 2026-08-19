@@ -12,7 +12,7 @@ from server.exceptions import ClientError, ServerError, ArgumentError
 from server.remote_client import RemoteClient
 from server.scripting import evaluate_expression, ScriptingError, DivisionByZeroError
 
-from . import mod_only
+from . import mod_only, command, Arg
 
 __all__ = [
     "ooc_cmd_roll",
@@ -143,6 +143,7 @@ def rtd(arg):
     return roll, num_dice, chosen_max, modifiers, Sum
 
 
+@command(Arg("arg", rest=True, default="", help="[value/XdY] [modifier]"))
 def ooc_cmd_roll(client, arg):
     """
     Roll a die. The result is shown publicly.
@@ -160,6 +161,7 @@ def ooc_cmd_roll(client, arg):
     database.log_area("roll", client, client.area, message=f"{roll} out of {chosen_max}")
 
 
+@command(Arg("arg", rest=True, default="", help="[value/XdY] [modifier]"))
 def ooc_cmd_rollp(client, arg):
     """
     Roll a die privately. Same as /roll but the result is only shown to you and the CMs.
@@ -182,6 +184,7 @@ def ooc_cmd_rollp(client, arg):
     database.log_area("rollp", client, client.area, message=f"{roll} out of {chosen_max}")
 
 
+@command(Arg("arg", rest=True, default="", help="message (blank shows yours)"))
 def ooc_cmd_notecard(client, arg):
     """
     Write a notecard that can only be revealed by a CM.
@@ -201,7 +204,8 @@ def ooc_cmd_notecard(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_notecard_clear(client, arg):
+@command()
+def ooc_cmd_notecard_clear(client):
     """
     Clear all notecards as a CM.
     Usage: /notecard_clear
@@ -212,7 +216,8 @@ def ooc_cmd_notecard_clear(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_notecard_reveal(client, arg):
+@command(Arg("autoclear", bool, default=True, help="off/0/false keeps the cards"))
+def ooc_cmd_notecard_reveal(client, autoclear):
     """
     Reveal all notecards and their owners.
     Set [clear] to 0 if you don't want the notecards to automatically clear after revealing.
@@ -235,17 +240,18 @@ def ooc_cmd_notecard_reveal(client, arg):
     client.area.broadcast_ooc(msg)
 
     # Check if notecards auto-clear or not
-    if arg.strip().lower() in ("0", "off", "false"):
-        client.send_ooc("Use /notecard_clear for clearing.")
-    else:
+    if autoclear:
         client.area.cards.clear()
         client.area.broadcast_ooc(f"Notecards have been cleared.")
+    else:
+        client.send_ooc("Use /notecard_clear for clearing.")
 
     database.log_area("notecard_reveal", client, client.area)
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_notecard_check(client, arg):
+@command()
+def ooc_cmd_notecard_check(client):
     """
     Check all notecards and their owners privately with a message telling others you've done so.
     Usage: /notecard_check
@@ -269,23 +275,25 @@ def ooc_cmd_notecard_check(client, arg):
     database.log_area("notecard_check", client, client.area)
 
 
-def ooc_cmd_vote(client, arg):
+@command(Arg("id", int, help="target client ID"))
+def ooc_cmd_vote(client, id):
     """
     Cast a vote for a particular user that can only be revealed by a CM.
     Usage: /vote <id>
     """
-    args = arg.split()
-    if len(args) == 0:
-        raise ArgumentError("Please provide a client ID. Usage: /vote <id>.")
     if client.char_name in [y for x in client.area.votes.values() for y in x]:
         raise ArgumentError("You already cast your vote! Wait on the CM to /vote_clear.")
-    target = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)[0]
+    targets = client.server.client_manager.get_targets(client, TargetType.ID, id, False)
+    if not targets:
+        raise ArgumentError("Target not found.")
+    target = targets[0]
     client.area.votes.setdefault(target.char_name, []).append(client.char_name)
     client.area.broadcast_ooc(f"[{client.id}] {client.showname} cast a vote.")
     database.log_area("vote", client, client.area)
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="voter char folder (blank clears all)"))
 def ooc_cmd_vote_clear(client, arg):
     """
     Clear all votes as a CM.
@@ -351,7 +359,8 @@ def get_vote_results(client, votes):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_vote_reveal(client, arg):
+@command(Arg("autoclear", bool, default=True, help="off/0/false keeps the votes"))
+def ooc_cmd_vote_reveal(client, autoclear):
     """
     Reveal the number of votes, the voters and those with the highest amount of votes.
     Usage: /vote_reveal
@@ -363,17 +372,18 @@ def ooc_cmd_vote_reveal(client, arg):
     client.area.broadcast_ooc(msg)
 
     # Check if votes auto-clear or not
-    if arg.strip().lower() in ("0", "off", "false"):
-        client.send_ooc("Use /vote_clear for clearing.")
-    else:
+    if autoclear:
         client.area.votes.clear()
         client.area.broadcast_ooc(f"Votes have been cleared.")
+    else:
+        client.send_ooc("Use /vote_clear for clearing.")
 
     database.log_area("vote_reveal", client, client.area)
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_vote_check(client, arg):
+@command()
+def ooc_cmd_vote_check(client):
     """
     Check the number of votes, the voters and those with the highest amount of votes privately with a message telling others you've done so.
     Usage: /vote_check
@@ -389,7 +399,8 @@ def ooc_cmd_vote_check(client, arg):
 
 
 @mod_only()
-def ooc_cmd_rolla_reload(client, arg):
+@command()
+def ooc_cmd_rolla_reload(client):
     """
     Reload ability dice sets from a configuration file.
     Usage: /rolla_reload
@@ -409,6 +420,7 @@ def rolla_reload(area):
         raise ServerError("There was an error parsing the ability dice configuration. Check your syntax.")
 
 
+@command(Arg("arg", rest=True, default="", help="ability set name"))
 def ooc_cmd_rolla_set(client, arg):
     """
     Choose the set of ability dice to roll.
@@ -432,7 +444,8 @@ def rolla(ability_dice):
     return (roll, max_roll, ability)
 
 
-def ooc_cmd_rolla(client, arg):
+@command()
+def ooc_cmd_rolla(client):
     """
     Roll a specially labeled set of dice (ability dice).
     Usage: /rolla
@@ -447,26 +460,25 @@ def ooc_cmd_rolla(client, arg):
     database.log_area("rolla", client, client.area, message=f"{roll} out of {max_roll}: {ability}")
 
 
-def ooc_cmd_coinflip(client, arg):
+@command()
+def ooc_cmd_coinflip(client):
     """
     Flip a coin. The result is shown publicly.
     Usage: /coinflip
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
     coin = ["heads", "tails"]
     flip = random.choice(coin)
     client.area.broadcast_ooc(f"[{client.id}] {client.showname} flipped a coin and got {flip}.")
     database.log_area("coinflip", client, client.area, message=flip)
 
 
+@command(Arg("arg", rest=True, help="your question"))
 def ooc_cmd_8ball(client, arg):
     """
     Answers a question. The result is shown publicly.
     Usage: /8ball <question>
     """
 
-    arg = arg.strip()
     if len(arg) == 0:
         raise ArgumentError("You need to ask a question")
     if len(arg) > 128:
@@ -478,6 +490,7 @@ def ooc_cmd_8ball(client, arg):
     )
 
 
+@command(Arg("arg", rest=True, default="", help="your choice (blank shows rules)"))
 def ooc_cmd_rps(client, arg):
     """
     Starts a match of Rock Paper Scissors.
@@ -599,6 +612,7 @@ def ooc_cmd_rps(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="action + rule, e.g. add rock beats scissors"))
 def ooc_cmd_rps_rules(client, arg):
     """
     Review or change rps rules
@@ -646,6 +660,7 @@ def ooc_cmd_rps_rules(client, arg):
         raise ArgumentError("Invalid parameter!")
 
 
+@command(Arg("arg", rest=True, default="", help="<id> [time/start/pause/unset/cmd]"))
 def ooc_cmd_timer(client, arg):
     """
     Manage a countdown timer in the current area. Note that timer of ID `0` is hub-wide. All other timer ID's are local to area.
@@ -804,6 +819,7 @@ def ooc_cmd_timer(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="evidence name/id (blank stops)"))
 def ooc_cmd_demo(client, arg):
     """
     Usage:
@@ -837,6 +853,7 @@ def ooc_cmd_demo(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="all (or blank for this area)"))
 def ooc_cmd_stop_demo(client, arg):
     """
     Stop demo playback. Stops the demo in the current area, or all demos in
@@ -863,6 +880,7 @@ def ooc_cmd_stop_demo(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="trig cmd arg(s)"))
 def ooc_cmd_trigger(client, arg):
     """
     Set up a trigger for this area which, when fulfilled, will call the command.
@@ -919,6 +937,7 @@ def ooc_cmd_trigger(client, arg):
         client.send_ooc(f'Changed to Call "{val}" on trigger "{trig}"')
 
 
+@command(Arg("arg", rest=True, default="", help="<Timer_ID> <Format>"))
 def ooc_cmd_format_timer(client, arg):
     """
     - Format the timer in the current area or hub.
@@ -960,6 +979,7 @@ def ooc_cmd_format_timer(client, arg):
     client.send_ooc(f"Timer {args[0]} format: '{timer.format}'")
 
 
+@command(Arg("arg", rest=True, default="", help="<Timer_ID> <Interval>"))
 def ooc_cmd_timer_interval(client, arg):
     """
     Set timer interval
@@ -996,29 +1016,21 @@ def ooc_cmd_timer_interval(client, arg):
     client.send_ooc(f"Timer {args[0]} interval is set to '{args[1]}'")
 
 
-def ooc_cmd_ooc_actions(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_ooc_actions(client, tog):
     """
     Enable or disable IC actions being broadcast to OOC as well.
     tog can be `on`, `off` or empty.
     Usage: /ooc_actions [tog]
     """
-    if len(arg.split()) > 1:
-        raise ArgumentError("This command can only take one argument ('on' or 'off') or no arguments at all!")
-    if arg:
-        if arg == "on":
-            client.ooc_actions = True
-        elif arg == "off":
-            client.ooc_actions = False
-        else:
-            raise ArgumentError("Invalid argument: {}".format(arg))
-    else:
-        client.ooc_actions = not client.ooc_actions
+    client.ooc_actions = not client.ooc_actions if tog is None else tog
     stat = "no longer see"
     if client.ooc_actions:
         stat = "now see"
     client.send_ooc(f"You will {stat} actions in OOC.")
 
 
+@command(Arg("arg", rest=True, default="", help="sound path (e.g. sfx-name.ogg)"))
 def ooc_cmd_sfx(client, arg):
     """
     Play a sound effect directly without associating it with an IC message.

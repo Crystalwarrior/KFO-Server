@@ -9,7 +9,7 @@ from server.exceptions import ClientError, ArgumentError, AreaError
 from server.constants import dezalgo
 from server.schema.area_fields import AREA_PREF_CM_ALLOWED
 
-from . import mod_only
+from . import mod_only, command, Arg
 
 __all__ = [
     # Navigation
@@ -54,6 +54,7 @@ __all__ = [
 ]
 
 
+@command(Arg("arg", rest=True, default="", help="hub id/name (blank lists)"))
 def ooc_cmd_hub(client, arg):
     """
     List hubs, or go to another hub.
@@ -100,6 +101,7 @@ def ooc_cmd_hub(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="<name> <read_only>"))
 def ooc_cmd_save_hub(client, arg):
     """
     Save the current Hub in the server's storage/hubs/<name>.yaml file.
@@ -166,6 +168,7 @@ def ooc_cmd_save_hub(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="hub file name"))
 def ooc_cmd_load_hub(client, arg):
     """
     Load Hub data from the server's storage/hubs/<name>.yaml file.
@@ -208,6 +211,7 @@ def ooc_cmd_load_hub(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="hub file name"))
 def ooc_cmd_overlay_hub(client, arg):
     """
     Overlay Hub data from the server's `storage/hubs/<name>.yaml` file on top of the current hub, only applying properties defined in that yaml.
@@ -244,7 +248,8 @@ def ooc_cmd_overlay_hub(client, arg):
         client.send_ooc("Success, sending ARUP and refreshing music...")
 
 
-def ooc_cmd_list_hubs(client, arg):
+@command()
+def ooc_cmd_list_hubs(client):
     """
     Show all the available hubs for loading in the storage/hubs/ folder.
     Usage: /list_hubs
@@ -280,13 +285,12 @@ def ooc_cmd_list_hubs(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_clear_hub(client, arg):
+@command()
+def ooc_cmd_clear_hub(client):
     """
     Clear the current hub and reset it to its default state.
     Usage: /clear_hub
     """
-    if arg != "":
-        raise ArgumentError("This command takes no arguments!")
     try:
         client.server.hub_manager.load(hub_id=client.area.area_manager.id)
         client.area.area_manager.broadcast_ooc("Hub clearing initiated...")
@@ -298,6 +302,7 @@ def ooc_cmd_clear_hub(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="new hub name"))
 def ooc_cmd_rename_hub(client, arg):
     """
     Rename the hub you are currently in to <name>.
@@ -314,6 +319,7 @@ def ooc_cmd_rename_hub(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="area name (optional)"))
 def ooc_cmd_area_create(client, arg):
     """
     Create a new area.
@@ -337,56 +343,47 @@ def ooc_cmd_area_create(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_area_remove(client, arg):
+@command(Arg("id", int, help="area ID"))
+def ooc_cmd_area_remove(client, id):
     """
     Remove specified area by Area ID.
     Usage: /area_remove <id>
     """
-    args = arg.split()
-
-    if len(args) == 1:
-        try:
-            area = client.area.area_manager.get_area_by_id(int(args[0]))
-            name = area.name
-            client.area.area_manager.remove_area(area)
-            client.area.area_manager.broadcast_area_list()
-            client.send_ooc(f"Area {name} removed!")
-        except ValueError:
-            raise ArgumentError("Area ID must be a number.")
-        except (AreaError, ClientError):
-            raise
-    else:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /area_remove <aid>.")
+    try:
+        area = client.area.area_manager.get_area_by_id(id)
+        name = area.name
+        client.area.area_manager.remove_area(area)
+        client.area.area_manager.broadcast_area_list()
+        client.send_ooc(f"Area {name} removed!")
+    except ValueError:
+        raise ArgumentError("Area ID must be a number.")
+    except (AreaError, ClientError):
+        raise
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_area_duplicate(client, arg):
+@command(Arg("id", int, help="area ID"))
+def ooc_cmd_area_duplicate(client, id):
     """
     Duplicate an area, copying all of its properties and evidence.
     Usage: /area_duplicate <aid>
     """
-    args = arg.split()
-
-    if len(args) == 1:
-        try:
-            area = client.area.area_manager.get_area_by_id(int(args[0]))
-            name = area.name
-            data = area.save()
-            new_area = client.area.area_manager.create_area()
-            new_area.load(data)
-            client.area.area_manager.broadcast_area_list()
-            client.send_ooc(f"Area {name} duplicated!")
-        except ValueError:
-            raise ArgumentError("Area ID must be a number.")
-        except (AreaError, ClientError):
-            raise
-    else:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /area_duplicate <aid>.")
+    try:
+        area = client.area.area_manager.get_area_by_id(id)
+        name = area.name
+        data = area.save()
+        new_area = client.area.area_manager.create_area()
+        new_area.load(data)
+        client.area.area_manager.broadcast_area_list()
+        client.send_ooc(f"Area {name} duplicated!")
+    except ValueError:
+        raise ArgumentError("Area ID must be a number.")
+    except (AreaError, ClientError):
+        raise
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="[aid] <name>"))
 def ooc_cmd_area_rename(client, arg):
     """
     Rename the area to <name>. The area is the one you're currently in
@@ -428,43 +425,46 @@ def ooc_cmd_area_rename(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_area_swap(client, arg):
+@command(
+    Arg("id1", int, help="area ID"),
+    Arg("id2", int, help="area ID"),
+)
+def ooc_cmd_area_swap(client, id1, id2):
     """
     Swap areas by Area IDs while correcting links to reference the right areas.
     Usage: /area_swap <id> <id>
     """
-    args = arg.split()
-    if len(args) != 2:
-        raise ClientError("You must specify 2 numbers.")
     try:
-        area1 = client.area.area_manager.get_area_by_id(int(args[0]))
-        area2 = client.area.area_manager.get_area_by_id(int(args[1]))
+        area1 = client.area.area_manager.get_area_by_id(id1)
+        area2 = client.area.area_manager.get_area_by_id(id2)
         client.area.area_manager.swap_area(area1, area2, True)
         client.area.area_manager.broadcast_area_list()
         client.send_ooc(
-            f"Area {area1.name} has been swapped with Area {area2.name}!")
+            f"Area {area1.name} has been swapped with Area {area2.name}!"
+        )
     except ValueError:
         raise ArgumentError("Area IDs must be a number.")
     except (AreaError, ClientError):
         raise
 
-
 @mod_only(hub_owners=True)
-def ooc_cmd_area_switch(client, arg):
+@command(
+    Arg("id1", int, help="area ID"),
+    Arg("id2", int, help="area ID"),
+)
+def ooc_cmd_area_switch(client, id1, id2):
     """
     Switch areas by Area IDs without correcting links.
     Usage: /area_switch <id> <id>
     """
-    args = arg.split()
-    if len(args) != 2:
-        raise ClientError("You must specify 2 numbers.")
     try:
-        area1 = client.area.area_manager.get_area_by_id(int(args[0]))
-        area2 = client.area.area_manager.get_area_by_id(int(args[1]))
+        area1 = client.area.area_manager.get_area_by_id(id1)
+        area2 = client.area.area_manager.get_area_by_id(id2)
         client.area.area_manager.swap_area(area1, area2, False)
         client.area.area_manager.broadcast_area_list()
         client.send_ooc(
-            f"Area {area1.name} has been switched with Area {area2.name}!")
+            f"Area {area1.name} has been switched with Area {area2.name}!"
+        )
     except ValueError:
         raise ArgumentError("Area IDs must be a number.")
     except (AreaError, ClientError):
@@ -472,6 +472,7 @@ def ooc_cmd_area_switch(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="[pref] [on/true/off/false]"))
 def ooc_cmd_area_pref(client, arg):
     """
     Toggle a preference on/off for an area.
@@ -535,17 +536,17 @@ def ooc_cmd_area_pref(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_area_move_delay(client, arg):
+@command(Arg("delay", int, default=None, help="delay in seconds (blank shows current)"))
+def ooc_cmd_area_move_delay(client, delay):
     """
     Set the area's move delay to a value in seconds. Can be negative.
     Delay must be from -1800 to 1800 in seconds or empty to check.
     Usage: /area_move_delay [delay]
     """
-    args = arg.split()
     try:
-        if len(args) > 0:
+        if delay is not None:
             move_delay = min(
-                1800, max(-1800, int(args[0]))
+                1800, max(-1800, delay)
             )  # Move delay is limited between -1800 and 1800
             client.area.move_delay = move_delay
             client.send_ooc(
@@ -554,24 +555,22 @@ def ooc_cmd_area_move_delay(client, arg):
             client.send_ooc(
                 f"Current move delay for {client.area.name} is {client.area.move_delay}."
             )
-    except ValueError:
-        raise ArgumentError("Delay must be an integer between -1800 and 1800.")
     except (AreaError, ClientError):
         raise
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_hub_move_delay(client, arg):
+@command(Arg("delay", int, default=None, help="delay in seconds (blank shows current)"))
+def ooc_cmd_hub_move_delay(client, delay):
     """
     Set the hub's move delay to a value in seconds. Can be negative.
     Delay must be from -1800 to 1800 in seconds or empty to check.
     Usage: /hub_move_delay [delay]
     """
-    args = arg.split()
     try:
-        if len(args) > 0:
+        if delay is not None:
             move_delay = min(
-                1800, max(-1800, int(args[0]))
+                1800, max(-1800, delay)
             )  # Move delay is limited between -1800 and 1800
             client.area.area_manager.move_delay = move_delay
             client.send_ooc(
@@ -581,22 +580,20 @@ def ooc_cmd_hub_move_delay(client, arg):
             client.send_ooc(
                 f"Current move delay for {client.area.area_manager.name} is {client.area.area_manager.move_delay}."
             )
-    except ValueError:
-        raise ArgumentError("Delay must be an integer between -1800 and 1800.")
     except (AreaError, ClientError):
         raise
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_toggle_replace_music(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_toggle_replace_music(client, tog):
     """
     Toggle the hub music list to replace the server's music list.
     Usage: /toggle_replace_music [true/false]
     """
-    boolean = not client.area.area_manager.replace_music
-    if len(arg) > 0:
-        boolean = arg in ["true", "on", "1"]
-    client.area.area_manager.replace_music = boolean
+    client.area.area_manager.replace_music = (
+        not client.area.area_manager.replace_music if tog is None else tog
+    )
     toggle = "now" if client.area.area_manager.replace_music else "no longer"
     client.server.client_manager.refresh_music(
         client.area.area_manager.clients)
@@ -606,15 +603,15 @@ def ooc_cmd_toggle_replace_music(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_toggle_passing_ic(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_toggle_passing_ic(client, tog):
     """
     Toggle an IC message when changing areas for this hub.
     Usage: /toggle_passing_ic
     """
-    boolean = not client.area.area_manager.passing_msg
-    if len(arg) > 0:
-        boolean = arg in ["true", "on", "1"]
-    client.area.area_manager.passing_msg = boolean
+    client.area.area_manager.passing_msg = (
+        not client.area.area_manager.passing_msg if tog is None else tog
+    )
     toggle = "enabled" if client.area.area_manager.passing_msg else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"IC area passing messages are now {toggle} for this hub."
@@ -622,7 +619,8 @@ def ooc_cmd_toggle_passing_ic(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_arup_enable(client, arg):
+@command()
+def ooc_cmd_arup_enable(client):
     """
     Enable the ARea UPdate system for this hub.
     ARUP system is the extra information displayed in the A/M area list, as well as being able to set /status.
@@ -641,7 +639,8 @@ def ooc_cmd_arup_enable(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_arup_disable(client, arg):
+@command()
+def ooc_cmd_arup_disable(client):
     """
     Disable the ARea UPdate system for this hub.
     Usage: /arup_disable
@@ -661,15 +660,15 @@ def ooc_cmd_arup_disable(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_toggle_getareas(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_toggle_getareas(client, tog):
     """
     Toggle the permissions of /getareas for normal players in this hub.
     Usage: /toggle_getareas
     """
-    boolean = not client.area.area_manager.can_getareas
-    if len(arg) > 0:
-        boolean = arg in ["true", "on", "1"]
-    client.area.area_manager.can_getareas = boolean
+    client.area.area_manager.can_getareas = (
+        not client.area.area_manager.can_getareas if tog is None else tog
+    )
     toggle = "enabled" if client.area.area_manager.can_getareas else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"Use of /getareas has been {toggle} for this hub."
@@ -677,15 +676,15 @@ def ooc_cmd_toggle_getareas(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_toggle_spectate(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_toggle_spectate(client, tog):
     """
     Disable the ability to use a spectator character for non-GMs for this hub.
     Usage: /toggle_spectate
     """
-    boolean = not client.area.area_manager.can_spectate
-    if len(arg) > 0:
-        boolean = arg in ["true", "on", "1"]
-    client.area.area_manager.can_spectate = boolean
+    client.area.area_manager.can_spectate = (
+        not client.area.area_manager.can_spectate if tog is None else tog
+    )
     toggle = "enabled" if client.area.area_manager.can_spectate else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"Spectating has been {toggle} for this hub."
@@ -693,7 +692,8 @@ def ooc_cmd_toggle_spectate(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_hide_clients(client, arg):
+@command()
+def ooc_cmd_hide_clients(client):
     """
     Hide the playercounts for this Hub's areas.
     Usage: /hide_clients
@@ -710,7 +710,8 @@ def ooc_cmd_hide_clients(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_unhide_clients(client, arg):
+@command()
+def ooc_cmd_unhide_clients(client):
     """
     Unhide the playercounts for this Hub's areas.
     Usage: /unhide_clients
@@ -727,27 +728,24 @@ def ooc_cmd_unhide_clients(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_force_follow(client, arg):
+@command(
+    Arg("victim", int, help="victim client ID"),
+    Arg("target", int, default=None, help="target client ID (blank = you)"),
+)
+def ooc_cmd_force_follow(client, victim, target):
     """
     Force someone to follow you, or someone else. Follow me!
     Usage: /force_follow <victim_id> [target_id]
     """
-    arg = arg.split()
-    if len(arg) == 0:
-        raise ArgumentError(
-            "You must specify a victim. Usage: /force_follow <victim_id> [target_id]")
-    try:
-        victims = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg[0]), False
-        )
-    except Exception:
-        raise ArgumentError(
-            "You must specify a victim. Usage: /force_follow <victim_id> [target_id]")
-    target = client
-    if len(arg) >= 2:
+    victims = client.server.client_manager.get_targets(
+        client, TargetType.ID, victim, False
+    )
+    if target is None:
+        target = client
+    else:
         try:
             target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(arg[1]), False
+                client, TargetType.ID, target, False
             )
         except Exception:
             raise ArgumentError(
@@ -769,6 +767,7 @@ def ooc_cmd_force_follow(client, arg):
         client.send_ooc("No targets found.")
 
 
+@command(Arg("arg", rest=True, default="", help="client ID (blank checks)"))
 def ooc_cmd_follow(client, arg):
     """
     Follow targeted character ID.
@@ -822,6 +821,7 @@ def ooc_cmd_follow(client, arg):
         client.send_ooc("No targets found.")
 
 
+@command(Arg("arg", rest=True, default="", help="client ID (blank = unfollow yourself)"))
 def ooc_cmd_unfollow(client, arg):
     """
     Stop following whoever you are following, or free someone from being forced to follow.
@@ -892,6 +892,7 @@ def ooc_cmd_unfollow(client, arg):
         ooc_cmd_unfollow(client, "")
 
 
+@command(Arg("arg", rest=True, default="", help="info text (blank shows)"))
 def ooc_cmd_info(client, arg):
     """
     Check the information for the current Hub, or set it.
@@ -910,6 +911,7 @@ def ooc_cmd_info(client, arg):
         database.log_area("info.change", client, client.area, message=arg)
 
 
+@command(Arg("arg", rest=True, default="", help="client ID(s) or * (blank = self)"))
 def ooc_cmd_gm(client, arg):
     """
     Add a game master for the current Hub.
@@ -971,7 +973,8 @@ def ooc_cmd_gm(client, arg):
         raise ClientError("You must be authorized to do that.")
 
 
-def ooc_cmd_gmpanel(client, arg):
+@command()
+def ooc_cmd_gmpanel(client):
     """
     Generate a one-time link to open the web GM Control Panel bound to you.
     Usage: /gmpanel
@@ -989,6 +992,7 @@ def ooc_cmd_gmpanel(client, arg):
 
 
 @mod_only(hub_owners=True)
+@command(Arg("arg", rest=True, default="", help="client ID(s) (blank = self)"))
 def ooc_cmd_ungm(client, arg):
     """
     Remove a game master from the current Hub.
@@ -1019,20 +1023,20 @@ def ooc_cmd_ungm(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_broadcast(client, arg):
+@command(Arg("areas", variadic=True, default=None, help="area IDs (blank shows current)"))
+def ooc_cmd_broadcast(client, areas):
     """
     Start broadcasting your IC, Music and Judge buttons to specified area ID's.
     To include all areas, use /broadcast all.
     /clear_broadcast to stop broadcasting.
     Usage: /broadcast <id(s)>
     """
-    args = shlex.split(arg)
-    if len(args) <= 0:
+    if not areas:
         a_list = ", ".join([str(a.id) for a in client.broadcast_list])
         client.send_ooc(f"Your broadcast list is {a_list}")
         return
     try:
-        broadcast_list = client.area.area_manager.get_areas_by_args(args)
+        broadcast_list = client.area.area_manager.get_areas_by_args(areas)
         # We don't modify the client.broadcast_list directly until now just in case there's an exception.
         client.broadcast_list = broadcast_list
         a_list = ", ".join([str(a.id) for a in client.broadcast_list])
@@ -1043,7 +1047,8 @@ def ooc_cmd_broadcast(client, arg):
         raise
 
 
-def ooc_cmd_clear_broadcast(client, arg):
+@command()
+def ooc_cmd_clear_broadcast(client):
     """
     Stop broadcasting your IC, Music and Judge buttons.
     Usage: /clear_broadcast
@@ -1056,45 +1061,36 @@ def ooc_cmd_clear_broadcast(client, arg):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_hpset(client, arg):
+@command(
+    Arg("pos", choices=["pro", "def"], help="pro or def"),
+    Arg("amount", int, help="HP amount"),
+    Arg("areas", variadic=True, default=None, help="area IDs (blank = current)"),
+)
+def ooc_cmd_hpset(client, pos, amount, areas):
     """
     Set hp in area or multiple areas.
     To include all areas, use set [area] to all.
     Usage: /hpset <pos> <amount> [area]
     """
-    args = shlex.split(arg)
-    if len(args) == 0:
-        raise ArgumentError(
-            "You must specify a position and HP. Use /hpset <pos> <amount> [area]")
-    elif len(args) == 1:
-        raise ArgumentError(
-            "You must specify HP. Use /hpset <pos> <amount> [area]")
-
-    if args[0] == "def":
-        side = 1
-    elif args[0] == "pro":
-        side = 2
-    else:
-        raise ArgumentError(
-            "Invalid position. Use \"pro\" or \"def\"")
+    side = 1 if pos == "def" else 2
 
     area_list = [client.area]
-    if len(args) > 2:
-        area_list = client.area.area_manager.get_areas_by_args(args[1:])
+    if areas:
+        area_list = client.area.area_manager.get_areas_by_args(areas)
     for area in area_list:
-        area.change_hp(side, int(args[1]))
+        area.change_hp(side, amount)
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_toggle_autokick(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_toggle_autokick(client, tog):
     """
     when True, swapping to a character will instantly kick you to that character's latest area.
     Usage: /toggle_autokick
     """
-    boolean = not client.area.area_manager.autokick_to_latest_area
-    if len(arg) > 0:
-        boolean = arg in ["true", "on", "1"]
-    client.area.area_manager.autokick_to_latest_area = boolean
+    client.area.area_manager.autokick_to_latest_area = (
+        not client.area.area_manager.autokick_to_latest_area if tog is None else tog
+    )
     toggle = "enabled" if client.area.area_manager.autokick_to_latest_area else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"Auto-kick to your picked character's latest area is now {toggle} for this hub."

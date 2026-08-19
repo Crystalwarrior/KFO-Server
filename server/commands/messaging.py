@@ -1,8 +1,8 @@
 from server import database
 from server.constants import TargetType
-from server.exceptions import ClientError, ArgumentError, AreaError
+from server.exceptions import ClientError, ArgumentError
 
-from . import mod_only
+from . import mod_only, command, Arg
 
 __all__ = [
     "ooc_cmd_g",
@@ -28,6 +28,7 @@ def message_areas_cm(client, areas, message):
         database.log_area("chat.cm", client, a, message=message)
 
 
+@command(Arg("arg", rest=True, default="", help="message"))
 def ooc_cmd_g(client, arg):
     """
     Broadcast a server-wide message.
@@ -43,6 +44,7 @@ def ooc_cmd_g(client, arg):
     database.log_area("chat.global", client, client.area, message=arg)
 
 
+@command(Arg("arg", rest=True, default="", help="message"))
 def ooc_cmd_h(client, arg):
     """
     Broadcast a hub-wide message.
@@ -63,6 +65,7 @@ def ooc_cmd_h(client, arg):
 
 
 @mod_only()
+@command(Arg("arg", rest=True, default="", help="message"))
 def ooc_cmd_m(client, arg):
     """
     Send a message to all online moderators.
@@ -75,6 +78,7 @@ def ooc_cmd_m(client, arg):
 
 
 @mod_only()
+@command(Arg("arg", rest=True, default="", help="message"))
 def ooc_cmd_announce(client, arg):
     """
     Make a server-wide announcement.
@@ -91,15 +95,13 @@ def ooc_cmd_announce(client, arg):
     database.log_area("chat.announce", client, client.area, message=arg)
 
 
-def ooc_cmd_toggleglobal(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_toggleglobal(client, tog):
     """
     Mute global chat.
     Usage: /toggleglobal
     """
-    boolean = not client.muted_global
-    if len(arg) > 0:
-        boolean = arg in ["true", "on", "1"]
-    client.muted_global = boolean
+    client.muted_global = not client.muted_global if tog is None else tog
     glob_stat = "on"
     if client.muted_global:
         glob_stat = "off"
@@ -107,6 +109,7 @@ def ooc_cmd_toggleglobal(client, arg):
 
 
 @mod_only(area_owners=True)
+@command(Arg("arg", rest=True, default="", help="message"))
 def ooc_cmd_need(client, arg):
     """
     Broadcast a server-wide advertisement for your role-play or case.
@@ -126,21 +129,20 @@ def ooc_cmd_need(client, arg):
     database.log_area("chat.announce.need", client, client.area, message=arg)
 
 
-def ooc_cmd_toggleadverts(client, arg):
+@command(Arg("tog", bool, default=None, help="on/off"))
+def ooc_cmd_toggleadverts(client, tog):
     """
     Mute advertisements.
     Usage: /toggleadverts
     """
-    boolean = not client.muted_adverts
-    if len(arg) > 0:
-        boolean = arg in ["true", "on", "1"]
-    client.muted_adverts = not boolean
+    client.muted_adverts = not (not client.muted_adverts if tog is None else tog)
     adv_stat = "on"
     if client.muted_adverts:
         adv_stat = "off"
     client.send_ooc(f"Advertisements turned {adv_stat}.")
 
 
+@command(Arg("arg", rest=True, default="", help="<target> <message>"))
 def ooc_cmd_pm(client, arg):
     """
     Send a private message to one or more online users. These messages are not
@@ -231,13 +233,12 @@ def ooc_cmd_pm(client, arg):
         )
 
 
-def ooc_cmd_mutepm(client, arg):
+@command()
+def ooc_cmd_mutepm(client):
     """
     Mute private messages.
     Usage: /mutepm
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
     client.pm_mute = not client.pm_mute
     client.send_ooc(
         "You stopped receiving PMs" if client.pm_mute else "You are now receiving PMs"
