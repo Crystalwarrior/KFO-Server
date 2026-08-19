@@ -98,8 +98,5 @@ class CommandLister:
 
     @classmethod
     def invalidate(cls):
-        """
-        Cache-bust hook for a future cheap `server.commands.reload()` integration
-        -- not currently wired to anything.
-        """
+        """Drop the cached catalog; called by `server.commands.reload()` (/refresh)."""
         cls._cache = None

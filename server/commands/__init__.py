@@ -324,6 +324,15 @@ def reload():
         for f in m.__all__:
             me.__dict__[f] = m.__dict__[f]
 
+    # The GM panel caches its auto-generated command catalog; drop the cache
+    # so the panel picks up the freshly reloaded command definitions.
+    try:
+        from server.web_view.gm_panel.commands_meta import CommandLister
+
+        CommandLister.invalidate()
+    except ImportError:
+        pass
+
 
 def help(command):
     import sys
