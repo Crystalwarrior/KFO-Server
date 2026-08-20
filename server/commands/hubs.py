@@ -472,8 +472,11 @@ def ooc_cmd_area_switch(client, id1, id2):
 
 
 @mod_only(area_owners=True)
-@command(Arg("arg", rest=True, default="", help="[pref] [on/true/off/false]"))
-def ooc_cmd_area_pref(client, arg):
+@command(
+    Arg("pref", default="", help="preference name"),
+    Arg("value", default="", help="on/true/off/false"),
+)
+def ooc_cmd_area_pref(client, pref, value):
     """
     Toggle a preference on/off for an area.
     Leave pref out to see available prefs.
@@ -485,25 +488,19 @@ def ooc_cmd_area_pref(client, arg):
     # drift apart.
     cm_allowed = AREA_PREF_CM_ALLOWED
 
-    if len(arg) == 0:
+    if not pref:
         msg = "Current preferences:"
         for attri in client.area.__dict__.keys():
-            value = getattr(client.area, attri)
-            if not (type(value) is bool):
+            area_val = getattr(client.area, attri)
+            if not (type(area_val) is bool):
                 continue
             mod = "[gm] " if not (attri in cm_allowed) else ""
-            msg += f"\n* {mod}{attri}={value}"
+            msg += f"\n* {mod}{attri}={area_val}"
         client.send_ooc(msg)
         return
 
-    args = arg.split()
-    if len(args) > 2:
-        raise ArgumentError(
-            "Usage: /area_pref | /area_pref <pref> | /area_pref <pref> <on|off>"
-        )
-
     try:
-        cmd = args[0].lower()
+        cmd = pref.lower()
         attri = getattr(client.area, cmd)
         if not (type(attri) is bool):
             raise ArgumentError("Preference is not a boolean.")
@@ -514,13 +511,13 @@ def ooc_cmd_area_pref(client, arg):
         ):
             raise ClientError("You need to be a GM to modify this preference.")
         tog = not attri
-        if len(args) > 1:
-            if args[1].lower() in ("1", "on", "true"):
+        if value:
+            if value.lower() in ("1", "on", "true"):
                 tog = True
-            elif args[1].lower() in ("0", "off", "false"):
+            elif value.lower() in ("0", "off", "false"):
                 tog = False
             else:
-                raise ArgumentError("Invalid argument: {}".format(arg))
+                raise ArgumentError(f"Invalid argument: {value}")
         client.send_ooc(f"Setting preference {cmd} to {tog}...")
         setattr(client.area, cmd, tog)
         database.log_area(
@@ -992,20 +989,17 @@ def ooc_cmd_gmpanel(client):
 
 
 @mod_only(hub_owners=True)
-@command(Arg("arg", rest=True, default="", help="client ID(s) (blank = self)"))
-def ooc_cmd_ungm(client, arg):
+@command(Arg("ids", variadic=True, type=int, default=[], help="client ID(s) (blank = self)"))
+def ooc_cmd_ungm(client, ids):
     """
     Remove a game master from the current Hub.
     If blank, demote yourself from being a GM.
     Usage: /ungm <id>
     """
-    if len(arg) > 0:
-        arg = arg.split()
-    else:
-        arg = [client.id]
-    for _id in arg:
+    if not ids:
+        ids = [client.id]
+    for _id in ids:
         try:
-            _id = int(_id)
             c = client.server.client_manager.get_targets(
                 client, TargetType.ID, _id, False
             )[0]
@@ -1016,8 +1010,8 @@ def ooc_cmd_ungm(client, arg):
                 client.send_ooc(
                     "You cannot remove someone from GMing when they aren't a GM."
                 )
-        except (ValueError, IndexError):
-            client.send_ooc(f"{id} does not look like a valid ID.")
+        except IndexError:
+            client.send_ooc(f"{_id} does not look like a valid ID.")
         except (ClientError, ArgumentError):
             raise
 

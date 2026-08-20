@@ -127,68 +127,35 @@ def ooc_cmd_kick(client, target, reason):
         client.send_ooc(f"No targets with the IPID {ipid} were found.")
 
 
-@mod_only()
-@command(
-    Arg("args", rest=True, default="", help="<ipid> <reason>/<ban_id> [duration]")
-)
-def ooc_cmd_ban(client, args):
-    """
-    Ban a user. If a ban ID is specified instead of a reason,
-    then the IPID is added to an existing ban record.
-    Ban durations are 6 hours by default.
-    Usage: /ban <ipid> "reason" ["<N> <minute|hour|day|week|month>(s)|perma"]
-    Usage 2: /ban <ipid> <ban_id>
-    """
-    kickban(client, args, False)
+def _parse_ban_rest(rest_str):
+    """Parse the <reason|ban_id> [duration] portion of a ban command.
 
-
-@mod_only()
-@command(
-    Arg("args", rest=True, default="", help="<ipid> <reason>/<ban_id> [duration]")
-)
-def ooc_cmd_banhdid(client, args):
+    Returns ``(reason_text, ban_id, unban_date)`` where exactly one of
+    *reason_text* / *ban_id* is set.
     """
-    Ban both a user's HDID and IPID.
-    Usage: See /ban.
-    """
-    kickban(client, args, True)
-
-
-def kickban(client, arg, ban_hdid):
-    """Shared implementation of /ban and /banhdid."""
-    args = shlex.split(arg)
-    if len(args) < 2:
+    args = shlex.split(rest_str) if rest_str.strip() else []
+    if len(args) == 0:
         raise ArgumentError("Not enough arguments.")
-    elif len(args) == 2:
-        reason = None
-        ban_id = None
+    elif len(args) == 1:
         try:
-            ban_id = int(args[1])
-            unban_date = None
+            return None, int(args[0]), None
         except ValueError:
-            reason = args[1]
-            unban_date = arrow.get().shift(hours=6).datetime
-    elif len(args) == 3:
-        ban_id = None
-        reason = args[1]
-        if "perma" in args[2]:
-            unban_date = None
-        else:
-            duration = pytimeparse.parse(args[2], granularity="hours")
-            if duration is None:
-                raise ArgumentError("Invalid ban duration.")
-            unban_date = arrow.get().shift(seconds=duration).datetime
+            return args[0], None, arrow.get().shift(hours=6).datetime
+    elif len(args) == 2:
+        if "perma" in args[1]:
+            return args[0], None, None
+        duration = pytimeparse.parse(args[1], granularity="hours")
+        if duration is None:
+            raise ArgumentError("Invalid ban duration.")
+        return args[0], None, arrow.get().shift(seconds=duration).datetime
     else:
         raise ArgumentError(
-            f"Ambiguous input: {arg}\nPlease wrap your arguments " "in quotes."
+            f"Ambiguous input: {rest_str}\nPlease wrap your arguments in quotes."
         )
 
-    try:
-        raw_ipid = args[0]
-        ipid = int(raw_ipid)
-    except ValueError:
-        raise ClientError(f"{raw_ipid} does not look like a valid IPID.")
 
+def _do_ban(client, ipid, reason, ban_id, unban_date, ban_hdid=False):
+    """Execute the ban after arguments have been parsed."""
     ban_id = database.ban(
         ipid,
         reason,
@@ -200,25 +167,55 @@ def kickban(client, arg, ban_hdid):
 
     char = None
     hdid = None
-    if ipid is not None:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.IPID, ipid, False
-        )
-        if targets:
-            for c in targets:
-                if ban_hdid:
-                    database.ban(c.hdid, reason,
-                                 ban_type="hdid", ban_id=ban_id)
-                    hdid = c.hdid
-                c.send_command("KB", reason)
-                c.disconnect()
-                char = c.char_name
-                database.log_misc("ban", client, target=c,
-                                  data={"reason": reason})
-            client.send_ooc(f"{len(targets)} clients were kicked.")
-        client.send_ooc(f"{ipid} was banned. Ban ID: {ban_id}")
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.IPID, ipid, False
+    )
+    if targets:
+        for c in targets:
+            if ban_hdid:
+                database.ban(c.hdid, reason,
+                             ban_type="hdid", ban_id=ban_id)
+                hdid = c.hdid
+            c.send_command("KB", reason)
+            c.disconnect()
+            char = c.char_name
+            database.log_misc("ban", client, target=c,
+                              data={"reason": reason})
+        client.send_ooc(f"{len(targets)} clients were kicked.")
+    client.send_ooc(f"{ipid} was banned. Ban ID: {ban_id}")
     client.server.webhooks.ban(
         ipid, ban_id, reason, client, hdid, char, unban_date)
+
+
+@mod_only()
+@command(
+    Arg("ipid", type=int, help="IPID to ban"),
+    Arg("reason", rest=True, default="", help="<reason> [<duration>] or <ban_id>"),
+)
+def ooc_cmd_ban(client, ipid, reason):
+    """
+    Ban a user. If a ban ID is specified instead of a reason,
+    then the IPID is added to an existing ban record.
+    Ban durations are 6 hours by default.
+    Usage: /ban <ipid> "reason" ["<N> <minute|hour|day|week|month>(s)|perma"]
+    Usage 2: /ban <ipid> <ban_id>
+    """
+    reason_text, ban_id, unban_date = _parse_ban_rest(reason)
+    _do_ban(client, ipid, reason_text, ban_id, unban_date)
+
+
+@mod_only()
+@command(
+    Arg("ipid", type=int, help="IPID to ban"),
+    Arg("reason", rest=True, default="", help="<reason> [<duration>] or <ban_id>"),
+)
+def ooc_cmd_banhdid(client, ipid, reason):
+    """
+    Ban both a user's HDID and IPID.
+    Usage: See /ban.
+    """
+    reason_text, ban_id, unban_date = _parse_ban_rest(reason)
+    _do_ban(client, ipid, reason_text, ban_id, unban_date, ban_hdid=True)
 
 
 @mod_only()

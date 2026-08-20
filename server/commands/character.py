@@ -1014,48 +1014,43 @@ def ooc_cmd_keys_remove(client, arg):
             "Usage: /keys_remove <char> [area id(s)]. Removes the selected 'keys' from the user."
         )
 
-    mod_keys(client, arg, 2)
-
-
-@command(Arg("arg", rest=True, default="", help="target (blank = your own)"))
-def ooc_cmd_keys(client, arg):
+    mod_keys(client, arg, 2)@command(Arg("target", default="", help="target (blank = your own)"))
+def ooc_cmd_keys(client, target):
     """
     Check your own keys, or someone else's (if admin).
     Keys allow you to /lock or /unlock specific areas, OR
     area links if it's formatted like 1-5
     Usage: /keys [target_id]
     """
-    args = arg.split()
-    if len(args) < 1:
+    if not target:
         client.send_ooc(f"Your current keys are {client.keys}")
         return
     if not client.is_mod and not (client in client.area.area_manager.owners):
         raise ClientError("Only mods and GMs can check other people's keys.")
-    if len(args) == 1:
-        try:
-            if args[0].isnumeric():
-                target = client.server.client_manager.get_targets(
-                    client, TargetType.ID, int(args[0]), False
-                )
-                if target:
-                    target = target[0].char_id
-                else:
-                    if args[0] != "-1" and (int(args[0]) in client.area.area_manager.char_list):
-                        target = int(args[0])
-            else:
-                try:
-                    target = client.area.area_manager.get_char_id_by_name(arg)
-                except (ServerError):
-                    raise
-            keys = client.area.area_manager.get_character_data(
-                target, "keys", [])
-            client.send_ooc(
-                f"{client.area.area_manager.char_list[target]} current keys are {keys}"
+    try:
+        if target.isnumeric():
+            t = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(target), False
             )
-        except Exception:
-            raise ArgumentError("Target not found.")
-    else:
-        raise ArgumentError("Usage: /keys [target_id].")
+            if t:
+                char_id = t[0].char_id
+            else:
+                if target != "-1" and (int(target) in client.area.area_manager.char_list):
+                    char_id = int(target)
+                else:
+                    raise ArgumentError("Target not found.")
+        else:
+            try:
+                char_id = client.area.area_manager.get_char_id_by_name(target)
+            except (ServerError):
+                raise
+        keys = client.area.area_manager.get_character_data(
+            char_id, "keys", [])
+        client.send_ooc(
+            f"{client.area.area_manager.char_list[char_id]} current keys are {keys}"
+        )
+    except Exception:
+        raise ArgumentError("Target not found.")
 
 
 @command()

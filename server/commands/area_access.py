@@ -783,8 +783,11 @@ def ooc_cmd_unlink_evidence(client, id, evidences):
             )
 
 
-@command(Arg("arg", rest=True, default="", help="<id> [password]"))
-def ooc_cmd_pw(client, arg):
+@command(
+    Arg("area_id", type=int, default=None, help="area id"),
+    Arg("password", rest=True, default="", help="password"),
+)
+def ooc_cmd_pw(client, area_id, password):
     """
     Enter a passworded area. Password is case-sensitive and must match the set password exactly, otherwise it will fail.
     You will move into the target area as soon as the correct password is provided.
@@ -792,20 +795,16 @@ def ooc_cmd_pw(client, arg):
     Usage:  /pw <id> [password]
     """
     link = None
-    password = ""
-    if arg == "":
+    if area_id is None:
         if not client.is_mod and not (client in client.area.owners):
             raise ArgumentError(
                 "You are not allowed to see this area's password. Use /pw <id> [password]"
             )
         aid = client.area.id
     else:
-        args = arg.split()
-        aid = args[0]
+        aid = str(area_id)
         if aid in client.area.links:
             link = client.area.links[aid]
-        if len(args) > 1:
-            password = args[1]
 
     try:
         area = client.area.area_manager.get_area_by_id(int(aid))
@@ -825,32 +824,27 @@ def ooc_cmd_pw(client, arg):
                 )
         else:
             client.change_area(area, password=password)
-    except ValueError:
-        raise ArgumentError("Area ID must be a number.")
     except (AreaError, ClientError):
         raise
 
 
 @mod_only(area_owners=True)
-@command(Arg("arg", rest=True, default="", help="<id/!link> [password]"))
-def ooc_cmd_setpw(client, arg):
+@command(
+    Arg("target", help="area id or !link id"),
+    Arg("password", rest=True, default="", help="password"),
+)
+def ooc_cmd_setpw(client, target, password):
     """
     Context-sensitive function to set a password area(s) and/or area link(s).
     Pass area id, or link id from current area using !, e.g. 5 vs !5.
     Leave [password] blank to clear the password.
     Usage:  /setpw <id> [password]
     """
-    args = arg.split()
-    if len(args) == 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /setpw <id> [password]")
-
     try:
-        password = ""
         link = None
         area = client.area
-        if args[0].startswith("!"):
-            num = args[0][1:]
+        if target.startswith("!"):
+            num = target[1:]
             if num in client.area.links:
                 link = client.area.links[num]
                 area = client.area.area_manager.get_area_by_id(int(num))
@@ -858,9 +852,7 @@ def ooc_cmd_setpw(client, arg):
                 raise ArgumentError(
                     "Targeted link does not exist in current area.")
         else:
-            area = client.area.area_manager.get_area_by_id(int(args[0]))
-        if len(args) > 1:
-            password = args[1]
+            area = client.area.area_manager.get_area_by_id(int(target))
         if not client.is_mod and not (client in area.owners):
             raise ClientError("You do not own that area!")
         if link is not None:

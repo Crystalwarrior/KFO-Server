@@ -370,19 +370,16 @@ def ooc_cmd_cm(client, arg):
 
 # TODO: allow running this command from outside the area you're a CM of in hubs that allow multiple CMed areas
 @mod_only(area_owners=True)
-@command(Arg("arg", rest=True, default="", help="client ID(s) (blank = self)"))
-def ooc_cmd_uncm(client, arg):
+@command(Arg("ids", variadic=True, type=int, default=[], help="client ID(s) (blank = self)"))
+def ooc_cmd_uncm(client, ids):
     """
     Remove a case manager from the current area.
     Usage: /uncm <id>
     """
-    if len(arg) > 0:
-        arg = arg.split()
-    else:
-        arg = [client.id]
-    for _id in arg:
+    if not ids:
+        ids = [client.id]
+    for _id in ids:
         try:
-            _id = int(_id)
             c = client.server.client_manager.get_targets(
                 client, TargetType.ID, _id, False
             )[0]
@@ -393,7 +390,7 @@ def ooc_cmd_uncm(client, arg):
                 client.send_ooc(
                     "You cannot remove someone from CMing when they aren't a CM."
                 )
-        except (ValueError, IndexError):
+        except IndexError:
             client.send_ooc(f"{_id} does not look like a valid ID.")
         except (ClientError, ArgumentError):
             raise

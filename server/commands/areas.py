@@ -1,5 +1,3 @@
-import shlex
-
 from server import database
 from server.constants import TargetType
 from server.exceptions import ClientError, ArgumentError, AreaError
@@ -140,26 +138,24 @@ def ooc_cmd_bg(client, arg):
 
 
 @mod_only(hub_owners=True)
-@command(Arg("arg", rest=True, default="", help="<area_id> <background> [overlay]"))
-def ooc_cmd_gm_set_bg(client, arg):
+@command(
+    Arg("area_id", type=int, help="area id"),
+    Arg("background", help="background name"),
+    Arg("overlay", rest=True, default="", help="overlay (blank keeps current)"),
+)
+def ooc_cmd_gm_set_bg(client, area_id, background, overlay):
     """
     Change the background of any area in your current hub (hub GMs only).
     Usage: /gm_set_bg <area_id> <background> [overlay]
     """
-    args = arg.split(" ", 2)
-    if len(args) < 2:
-        raise ArgumentError("Usage: /gm_set_bg <area_id> <background> [overlay]")
-    try:
-        area_id = int(args[0])
-    except ValueError:
-        raise ArgumentError("area_id must be a number.")
     hub = client.area.area_manager
     if area_id < 0 or area_id >= len(hub.areas):
         raise ArgumentError("No such area in your hub.")
     target = hub.areas[area_id]
-    overlay = args[2] if len(args) > 2 else target.overlay
-    target.change_background(args[1], overlay)
-    client.send_ooc(f"Set area {area_id}'s background to {args[1]}.")
+    if not overlay:
+        overlay = target.overlay
+    target.change_background(background, overlay)
+    client.send_ooc(f"Set area {area_id}'s background to {background}.")
 
 
 @mod_only(area_owners=True)
@@ -200,15 +196,22 @@ def ooc_cmd_bgs(client, arg):
         client.send_ooc("There is no category with this name in server background list.")
 
 
-@command(Arg("arg", rest=True, default="", help="status (blank shows current)"))
-def ooc_cmd_status(client, arg):
+@command(
+    Arg(
+        "status",
+        default="",
+        choices=("idle", "rp", "casing", "looking-for-players", "lfp", "recess", "gaming"),
+        help="status (blank shows current)",
+    ),
+)
+def ooc_cmd_status(client, status):
     """
     Show or modify the current status of an area.
     Usage: /status <idle|rp|casing|looking-for-players|lfp|recess|gaming>
     """
     if not client.area.area_manager.arup_enabled:
         raise AreaError("This hub does not use the /status system.")
-    if len(arg) == 0:
+    if not status:
         client.send_ooc(f"Current status: {client.area.status}")
     else:
         if (
@@ -228,12 +231,12 @@ def ooc_cmd_status(client, arg):
         ):
             raise ClientError("You may not do that while spectating!")
         try:
-            client.area.change_status(arg)
+            client.area.change_status(status)
             client.area.broadcast_ooc(
                 "{} changed status to {}.".format(
                     client.showname, client.area.status)
             )
-            database.log_area("status", client, client.area, message=arg)
+            database.log_area("status", client, client.area, message=status)
         except AreaError:
             raise
 
@@ -301,17 +304,17 @@ def ooc_cmd_autogetarea(client):
     )
 
 
-@command(Arg("arg", default="", help="area id (blank = current)"))
-def ooc_cmd_getarea(client, arg):
+@command(Arg("area_id", type=int, default=None, help="area id (blank = current)"))
+def ooc_cmd_getarea(client, area_id):
     """
     Show information about the current area, or target area id with sufficient permissions.
     Usage: /getarea [id]
     """
     aid = client.area.id
-    if arg.strip().isnumeric():
-        area = client.area.area_manager.get_area_by_id(int(arg))
+    if area_id is not None:
+        area = client.area.area_manager.get_area_by_id(area_id)
         if area.id == client.area.id or (client.is_mod or client in area.owners):
-            aid = int(arg)
+            aid = area_id
         else:
             raise ClientError(
                 "Can't see that area - insufficient permissions!")
@@ -335,18 +338,18 @@ def ooc_cmd_gethubs(client):
     """
     client.send_hubs_clients()
 
-@command(Arg("arg", default="", help="area id (blank = current)"))
-def ooc_cmd_getlink(client, arg):
+@command(Arg("area_id", type=int, default=None, help="area id (blank = current)"))
+def ooc_cmd_getlink(client, area_id):
     """
     Show information about the current area, or target area id with sufficient permissions.
     Including the client's link.
     Usage: /getlink [id]
     """
     aid = client.area.id
-    if arg.strip().isnumeric():
-        area = client.area.area_manager.get_area_by_id(int(arg))
+    if area_id is not None:
+        area = client.area.area_manager.get_area_by_id(area_id)
         if area.id == client.area.id or (client.is_mod or client in area.owners):
-            aid = int(arg)
+            aid = area_id
         else:
             raise ClientError(
                 "Can't see that area - insufficient permissions!")
@@ -362,30 +365,25 @@ def ooc_cmd_getlinks(client):
     """
     client.send_areas_clients(show_links=True)
 
-@command(Arg("arg", default="", help="all or blank"))
-def ooc_cmd_getafk(client, arg):
+@command(Arg("scope", default="", choices=("", "all"), help="all or blank"))
+def ooc_cmd_getafk(client, scope):
     """
     Show currently AFK-ing players in the current area or in all areas.
     Usage: /getafk [all]
     """
-    if arg == "all":
-        arg = -1
-    elif len(arg) == 0:
-        arg = client.area.id
-    else:
-        raise ArgumentError("There is only one optional argument [all].")
-    client.send_area_info(arg, afk_check=True)
+    aid = -1 if scope == "all" else client.area.id
+    client.send_area_info(aid, afk_check=True)
 
 
 @mod_only(area_owners=True)
-@command(Arg("arg", rest=True, default="", help="client ID or * (blank lists invites)"))
-def ooc_cmd_invite(client, arg):
+@command(Arg("target", default="", help="client ID or * (blank lists invites)"))
+def ooc_cmd_invite(client, target):
     """
     Allow a particular user to join a locked or speak in spectator-only area.
     ID can be * to invite everyone in the current area.
     Usage: /invite <id>
     """
-    if not arg:
+    if not target:
         msg = "Current invite list:\n"
         msg += "\n".join(
             [
@@ -398,10 +396,8 @@ def ooc_cmd_invite(client, arg):
         client.send_ooc(msg)
         return
 
-    args = arg.split(" ")
-
     try:
-        if args[0] == "*":
+        if target == "*":
             targets = [
                 c
                 for c in client.area.clients
@@ -409,7 +405,7 @@ def ooc_cmd_invite(client, arg):
             ]
         else:
             targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
+                client, TargetType.ID, int(target), False
             )
     except ValueError:
         raise ArgumentError("Area ID must be a number or *.")
@@ -426,18 +422,15 @@ def ooc_cmd_invite(client, arg):
 
 
 @mod_only(area_owners=True)
-@command(Arg("arg", rest=True, default="", help="client ID or *"))
-def ooc_cmd_uninvite(client, arg):
+@command(Arg("target", help="client ID or *"))
+def ooc_cmd_uninvite(client, target):
     """
     Revoke an invitation for a particular user.
     ID can be * to uninvite everyone in the area.
     Usage: /uninvite <id>
     """
-    if not arg:
-        raise ClientError("You must specify a target. Use /uninvite <id>")
-    args = arg.split(" ")
     try:
-        if args[0] == "*":
+        if target == "*":
             targets = [
                 c
                 for c in client.area.clients
@@ -445,7 +438,7 @@ def ooc_cmd_uninvite(client, arg):
             ]
         else:
             targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
+                client, TargetType.ID, int(target), False
             )
     except ValueError:
         raise ArgumentError("Area ID must be a number or *.")
@@ -469,8 +462,12 @@ def ooc_cmd_uninvite(client, arg):
 
 
 @mod_only(area_owners=True)
-@command(Arg("arg", rest=True, default="", help="<id> [destination] [target_pos]"))
-def ooc_cmd_area_kick(client, arg):
+@command(
+    Arg("target", help="*|**|***|afk|id|name"),
+    Arg("destination", type=int, default=None, help="destination area id"),
+    Arg("target_pos", rest=True, default="", help="target position"),
+)
+def ooc_cmd_area_kick(client, target, destination, target_pos):
     """
     Remove a user from the current area and move them to another area.
     If id is a * char, it will kick everyone but you and CMs from current area to destination.
@@ -481,33 +478,26 @@ def ooc_cmd_area_kick(client, arg):
     target_pos is the optional position that everyone should end up in when kicked.
     Usage: /area_kick <id> [destination] [target_pos]
     """
-    if not arg:
-        raise ClientError(
-            "You must specify a target. Use /area_kick <id> [destination] [target_pos]"
-        )
-
-    args = shlex.split(arg)
-
     # Kick everyone but AFKers
-    if args[0] == "afk":
+    if target == "afk":
         targets = client.server.client_manager.get_targets(
-            client, TargetType.AFK, args[0], False
+            client, TargetType.AFK, target, False
         )
     # Kick everyone but owners
-    elif args[0] == "*":
+    elif target == "*":
         targets = [
             c
             for c in client.area.clients
             if c != client and c != client.area.owners
         ]
     # Kick everyone in area
-    elif args[0] == "**":
+    elif target == "**":
         targets = [
             c
             for c in client.area.clients
         ]
     # Kick everyone in hub
-    elif args[0] == "***":
+    elif target == "***":
         targets = [
             c
             for c in client.area.area_manager.clients
@@ -515,22 +505,22 @@ def ooc_cmd_area_kick(client, arg):
     else:
         # Try to find by char name first
         targets = client.server.client_manager.get_targets(
-            client, TargetType.CHAR_NAME, args[0]
+            client, TargetType.CHAR_NAME, target
         )
         # If that doesn't work, find by client ID
-        if len(targets) == 0 and args[0].isdigit():
+        if len(targets) == 0 and target.isdigit():
             targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0])
+                client, TargetType.ID, int(target)
             )
         # If that doesn't work, find by OOC Name
         if len(targets) == 0:
             targets = client.server.client_manager.get_targets(
-                client, TargetType.OOC_NAME, args[0]
+                client, TargetType.OOC_NAME, target
             )
 
     if len(targets) == 0:
         client.send_ooc(
-            f"No targets found by search term '{args[0]}'."
+            f"No targets found by search term '{target}'."
         )
         return
 
@@ -545,12 +535,11 @@ def ooc_cmd_area_kick(client, arg):
                 raise ArgumentError(
                     "You can't kick someone from another area as a CM!"
                 )
-            if len(args) == 1:
+            if destination is None:
                 area = client.area
             else:
                 try:
-                    area = client.area.area_manager.get_area_by_id(
-                        int(args[1]))
+                    area = client.area.area_manager.get_area_by_id(destination)
                 except AreaError:
                     raise
                 if (
@@ -561,10 +550,7 @@ def ooc_cmd_area_kick(client, arg):
                     raise ArgumentError(
                         "You can't kick someone to an area you don't own as a CM!"
                     )
-            target_pos = ""
             old_area = c.area
-            if len(args) >= 3:
-                target_pos = args[2]
             c.set_area(area, target_pos)
             c.send_ooc(
                 f"You were kicked from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
@@ -576,8 +562,6 @@ def ooc_cmd_area_kick(client, arg):
             client.send_ooc(
                 f"Kicked [{c.id}] {c.showname} from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
             )
-    except ValueError:
-        raise ArgumentError("Area ID must be a number.")
     except AreaError:
         raise
     except ClientError:
@@ -662,42 +646,42 @@ def ooc_cmd_pos_lock_clear(client):
     client.area.broadcast_ooc("Position lock cleared.")
 
 
-@command(Arg("arg", rest=True, default="", help="area name or ID"))
-def ooc_cmd_knock(client, arg):
+@command(Arg("area", rest=True, help="area name or ID"))
+def ooc_cmd_knock(client, area):
     """
     Knock on the target area ID to call on their attention to your area.
     Usage:  /knock <id>
     """
-    if arg == "":
+    if not area:
         raise ArgumentError(
             "Failed to knock: you need to input an accessible area name or ID to knock!"
         )
     if client.blinded:
         raise ClientError("Failed to knock: you are blinded!")
     try:
-        area = None
+        target = None
         for _area in client.area.area_manager.areas:
             if (
-                _area.name.lower() == arg.lower()
-                or _area.abbreviation == arg
-                or (arg.isdigit() and _area.id == int(arg))
+                _area.name.lower() == area.lower()
+                or _area.abbreviation == area
+                or (area.isdigit() and _area.id == int(area))
             ):
-                area = _area
+                target = _area
                 break
-        if area is None:
+        if target is None:
             raise ClientError("Target area not found.")
 
-        allowed = client.is_mod or client in area.owners or client in client.area.owners
-        if not allowed and area != client.area:
+        allowed = client.is_mod or client in target.owners or client in client.area.owners
+        if not allowed and target != client.area:
             if len(client.area.links) > 0:
-                if not str(area.id) in client.area.links:
+                if not str(target.id) in client.area.links:
                     raise ClientError(
-                        f"Failed to knock on [{area.id}] {area.name}: That area is inaccessible!"
+                        f"Failed to knock on [{target.id}] {target.name}: That area is inaccessible!"
                     )
 
-                if str(area.id) in client.area.links:
+                if str(target.id) in client.area.links:
                     # Get that link reference
-                    link = client.area.links[str(area.id)]
+                    link = client.area.links[str(target.id)]
 
                     # Link requires us to be inside a piece of evidence
                     if (
@@ -705,11 +689,11 @@ def ooc_cmd_knock(client, arg):
                         and client.hidden_in not in link["evidence"]
                     ):
                         raise ClientError(
-                            f"Failed to knock on [{area.id}] {area.name}: That area is inaccessible!"
+                            f"Failed to knock on [{target.id}] {target.name}: That area is inaccessible!"
                         )
             if client.area.locked and client.id not in client.area.invite_list:
                 raise ClientError(
-                    f"Failed to knock on [{area.id}] {area.name}: Current area is locked!"
+                    f"Failed to knock on [{target.id}] {target.name}: Current area is locked!"
                 )
 
         for c in client.area.clients:
@@ -718,15 +702,15 @@ def ooc_cmd_knock(client, arg):
                 c.send_command("MS", 0, "", "","", "", "", "", 0, -1, 0, 0, 0, 0, 7, 0, "")
             else:
                 c.send_command("RT", "knock")
-        if area == client.area:
-            area.broadcast_ooc(
+        if target == client.area:
+            target.broadcast_ooc(
                 f"💢 [{client.id}] {client.showname} knocks for attention. 💢"
             )
         else:
             client.area.broadcast_ooc(
-                f"[{client.id}] {client.showname} knocks on [{area.id}] {area.name}."
+                f"[{client.id}] {client.showname} knocks on [{target.id}] {target.name}."
             )
-            area.broadcast_ooc(
+            target.broadcast_ooc(
                 f"💢 Someone is knocking from [{client.area.id}] {client.area.name} 💢"
             )
     except ValueError:
@@ -737,39 +721,39 @@ def ooc_cmd_knock(client, arg):
         raise
 
 
-@command(Arg("arg", rest=True, default="", help="area name or ID"))
-def ooc_cmd_peek(client, arg):
+@command(Arg("area", rest=True, help="area name or ID"))
+def ooc_cmd_peek(client, area):
     """
     Peek into an area to see if there's people in it.
     Usage:  /peek <id>
     """
-    if arg == "":
+    if not area:
         raise ArgumentError(
             "You need to input an accessible area name or ID to peek into it!"
         )
     if client.blinded:
         raise ClientError("You are blinded!")
     try:
-        area = None
+        target = None
         for _area in client.area.area_manager.areas:
             if (
-                _area.name.lower() == arg.lower()
-                or _area.abbreviation == arg
-                or (arg.isdigit() and _area.id == int(arg))
+                _area.name.lower() == area.lower()
+                or _area.abbreviation == area
+                or (area.isdigit() and _area.id == int(area))
             ):
-                area = _area
+                target = _area
                 break
-        if area is None:
+        if target is None:
             raise ClientError("Target area not found.")
-        if area == client.area:
+        if target == client.area:
             ooc_cmd_getarea(client, "")
             return
 
         try:
-            client.try_access_area(area, True)
-            if not area.can_getarea:
+            client.try_access_area(target, True)
+            if not target.can_getarea:
                 raise ClientError("Can't peek in that area!")
-            if area.dark:
+            if target.dark:
                 raise ClientError("Area is dark!")
         except ClientError as ex:
             if (
@@ -779,19 +763,19 @@ def ooc_cmd_peek(client, arg):
                 and "locked" in str(ex).lower()
             ):
                 client.area.broadcast_ooc(
-                    f"[{client.id}] {client.showname} tried to peek into [{area.id}] {area.name} but {str(ex).lower()}"
+                    f"[{client.id}] {client.showname} tried to peek into [{target.id}] {target.name} but {str(ex).lower()}"
                 )
                 # People from within the area have no distinction between peeking and moving inside
-                area.broadcast_ooc(
+                target.broadcast_ooc(
                     f"Someone tried to enter from [{client.area.id}] {client.area.name} but {str(ex).lower()}"
                 )
             client.send_ooc(
-                f"Failed to peek into [{area.id}] {area.name}: {ex}")
+                f"Failed to peek into [{target.id}] {target.name}: {ex}")
             return
         else:
             sorted_clients = []
-            for c in area.clients:
-                if not c.hidden and c not in area.owners and not c.is_mod:  # pure IC
+            for c in target.clients:
+                if not c.hidden and c not in target.owners and not c.is_mod:  # pure IC
                     sorted_clients.append(c)
 
             _sort = [
@@ -812,11 +796,11 @@ def ooc_cmd_peek(client, arg):
 
             if not client.sneaking and not client.hidden:
                 client.area.broadcast_ooc(
-                    f"[{client.id}] {client.showname} peeks into [{area.id}] {area.name}..."
+                    f"[{client.id}] {client.showname} peeks into [{target.id}] {target.name}..."
                 )
             else:
                 client.send_ooc(
-                    f"You silently peek into [{area.id}] {area.name}...")
+                    f"You silently peek into [{target.id}] {target.name}...")
             client.send_ooc(f"There's {sorted_clients}.")
     except ValueError:
         raise ArgumentError(
@@ -827,7 +811,7 @@ def ooc_cmd_peek(client, arg):
 
 
 @mod_only(area_owners=True)
-@command(Arg("num", int, default=None, help="max players (-1..99, blank shows)"))
+@command(Arg("num", int, default=None, help="max players (-1..99, blank shows current)"))
 def ooc_cmd_max_players(client, num):
     """
     Set a max amount of players for current area between -1 and 99.
