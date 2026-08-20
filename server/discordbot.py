@@ -262,6 +262,9 @@ class Bridgebot(commands.Bot):
                 image = await self._resolve_url(image, emote_exts)
                 embed = discord.Embed()
                 embed.set_image(url=image)
+                embed.description = message
+                embed.set_author(name, '', avatar) 
+                message = ''
             await webhook.send(message, username=name, avatar_url=avatar, embed=embed)
             print(
                 f'[DiscordBridge] Sending message from "{name}" to "{self.channel.name}"'
