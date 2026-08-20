@@ -263,7 +263,7 @@ class Bridgebot(commands.Bot):
                 embed = discord.Embed()
                 embed.set_image(url=image)
                 embed.description = message
-                embed.set_author(name, '', avatar) 
+                embed.set_author(name=name, icon_url=avatar) 
                 message = ''
             await webhook.send(message, username=name, avatar_url=avatar, embed=embed)
             print(
