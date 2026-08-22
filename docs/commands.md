@@ -560,8 +560,8 @@
     - Use `/inventory_drop [evi_name/id]` to drop evidence from your inventory into the area.
 * **inventory\_get**  `<id>` *(GM)*
     - Get someone else's evidence inventory.
- * **inventory\_add**  `<target_id> [evi_name/id]` *(GM)*
-    - Use `/inventory_add <target_id> <evi_name/id>` to add evidence into their inventory.
+ * **inventory\_add**  `<target_id> [name] [description] [image]` *(GM)*
+    - Use `/inventory_add [name] [description] [image]` to create a new piece of evidence from scratch, adding it  into their inventory.
 * **inventory\_remove**  `<target_id> <evi_name/id>` *(GM)*
     - Remove a piece of evidence from target's inventory
 * **inventory\_edit**  `<target_id> <evi_name/id> [name] [desc] [image]` *(GM)*

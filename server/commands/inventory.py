@@ -150,8 +150,9 @@ def ooc_cmd_inventory_get(client, target, name):
 )
 def ooc_cmd_inventory_add(client, target, name, description, image):
     """
-    Use /inventory_add <target> [evi_name/id] to add evidence into their inventory.
-    Usage: /inventory_add <target> [evi_name/id]
+    Use /inventory_add <target> [name] [description] [image] to create a new piece of evidence from scratch,
+    adding it  into their inventory.
+    Usage: /inventory_add <target> [name] [description] [image]
     """
     target = get_inventory_target(client, target)
 
@@ -231,4 +232,4 @@ def ooc_cmd_inventory_edit(client, target, target_evi, name, description, image)
     except ValueError:
         raise
     except (AreaError, ClientError):
-        raise
+        raise
