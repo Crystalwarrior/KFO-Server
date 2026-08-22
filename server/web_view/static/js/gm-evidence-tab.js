@@ -116,6 +116,7 @@ class EvidenceTab extends TabBase {
         this._hubAreas = [];
         this._evidenceList = [];
         this._selectedEvidenceId = null;
+        this._reloadRetried = false;
         this._statusTimer = null;
 
         this._areaLabel = root.querySelector('#evidenceAreaLabel');
@@ -215,6 +216,22 @@ class EvidenceTab extends TabBase {
         return this.shell.gmIdentity ? this.shell.gmIdentity.area_id : null;
     }
 
+    /** If the picked area no longer exists (removed, or ids renumbered by
+     * swap/remove), fall back to the GM's live current area, else the first
+     * remaining area. Clears any selected evidence item since ids may have
+     * shifted. Returns true if the picked id changed. */
+    _syncAreaId() {
+        if (this._hubAreas.some((a) => a.id === this._areaId)) return false;
+        const current = this._currentAreaId();
+        const fallback = this._hubAreas.some((a) => a.id === current)
+            ? current
+            : (this._hubAreas.length ? this._hubAreas[0].id : null);
+        this._areaId = fallback;
+        this._selectedEvidenceId = null;
+        this._clearEditor();
+        return true;
+    }
+
     async _loadAreaOptions() {
         try {
             const data = await this.api.getAreas();
@@ -224,10 +241,14 @@ class EvidenceTab extends TabBase {
                 const label = `${a.id}: ${a.name}${a.id === current ? ' (current)' : ''}`;
                 return `<option value="${a.id}">${esc(label)}</option>`;
             }).join('');
+            const healed = this._syncAreaId();
             if (this._areaId !== null && this._hubAreas.some((a) => a.id === this._areaId)) {
                 this._areaSelect.value = String(this._areaId);
             }
             this._refreshPosOptions();
+            // The picked area vanished while we were showing it -- reload so
+            // the list reflects a real area instead of erroring forever.
+            if (healed && this.isActive && this._areaId !== null) await this.reload();
         } catch (e) {
             // non-fatal: picker just stays as-is
         }
@@ -260,6 +281,17 @@ class EvidenceTab extends TabBase {
                 this._clearEditor();
             }
         } catch (e) {
+            // The picked area may have been removed/renumbered out from under
+            // us -- re-sync the picker once and retry before giving up.
+            if (!this._reloadRetried && /area_not_found/.test(e.message || '')) {
+                this._reloadRetried = true;
+                try {
+                    await this._loadAreaOptions();
+                } finally {
+                    this._reloadRetried = false;
+                }
+                return this.reload();
+            }
             this.shell.toast('Failed to load evidence: ' + e.message, 'error');
         }
     }
