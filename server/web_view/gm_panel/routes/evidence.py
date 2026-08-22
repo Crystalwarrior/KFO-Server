@@ -149,28 +149,18 @@ class EvidenceRoutes:
 
     async def handle_run_evidence(self, request):
         session = request["gm_session"]
-        try:
-            area_id = int(request.match_info["area_id"])
-            evidence_id = int(request.match_info["evidence_id"])
-        except ValueError:
-            return web.json_response({"ok": False, "output": ["[ERROR] Invalid id."]}, status=400)
-        area = self._get_area(session, area_id)
-        if area is None:
-            return web.json_response({"ok": False, "output": ["[ERROR] Area not found."]}, status=404)
-        # `ooc_cmd_demo` always operates on `client.area` (it takes no area
-        # argument), so the area shown/selected in the UI must actually be the
-        # GM's live current area -- otherwise Run/Stop would silently act on
-        # wherever the GM physically is instead of the tracked `area_id`.
-        try:
-            if area_id != session.current_area().id:
-                return web.json_response(
-                    {"ok": False, "output": ["[ERROR] That area is not your current area."]},
-                    status=400,
-                )
-        except AttributeError:
+        if not session.is_valid():
             return web.json_response({"error": "session_invalid"}, status=401)
+        area, evidence_id, err = self._resolve(session, request)
+        if err is not None:
+            return err
+        # `ooc_cmd_demo` reads its target area off `client.area`, so shadow
+        # `.area` to the picked area for the duration of this fully-synchronous
+        # call. Playback itself is bound to the evidence's own area by
+        # `Area.play_demo` regardless of where the GM is standing, so Run works
+        # on any area of the hub.
         try:
-            output = session.execute_command("demo", str(evidence_id + 1))
+            output = session.execute_command_in_area(area, "demo", str(evidence_id + 1))
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         ok = _command_ok(output)
@@ -183,42 +173,37 @@ class EvidenceRoutes:
 
     async def handle_stop_evidence(self, request):
         session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
         try:
             area_id = int(request.match_info["area_id"])
         except ValueError:
             return web.json_response({"ok": False, "output": ["[ERROR] Invalid area id."]}, status=400)
-        # `ooc_cmd_stop_demo` always operates on `client.area` -- see the comment
-        # in handle_run_evidence.
+        area = self._get_area(session, area_id)
+        if area is None:
+            return web.json_response({"ok": False, "output": ["[ERROR] Area not found."]}, status=404)
+        # Blank `/stop_demo` acts on `client.area`; shadow it to the picked area
+        # so Stop stops playback there rather than wherever the GM is standing.
         try:
-            if area_id != session.current_area().id:
-                return web.json_response(
-                    {"ok": False, "output": ["[ERROR] That area is not your current area."]},
-                    status=400,
-                )
-        except AttributeError:
-            return web.json_response({"error": "session_invalid"}, status=401)
-        try:
-            output = session.execute_command("stop_demo", "")
+            output = session.execute_command_in_area(area, "stop_demo", "")
         except SessionInvalid:
             return web.json_response({"error": "session_invalid"}, status=401)
         return _command_response(output)
 
     async def handle_stop_all_evidence(self, request):
         session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
         try:
             area_id = int(request.match_info["area_id"])
         except ValueError:
             return web.json_response({"ok": False, "output": ["[ERROR] Invalid area id."]}, status=400)
-        # Hub-wide stop still only makes sense relative to the GM's live current
-        # area/hub -- same reasoning as handle_stop_evidence.
-        try:
-            if area_id != session.current_area().id:
-                return web.json_response(
-                    {"ok": False, "output": ["[ERROR] That area is not your current area."]},
-                    status=400,
-                )
-        except AttributeError:
-            return web.json_response({"error": "session_invalid"}, status=401)
+        # Validate the id for API consistency, but `/stop_demo all` sweeps every
+        # area of the hub no matter where it's called from -- no current-area
+        # coupling at all.
+        area = self._get_area(session, area_id)
+        if area is None:
+            return web.json_response({"ok": False, "output": ["[ERROR] Area not found."]}, status=404)
         try:
             output = session.execute_command("stop_demo", "all")
         except SessionInvalid:

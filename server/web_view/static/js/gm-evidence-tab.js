@@ -6,11 +6,9 @@
  * command) -- that coupling is unchanged, only the panel's user-facing
  * vocabulary is "Evidence" now (was "Demos").
  *
- * Adds an area picker (the read/edit endpoints work on any area of the
- * hub; the run/stop/status endpoints only ever act on the GM's live
- * current area, so Run/Stop are disabled with a tooltip when the picked
- * area isn't that one) and per-item icon resolution/override via the
- * injected GMLocalContent.
+ * Adds an area picker (the read/edit/run/stop endpoints work on any area of
+ * the hub -- Run/Stop act on the picked area, not the GM's live one) and
+ * per-item icon resolution/override via the injected GMLocalContent.
  */
 
 /** The standard AO courtroom positions, used to populate the Pos dropdown
@@ -192,9 +190,6 @@ class EvidenceTab extends TabBase {
             this._loadAreaOptions();
             return;
         }
-        if (msg.type === 'client_moved' && this.shell.gmIdentity && msg.data.client_id === this.shell.gmIdentity.client_id) {
-            this._updateRunStopState();
-        }
     }
 
     // --- polling: WS is the fast path; this is the catch-all -------------
@@ -210,8 +205,8 @@ class EvidenceTab extends TabBase {
     }
 
     /** The GM's live current area id, tracked live by the shell (header
-     * identity) -- used to know whether Run/Stop are allowed on the
-     * currently-picked area. */
+     * identity) -- used to mark "(current)" in the picker and as its
+     * fallback target. */
     _currentAreaId() {
         return this.shell.gmIdentity ? this.shell.gmIdentity.area_id : null;
     }
@@ -560,16 +555,14 @@ class EvidenceTab extends TabBase {
         }
     }
 
-    /** Run/Stop only ever act on the GM's live current area (the backend
-     * enforces this); disable them with a tooltip otherwise instead of
-     * letting the GM fire a request that's guaranteed to be rejected. */
+    /** Reflect the editor selection onto the Run button; Stop is always
+     * available -- Run/Stop act on the picked area, wherever the GM happens
+     * to be, and a Stop with nothing playing is just a failed result toast. */
     _updateRunStopState() {
-        const isCurrent = this._areaId !== null && this._areaId === this._currentAreaId();
-        const tooltip = isCurrent ? '' : "This only works in the GM's current area.";
-        this._runBtn.disabled = !isCurrent || this._selectedEvidenceId === null;
-        this._runBtn.title = this._selectedEvidenceId === null && isCurrent ? 'Select or save an evidence item first.' : tooltip;
-        this._stopBtn.disabled = !isCurrent;
-        this._stopBtn.title = tooltip;
+        this._runBtn.disabled = this._selectedEvidenceId === null;
+        this._runBtn.title = this._selectedEvidenceId === null ? 'Select or save an evidence item first.' : '';
+        this._stopBtn.disabled = false;
+        this._stopBtn.title = '';
     }
 
     async _run() {
