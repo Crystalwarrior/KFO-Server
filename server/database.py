@@ -778,11 +778,116 @@ class Database:
             return conn.execute(query, params).fetchone()["cnt"]
 
     def get_event_types(self, event_category="area"):
-        """Get all event type names for a category ('area' or 'misc')."""
+        """Get all event type names for a category ('area', 'misc' or 'all')."""
+        if event_category == "all":
+            return sorted(
+                set(self.get_event_types("area")) | set(self.get_event_types("misc"))
+            )
         table = f"{event_category}_event_types"
         with self.db as conn:
             rows = conn.execute(f"SELECT type_name FROM {table} ORDER BY type_name").fetchall()
             return [row["type_name"] for row in rows]
+
+    def _all_events_union(self, hub_id=None, area_id=None, event_subtype=None,
+                          ipid=None, since=None, until=None):
+        """
+        Build the shared UNION ALL behind `query_all_events`/`count_all_events`.
+
+        Normalizes the three event tables into one column shape:
+        (event_time, category, ipid, hdid, target_ipid, event_subtype, hub_id,
+         hub_name, area_id, area_name, char_name, ooc_name, message, failed,
+         event_data)
+
+        Filters apply per branch: ipid/since/until match every category;
+        event_subtype matches area and misc rows (connect rows have no subtype
+        and drop out when set); hub/area are only defined for area rows, so
+        when either is set the connect/misc branches are excluded entirely.
+        Returns `(union_sql, params)` with no ORDER BY/LIMIT -- the callers
+        wrap it (paged select vs COUNT).
+        """
+        def conditions(prefix, use_subtype=True):
+            cond, params = [], []
+            if ipid is not None:
+                cond.append(f"{prefix}.ipid = ?")
+                params.append(ipid)
+            if use_subtype and event_subtype is not None:
+                cond.append("t.type_name = ?")
+                params.append(event_subtype)
+            if since is not None:
+                cond.append(f"{prefix}.event_time >= ?")
+                params.append(since)
+            if until is not None:
+                cond.append(f"{prefix}.event_time <= ?")
+                params.append(until)
+            return cond, params
+
+        area_cond, params = conditions("e")
+        if hub_id is not None:
+            area_cond.append("e.hub_id = ?")
+            params.append(hub_id)
+        if area_id is not None:
+            area_cond.append("e.area_id = ?")
+            params.append(area_id)
+
+        connect_cond, connect_params = conditions("c", use_subtype=False)
+        misc_cond, misc_params = conditions("m")
+
+        # Hub/area scoping only exists on area events; a scoped view shows
+        # just that category rather than unscoped global rows. Subtype names
+        # only exist for area/misc events, so a subtype filter likewise
+        # excludes the untyped connect rows.
+        if hub_id is not None or area_id is not None:
+            connect_cond.append("1=0")
+            misc_cond.append("1=0")
+        elif event_subtype is not None:
+            connect_cond.append("1=0")
+
+        union_sql = dedent(f"""
+            SELECT e.event_time, 'area' AS category, e.ipid, NULL AS hdid,
+                   e.target_ipid, t.type_name AS event_subtype,
+                   e.hub_id, e.hub_name, e.area_id, e.area_name,
+                   e.char_name, e.ooc_name, e.message,
+                   NULL AS failed, NULL AS event_data
+            FROM area_events e
+            JOIN area_event_types t ON e.event_subtype = t.type_id
+            WHERE {" AND ".join(area_cond) if area_cond else "1=1"}
+            UNION ALL
+            SELECT c.event_time, 'connect', c.ipid, c.hdid, NULL, NULL,
+                   NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                   c.failed, NULL
+            FROM connect_events c
+            WHERE {" AND ".join(connect_cond) if connect_cond else "1=1"}
+            UNION ALL
+            SELECT m.event_time, 'misc', m.ipid, NULL, m.target_ipid,
+                   t.type_name, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                   NULL, m.event_data
+            FROM misc_events m
+            JOIN misc_event_types t ON m.event_subtype = t.type_id
+            WHERE {" AND ".join(misc_cond) if misc_cond else "1=1"}
+        """)
+        return union_sql, params + connect_params + misc_params
+
+    def query_all_events(self, hub_id=None, area_id=None, event_subtype=None,
+                         ipid=None, since=None, until=None, limit=100, offset=0):
+        """Query area+connect+misc events merged into one chronological feed."""
+        union_sql, params = self._all_events_union(
+            hub_id, area_id, event_subtype, ipid, since, until
+        )
+        query = f"SELECT * FROM ({union_sql}) ORDER BY event_time DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+        with self.db as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [dict(row) for row in rows]
+
+    def count_all_events(self, hub_id=None, area_id=None, event_subtype=None,
+                         ipid=None, since=None, until=None):
+        """Count merged area+connect+misc events matching filters."""
+        union_sql, params = self._all_events_union(
+            hub_id, area_id, event_subtype, ipid, since, until
+        )
+        query = f"SELECT COUNT(*) AS cnt FROM ({union_sql})"
+        with self.db as conn:
+            return conn.execute(query, params).fetchone()["cnt"]
 
     def get_hubs(self):
         """Get distinct hub id/name pairs from area_events."""

@@ -117,9 +117,7 @@ class GMPanelApp:
         app.router.add_get("/api/gm/logs/hubs", require(moderator_routes.handle_api_hubs))
         app.router.add_get("/api/gm/logs/areas", require(moderator_routes.handle_api_areas))
         app.router.add_get("/api/gm/logs/event_types", require(moderator_routes.handle_api_event_types))
-        app.router.add_get("/api/gm/logs/area_events", require(moderator_routes.handle_api_area_events))
-        app.router.add_get("/api/gm/logs/connect_events", require(moderator_routes.handle_api_connect_events))
-        app.router.add_get("/api/gm/logs/misc_events", require(moderator_routes.handle_api_misc_events))
+        app.router.add_get("/api/gm/logs/events", require(moderator_routes.handle_api_all_events))
         app.router.add_post("/api/gm/logs/live", require(moderator_routes.handle_api_log_live))
 
         # Areas tab -- literal/collection routes ("hub/areas/...") registered

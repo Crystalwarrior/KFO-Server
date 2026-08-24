@@ -4,14 +4,18 @@
  * (admin.js). The admin console is the shared Commands tab console, and the
  * former players list + OOC/IC monitors now live in the Clients tab (admin
  * quick actions) and the Commands tab (monitor toggles). This tab is the
- * log viewer only -- the global Area/Connect/Misc event log with filters,
+ * log viewer only -- one unified chronological feed merging the former
+ * Area Events / Connections / System-Misc views, with filters,
  * PAGE_SIZE=100 pagination and a "Go Live" stream.
  *
  * It talks only to the admin-gated moderator endpoints (`/api/gm/logs/*`,
- * `/api/gm/logs/live`). Live rows stream over the shared `/ws/gm/live`
- * WebSocket: enabling "Go Live" calls `/api/gm/logs/live`, which subscribes
- * this session to `database.subscribe()` server-side and fans the rows out
- * here as `{"type": "area"|"connect"|"misc", "data": {...}}` frames.
+ * `/api/gm/logs/live`). Rows come from the merged `/api/gm/logs/events`
+ * query (area+connect+misc UNION ALL server-side) so pagination and
+ * filtering stay consistent across categories. Live rows stream over the
+ * shared `/ws/gm/live` WebSocket: enabling "Go Live" calls
+ * `/api/gm/logs/live`, which subscribes this session to
+ * `database.subscribe()` server-side and fans the rows out here as
+ * `{"type": "area"|"connect"|"misc", "data": {...}}` frames.
  *
  * Only admin-role sessions can reach it; every other session gets a 403 from
  * the server and never sees the tab (the shell hides it).
@@ -21,7 +25,6 @@ class AdminTab extends TabBase {
     constructor(shell, api, root) {
         super(shell, api, root);
 
-        this.currentTab = 'area';       // area | connect | misc
         this.currentPage = 0;
         this.totalCount = 0;
         this.liveMode = false;
@@ -36,12 +39,6 @@ class AdminTab extends TabBase {
     _build() {
         this.root.innerHTML = `
             <div class="gm-admin-tab">
-                <div class="gm-admin-subtabs">
-                    <button class="gm-admin-subtab active" data-tab="area">Area Events</button>
-                    <button class="gm-admin-subtab" data-tab="connect">Connections</button>
-                    <button class="gm-admin-subtab" data-tab="misc">System/Misc</button>
-                </div>
-
                 <div class="gm-admin-toolbar" id="admLogTool">
                     <button class="btn-sm" id="admLiveBtn">Go Live</button>
                     <span class="live-dot" id="admLiveDot"></span>
@@ -80,9 +77,6 @@ class AdminTab extends TabBase {
         this._filterSince = this.root.querySelector('#admFilterSince');
         this._filterUntil = this.root.querySelector('#admFilterUntil');
 
-        this.root.querySelectorAll('.gm-admin-subtab').forEach((el) => {
-            el.addEventListener('click', () => this._switchTab(el.dataset.tab));
-        });
         this._filterHub.addEventListener('change', () => this._onHubChange());
         this.root.querySelector('#admApplyBtn').addEventListener('click', () => this._applyFilters());
         this.root.querySelector('#admClearBtn').addEventListener('click', () => this._clearFilters());
@@ -111,21 +105,7 @@ class AdminTab extends TabBase {
         this._stopLive();
     }
 
-    // --- sub-tabs -------------------------------------------------------
-
-    _switchTab(tab) {
-        this.currentTab = tab;
-        this.currentPage = 0;
-        this.root.querySelectorAll('.gm-admin-subtab').forEach((el) =>
-            el.classList.toggle('active', el.dataset.tab === tab));
-
-        const isArea = tab === 'area';
-        this._filterHub.style.display = isArea ? '' : 'none';
-        this._filterArea.style.display = isArea ? '' : 'none';
-        this._filterEventType.style.display = tab === 'connect' ? 'none' : '';
-        this._loadEventTypes();
-        this._loadPage();
-    }
+    // --- filters --------------------------------------------------------
 
     _populateHubs() {
         this._filterHub.innerHTML = '<option value="">All Hubs</option>';
@@ -165,9 +145,8 @@ class AdminTab extends TabBase {
     async _loadEventTypes() {
         const sel = this._filterEventType;
         sel.innerHTML = '<option value="">All Events</option>';
-        const category = this.currentTab === 'area' ? 'area' : 'misc';
         try {
-            const types = await this.api.getLogEventTypes(category);
+            const types = await this.api.getLogEventTypes('all');
             (types || []).forEach((t) => {
                 const opt = document.createElement('option');
                 opt.value = t;
@@ -179,17 +158,12 @@ class AdminTab extends TabBase {
 
     _getFilters() {
         const filters = {};
-        if (this.currentTab === 'area') {
-            const hub = this._filterHub.value;
-            const area = this._filterArea.value;
-            const evt = this._filterEventType.value;
-            if (hub) filters.hub_id = hub;
-            if (area) filters.area_id = area;
-            if (evt) filters.event_subtype = evt;
-        } else if (this.currentTab === 'misc') {
-            const evt = this._filterEventType.value;
-            if (evt) filters.event_subtype = evt;
-        }
+        const hub = this._filterHub.value;
+        const area = this._filterArea.value;
+        const evt = this._filterEventType.value;
+        if (hub) filters.hub_id = hub;
+        if (area) filters.area_id = area;
+        if (evt) filters.event_subtype = evt;
         const ipid = this._filterIpid.value;
         if (ipid) filters.ipid = ipid;
         const since = this._filterSince.value;
@@ -219,10 +193,7 @@ class AdminTab extends TabBase {
         filters.limit = 100;
         filters.offset = this.currentPage * 100;
         try {
-            let data;
-            if (this.currentTab === 'area') data = await this.api.getAreaEvents(filters);
-            else if (this.currentTab === 'connect') data = await this.api.getConnectEvents(filters);
-            else data = await this.api.getMiscEvents(filters);
+            const data = await this.api.getAllEvents(filters);
             this.totalCount = data.total || 0;
             this._renderTable(data.events || []);
             this._updatePagination();
@@ -231,45 +202,51 @@ class AdminTab extends TabBase {
         }
     }
 
+    // One column set for every category, so the merged feed reads in
+    // sequence: Time | Kind | Where | Player | OOC Name | IPID | HDID |
+    // Target IPID | Event | Details.
+    static COLUMNS = '<th>Time</th><th>Kind</th><th>Where</th><th>Player</th><th>OOC Name</th>'
+        + '<th>IPID</th><th>HDID</th><th>Target IPID</th><th>Event</th><th>Details</th>';
+
+    _categoryBadge(category) {
+        const label = { area: 'AREA', connect: 'CONN', misc: 'MISC' }[category] || (category || '?').toUpperCase();
+        return `<span class="event-tag tag-${esc(category || 'misc')}">${label}</span>`;
+    }
+
+    _rowHtml(ev) {
+        const time = ev.event_time ? this._formatTime(ev.event_time) : '-';
+        const kind = this._categoryBadge(ev.category);
+        const where = ev.hub_id != null || ev.area_id != null
+            ? `${ev.hub_id != null ? `H${ev.hub_id}` : '-'}${ev.area_id != null ? ` · A${ev.area_id}: ${esc(ev.area_name || '')}` : ''}`
+            : '-';
+        const player = esc(ev.char_name || ev.ipid || '-');
+        const ooc = esc(ev.ooc_name || '-');
+        let event;
+        if (ev.category === 'connect') {
+            event = ev.failed
+                ? '<span class="event-tag tag-mod">BLOCKED</span>'
+                : '<span class="event-tag tag-area">CONNECTED</span>';
+        } else {
+            event = this._eventTag(ev.event_subtype);
+        }
+        let details = '-';
+        if (ev.category === 'area') details = esc(ev.message || '-');
+        else if (ev.category === 'misc' && ev.event_data) {
+            details = esc(typeof ev.event_data === 'string' ? ev.event_data : JSON.stringify(ev.event_data));
+        }
+        return `<td>${time}</td><td>${kind}</td><td>${where}</td><td>${player}</td><td>${ooc}</td>`
+            + `<td>${ev.ipid != null ? ev.ipid : '-'}</td><td>${esc(ev.hdid != null ? ev.hdid : '-')}</td>`
+            + `<td>${ev.target_ipid != null ? ev.target_ipid : '-'}</td><td>${event}</td><td>${details}</td>`;
+    }
+
     _renderTable(events) {
         if (!events || events.length === 0) {
             this._contentEl.innerHTML = '<div class="gm-empty">No events found</div>';
             return;
         }
-        let html = '<table class="gm-table"><thead><tr>';
-        if (this.currentTab === 'area') {
-            html += '<th>Time</th><th>Hub</th><th>Area</th><th>Player</th><th>OOC Name</th><th>Event</th><th>Message</th>';
-        } else if (this.currentTab === 'connect') {
-            html += '<th>Time</th><th>IPID</th><th>HDID</th><th>Status</th>';
-        } else {
-            html += '<th>Time</th><th>IPID</th><th>Target IPID</th><th>Event</th><th>Data</th>';
-        }
-        html += '</tr></thead><tbody>';
-        events.forEach((ev) => {
-            html += '<tr>';
-            if (this.currentTab === 'area') {
-                const time = ev.event_time ? this._formatTime(ev.event_time) : '-';
-                const hub = ev.hub_id != null ? `H${ev.hub_id}` : '-';
-                const area = ev.area_id != null ? `A${ev.area_id}: ${esc(ev.area_name || '')}` : '-';
-                const player = esc(ev.char_name || ev.ipid || '-');
-                const ooc = esc(ev.ooc_name || '-');
-                const tag = this._eventTag(ev.event_subtype);
-                const msg = esc(ev.message || '');
-                html += `<td>${time}</td><td>${hub}</td><td>${area}</td><td>${player}</td><td>${ooc}</td><td>${tag}</td><td>${msg}</td>`;
-            } else if (this.currentTab === 'connect') {
-                const time = ev.event_time ? this._formatTime(ev.event_time) : '-';
-                const status = ev.failed ? '<span class="event-tag tag-mod">BLOCKED</span>' : '<span class="event-tag tag-area">CONNECTED</span>';
-                html += `<td>${time}</td><td>${ev.ipid || '-'}</td><td>${esc(ev.hdid || '-')}</td><td>${status}</td>`;
-            } else {
-                const time = ev.event_time ? this._formatTime(ev.event_time) : '-';
-                const tag = this._eventTag(ev.event_subtype);
-                const d = ev.event_data ? esc(typeof ev.event_data === 'string' ? ev.event_data : JSON.stringify(ev.event_data)) : '-';
-                html += `<td>${time}</td><td>${ev.ipid || '-'}</td><td>${ev.target_ipid || '-'}</td><td>${tag}</td><td>${d}</td>`;
-            }
-            html += '</tr>';
-        });
-        html += '</tbody></table>';
-        this._contentEl.innerHTML = html;
+        const rows = events.map((ev) => `<tr>${this._rowHtml(ev)}</tr>`).join('');
+        this._contentEl.innerHTML =
+            `<table class="gm-table"><thead><tr>${AdminTab.COLUMNS}</tr></thead><tbody>${rows}</tbody></table>`;
     }
 
     _eventTag(name) {
@@ -311,7 +288,7 @@ class AdminTab extends TabBase {
     onEvent(msg) {
         if (!this.liveMode) return;
         if (msg.type === 'area' || msg.type === 'connect' || msg.type === 'misc') {
-            this._handleLiveEvent(msg);
+            this._appendLiveRow(msg.data, msg.type);
         }
     }
 
@@ -344,38 +321,15 @@ class AdminTab extends TabBase {
         if (dot) dot.classList.remove('connected');
     }
 
-    _handleLiveEvent(entry) {
-        const data = entry.data;
-        if (this.currentTab === 'area' && entry.type === 'area') this._appendLiveRow(data, 'area');
-        else if (this.currentTab === 'connect' && entry.type === 'connect') this._appendLiveRow(data, 'connect');
-        else if (this.currentTab === 'misc' && entry.type === 'misc') this._appendLiveRow(data, 'misc');
-    }
-
-    _appendLiveRow(data, tab) {
+    /** Live rows carry the same shapes the merged query returns, minus a
+     * `category` field -- the WS frame's `type` is the category. */
+    _appendLiveRow(data, category) {
         const tbody = this._contentEl.querySelector('tbody');
         if (!tbody) { this._loadPage(); return; }
 
         const tr = document.createElement('tr');
         tr.classList.add('new-row');
-        if (tab === 'area') {
-            const time = data.event_time ? this._formatTime(data.event_time) : '-';
-            const hub = data.hub_id != null ? `H${data.hub_id}` : '-';
-            const area = data.area_id != null ? `A${data.area_id}: ${esc(data.area_name || '')}` : '-';
-            const player = esc(data.char_name || data.ipid || '-');
-            const ooc = esc(data.ooc_name || '-');
-            const tag = this._eventTag(data.event_subtype);
-            const msg = esc(data.message || '');
-            tr.innerHTML = `<td>${time}</td><td>${hub}</td><td>${area}</td><td>${player}</td><td>${ooc}</td><td>${tag}</td><td>${msg}</td>`;
-        } else if (tab === 'connect') {
-            const time = data.event_time ? this._formatTime(data.event_time) : '-';
-            const status = data.failed ? '<span class="event-tag tag-mod">BLOCKED</span>' : '<span class="event-tag tag-area">CONNECTED</span>';
-            tr.innerHTML = `<td>${time}</td><td>${data.ipid || '-'}</td><td>${esc(data.hdid || '-')}</td><td>${status}</td>`;
-        } else {
-            const time = data.event_time ? this._formatTime(data.event_time) : '-';
-            const tag = this._eventTag(data.event_subtype);
-            const d = data.event_data ? esc(typeof data.event_data === 'string' ? data.event_data : JSON.stringify(data.event_data)) : '-';
-            tr.innerHTML = `<td>${time}</td><td>${data.ipid || '-'}</td><td>${data.target_ipid || '-'}</td><td>${tag}</td><td>${d}</td>`;
-        }
+        tr.innerHTML = this._rowHtml({ ...data, category });
 
         if (tbody.firstChild) tbody.insertBefore(tr, tbody.firstChild);
         else tbody.appendChild(tr);
@@ -392,12 +346,6 @@ class AdminTab extends TabBase {
         style.id = 'gm-admin-tab-styles';
         style.textContent = `
             .gm-admin-tab { display: flex; flex-direction: column; gap: 0.5rem; height: 100%; }
-            .gm-admin-subtabs { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-            .gm-admin-subtab {
-                background: var(--gm-panel-alt); border: 1px solid var(--gm-border); border-radius: 5px;
-                color: var(--gm-text-dim); padding: 0.35rem 0.7rem; cursor: pointer; font-size: 0.82rem;
-            }
-            .gm-admin-subtab.active { color: var(--gm-accent); border-color: var(--gm-accent); }
             .gm-admin-toolbar { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
             .gm-admin-toolbar label { font-size: 0.75rem; color: var(--gm-text-dim); }
             .gm-admin-toolbar select, .gm-admin-toolbar input {

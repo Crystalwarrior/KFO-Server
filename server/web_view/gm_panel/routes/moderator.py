@@ -12,6 +12,10 @@ the monitor toggles are de-gated there so GMs and admins both get them. The
 "Go Live" log stream is the one moderator-specific live feature: ``handle_api_log_live``
 turns on a per-session subscription to ``database.subscribe()`` whose frames are
 fanned out over the shared ``/ws/gm/live`` WebSocket.
+
+The log viewer itself is one unified feed (``handle_api_all_events``): the
+former area/connect/misc endpoints are merged into a single chronological
+query so the tab shows all event categories in sequence with a shared column set.
 """
 
 from aiohttp import web
@@ -68,11 +72,18 @@ class ModeratorRoutes:
         if err is not None:
             return err
         category = request.query.get("category", "area")
-        if category not in ("area", "misc"):
+        if category not in ("area", "misc", "all"):
             return web.json_response({"error": "invalid category"}, status=400)
         return web.json_response(database._database_singleton.get_event_types(category))
 
-    async def handle_api_area_events(self, request):
+    async def handle_api_all_events(self, request):
+        """The unified event feed: area+connect+misc rows merged chronologically.
+
+        Backs the log viewer's single table (the former Area Events /
+        Connections / System-Misc sub-tabs). Filters: hub_id/area_id scope to
+        area-category rows, event_subtype matches area/misc subtype names,
+        ipid/since/until apply everywhere.
+        """
         session, err = self._require_admin(request)
         if err is not None:
             return err
@@ -85,46 +96,10 @@ class ModeratorRoutes:
         until = request.query.get("until")
         limit = self._int(request.query.get("limit"), 100)
         offset = self._int(request.query.get("offset"), 0)
-        events = db.query_area_events(
+        events = db.query_all_events(
             hub_id, area_id, event_subtype, ipid, since, until, limit, offset
         )
-        total = db.count_area_events(
-            hub_id, area_id, event_subtype, ipid, since, until
-        )
-        return web.json_response({"events": events, "total": total})
-
-    async def handle_api_connect_events(self, request):
-        session, err = self._require_admin(request)
-        if err is not None:
-            return err
-        db = database._database_singleton
-        ipid = self._int(request.query.get("ipid"))
-        failed = request.query.get("failed")
-        if failed not in (None, ""):
-            failed = failed.lower() in ("1", "true", "yes")
-        else:
-            failed = None
-        since = request.query.get("since")
-        until = request.query.get("until")
-        limit = self._int(request.query.get("limit"), 100)
-        offset = self._int(request.query.get("offset"), 0)
-        events = db.query_connect_events(ipid, failed, since, until, limit, offset)
-        total = db.count_connect_events(ipid, failed, since, until)
-        return web.json_response({"events": events, "total": total})
-
-    async def handle_api_misc_events(self, request):
-        session, err = self._require_admin(request)
-        if err is not None:
-            return err
-        db = database._database_singleton
-        event_subtype = request.query.get("event_subtype")
-        ipid = self._int(request.query.get("ipid"))
-        since = request.query.get("since")
-        until = request.query.get("until")
-        limit = self._int(request.query.get("limit"), 100)
-        offset = self._int(request.query.get("offset"), 0)
-        events = db.query_misc_events(event_subtype, ipid, since, until, limit, offset)
-        total = db.count_misc_events(event_subtype, ipid, since, until)
+        total = db.count_all_events(hub_id, area_id, event_subtype, ipid, since, until)
         return web.json_response({"events": events, "total": total})
 
     # -- live log stream ----------------------------------------------
