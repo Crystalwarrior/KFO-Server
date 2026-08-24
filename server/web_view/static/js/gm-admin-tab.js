@@ -174,6 +174,14 @@ class AdminTab extends TabBase {
     }
 
     _applyFilters() {
+        // An inverted window (From after To) can never match anything --
+        // say so instead of silently rendering an empty table.
+        const since = this._filterSince.value;
+        const until = this._filterUntil.value;
+        if (since && until && new Date(since) > new Date(until)) {
+            this.shell.toast('"From" is after "To" -- that range can\'t match any events.', 'error');
+            return;
+        }
         this.currentPage = 0;
         this._loadPage();
     }
@@ -262,11 +270,28 @@ class AdminTab extends TabBase {
         return `<span class="event-tag ${cls}">${esc(name)}</span>`;
     }
 
+    /** Format an event timestamp for display. DB rows store naive UTC
+     * ('YYYY-MM-DD HH:MM:SS'), which `new Date` would misread as *local*
+     * time -- tag those with 'Z' so they render as true local times,
+     * consistent with what the From/To filters select (they also send
+     * local picks converted to UTC). Live frames already carry ISO-Z.
+     *
+     * Rendered as `DD-MMM-YYYY HH:MM AM/PM` -- the same shape the
+     * datetime-local From/To fields display, minus their zero seconds. */
     _formatTime(iso) {
         try {
-            const d = new Date(iso);
+            const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(iso)
+                ? iso.replace(' ', 'T') + 'Z'
+                : iso;
+            const d = new Date(normalized);
             if (isNaN(d)) return iso;
-            return d.toLocaleString();
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const h24 = d.getHours();
+            const h12 = h24 % 12 || 12;
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            return `${d.getDate()}-${months[d.getMonth()]}-${d.getFullYear()}`
+                + ` ${h12}:${mm} ${h24 < 12 ? 'AM' : 'PM'}`;
         } catch (e) { return iso; }
     }
 

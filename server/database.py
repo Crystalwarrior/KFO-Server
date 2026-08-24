@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import reduce
 from textwrap import dedent
 
@@ -587,6 +587,8 @@ class Database:
     def query_area_events(self, hub_id=None, area_id=None, event_subtype=None,
                           ipid=None, since=None, until=None, limit=100, offset=0):
         """Query area events with optional filters."""
+        since = self._coerce_timestamp(since)
+        until = self._coerce_timestamp(until)
         conditions = []
         params = []
         if hub_id is not None:
@@ -628,6 +630,8 @@ class Database:
     def count_area_events(self, hub_id=None, area_id=None, event_subtype=None,
                           ipid=None, since=None, until=None):
         """Count area events matching filters (for pagination)."""
+        since = self._coerce_timestamp(since)
+        until = self._coerce_timestamp(until)
         conditions = []
         params = []
         if hub_id is not None:
@@ -663,6 +667,8 @@ class Database:
     def query_connect_events(self, ipid=None, failed=None, since=None, until=None,
                              limit=100, offset=0):
         """Query connection events with optional filters."""
+        since = self._coerce_timestamp(since)
+        until = self._coerce_timestamp(until)
         conditions = []
         params = []
         if ipid is not None:
@@ -694,6 +700,8 @@ class Database:
 
     def count_connect_events(self, ipid=None, failed=None, since=None, until=None):
         """Count connection events matching filters."""
+        since = self._coerce_timestamp(since)
+        until = self._coerce_timestamp(until)
         conditions = []
         params = []
         if ipid is not None:
@@ -718,6 +726,8 @@ class Database:
     def query_misc_events(self, event_subtype=None, ipid=None, since=None, until=None,
                           limit=100, offset=0):
         """Query miscellaneous events with optional filters."""
+        since = self._coerce_timestamp(since)
+        until = self._coerce_timestamp(until)
         conditions = []
         params = []
         if event_subtype is not None:
@@ -751,6 +761,8 @@ class Database:
 
     def count_misc_events(self, event_subtype=None, ipid=None, since=None, until=None):
         """Count miscellaneous events matching filters."""
+        since = self._coerce_timestamp(since)
+        until = self._coerce_timestamp(until)
         conditions = []
         params = []
         if event_subtype is not None:
@@ -788,6 +800,31 @@ class Database:
             rows = conn.execute(f"SELECT type_name FROM {table} ORDER BY type_name").fetchall()
             return [row["type_name"] for row in rows]
 
+    @staticmethod
+    def _coerce_timestamp(value):
+        """
+        Normalize a client-supplied `since`/`until` filter to the event
+        tables' storage format, so string comparison in SQL behaves.
+
+        `event_time` columns are `DATETIME DEFAULT CURRENT_TIMESTAMP`: naive
+        UTC strings of the form `YYYY-MM-DD HH:MM:SS`. The web panels send
+        ISO-8601 (`2026-08-24T12:00:00.000Z`), which miscompares
+        lexicographically ('T' sorts after ' ', so every same-day row would
+        fall outside a same-day From/To window). Anything parseable is
+        converted to naive UTC `YYYY-MM-DD HH:MM:SS`; anything else passes
+        through unchanged.
+        """
+        if value is None:
+            return None
+        text = str(value)
+        try:
+            dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return value
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+
     def _all_events_union(self, hub_id=None, area_id=None, event_subtype=None,
                           ipid=None, since=None, until=None):
         """
@@ -805,6 +842,9 @@ class Database:
         Returns `(union_sql, params)` with no ORDER BY/LIMIT -- the callers
         wrap it (paged select vs COUNT).
         """
+        since = self._coerce_timestamp(since)
+        until = self._coerce_timestamp(until)
+
         def conditions(prefix, use_subtype=True):
             cond, params = [], []
             if ipid is not None:
