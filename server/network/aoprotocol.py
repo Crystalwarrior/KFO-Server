@@ -1180,6 +1180,8 @@ class AOProtocol(asyncio.Protocol):
             self.client.last_pre = pre
         self.client.flip = flip
         self.client.claimed_folder = folder
+        # Set the client's last detected shout
+        self.client.last_shout = button
         other_offset = 0
         other_emote = ""
         other_flip = 0

@@ -61,12 +61,12 @@ _IF_ALIASES = {"==": "eq", "!=": "ne", "<": "lt", "<=": "le", ">": "gt", ">=": "
 
 # Comparison operators for the `if` instruction.
 _IF_OPS = {
-    "eq": lambda a, b: a == b,
-    "ne": lambda a, b: a != b,
-    "lt": lambda a, b: a < b,
-    "gt": lambda a, b: a > b,
-    "le": lambda a, b: a <= b,
-    "ge": lambda a, b: a >= b,
+    "eq": lambda a, b: str(a) == str(b),
+    "ne": lambda a, b: float(a) != float(b),
+    "lt": lambda a, b: float(a) < float(b),
+    "gt": lambda a, b: float(a) > float(b),
+    "le": lambda a, b: float(a) <= float(b),
+    "ge": lambda a, b: float(a) >= float(b),
 }
 
 # Default cap on instructions executed by one script run (config override:
@@ -476,12 +476,13 @@ class ScriptRunner:
             self.area.broadcast_ooc(f"[Demo] [ERROR] {ex}")
             self.finish()
             return
-        if op in ("lt", "gt", "le", "ge") and isinstance(left, str) != isinstance(right, str):
-            self.area.broadcast_ooc("[Demo] [ERROR] Cannot compare a number and a string; stopping playback.")
+        try:
+            if _IF_OPS[op](left, right):
+                self._jump(target)
+        except ValueError:
+            self.area.broadcast_ooc("[Demo] [ERROR] Comparison type mismatch (can't compare a number and a string); stopping playback.")
             self.finish()
             return
-        if _IF_OPS[op](left, right):
-            self._jump(target)
 
     def _eval_set(self, instruction, sources):
         """Evaluate an operand (or live path) and store it in an area variable."""

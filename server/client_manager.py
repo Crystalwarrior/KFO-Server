@@ -70,6 +70,7 @@ class ClientManager:
 
             self.last_sprite = ""
             self.last_pre = ""
+            self.last_shout = 0
             self.flip = 0
             self.claimed_folder = ""
 

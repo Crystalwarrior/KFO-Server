@@ -7,8 +7,8 @@
 # be used by other players.
 hostname: <dollar>H
 
-# Max number of player slots to be made. The player limit is actually not
-# enforced, but bad things are supposed to happen if this is exceeded.
+# Max number of player slots to be made. Rejects connections with 'server is full'
+# if reached.
 playerlimit: 100
 
 # TCP port to listen on

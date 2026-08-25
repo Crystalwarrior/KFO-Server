@@ -193,6 +193,7 @@ class Area:
         self.triggers = {
             "join": "",  # User joins the area.
             "leave": "",  # User leaves the area.
+            "shout": "",  # User shouted (client.last_shout to determine which)
         }
 
         # Mutable script variables for demo scripting (see docs/demo_scripting.md).
@@ -1098,6 +1099,8 @@ class Area:
         elif client:
             # Shout used
             shout = str(button).split("<and>")[0]
+            if shout != "0":
+                self.trigger("shout", client)
             if shout in ["1", "2", "3"]:
                 lwr = msg.lower()
                 target = ""

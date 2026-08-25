@@ -48,7 +48,7 @@ _QUOTED = re.compile(r'^(?:"([^"]*)"|\'([^\']*)\')$')
 _LIVE_PATH = re.compile(
     r"^(?:(?P<count>\w+)\.count"
     r"|(?P<src>\w+)\[(?P<idx>[^\]]+)\]\.(?P<field>[A-Za-z_]\w*)"
-    r"|(?P<scope>area|hub)\.(?P<scopefield>[A-Za-z_]\w*))$"
+    r"|(?P<scope>area|hub|trigger)\.(?P<scopefield>[A-Za-z_]\w*))$"
 )
 
 # Maximum magnitude of any single numeric term, mirroring the `/roll` lag guard.
@@ -168,6 +168,10 @@ _CLIENT_FIELDS = {
     "char_url": lambda c, a: c.char_url,
     "hidden_in": lambda c, a: c.hidden_in if getattr(c, "hidden_in", None) is not None else "",
     "listen_pos": lambda c, a: _listen_pos_str(c),
+    "last_sprite": lambda c, a: c.last_sprite,
+    "last_pre": lambda c, a: c.last_pre,
+    "last_shout": lambda c, a: c.last_shout,
+    "autogetarea": lambda c, a: int(c.autogetarea),
 }
 
 
@@ -606,6 +610,7 @@ def live_get(path, area, variables=None):
     - `links[<i>].<field>`                 -- an area link's whitelisted field
     - `char[<name>].<key>`                 -- character-data value for a character
     - `area.<field>` / `hub.<field>`       -- whitelisted area/hub properties
+    - `trigger.<field>`                    -- client field off whoever fired the trigger
 
     `<i>` is resolved as an operand (a bare variable or an arithmetic
     expression); `<name>` may be a quoted character folder or a char id.
@@ -633,9 +638,19 @@ def live_get(path, area, variables=None):
         index = resolve_index(match.group("idx"), area, variables, source["what"])
         item = source["get"](area, index)
         return source["field"](area, item, match.group("field"))
-    if match.group("scope") == "area":
-        return _area_field(area, match.group("scopefield"))
-    return _hub_field(area.area_manager, match.group("scopefield"))
+    scope = match.group("scope")
+    field = match.group("scopefield")
+    if scope == "area":
+        return _area_field(area, field)
+    if scope == "trigger":
+        cid = area.variables.get("trigger_cid")
+        if cid is None:
+            raise ScriptingError("No trigger is active (trigger_cid not set).")
+        for c in area.clients:
+            if c.id == cid:
+                return _client_field(c, area, field)
+        raise ScriptingError(f"Trigger client (id={cid}) is no longer in the area.")
+    return _hub_field(area.area_manager, field)
 
 
 def try_live_get(path, area, variables=None):

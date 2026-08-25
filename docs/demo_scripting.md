@@ -265,6 +265,10 @@ What you can read off a person:
 | `time_of_day`    | The time of day they're forced to see (empty = normal) |
 | `char_url`       | The link shown on their character                   |
 | `remote_listen`  | Their remote listening: `0` none, `1` IC only, `2` OOC, `3` everything |
+| `last_sprite`    | The last sprite/emote they sent                                        |
+| `last_pre`       | The last pre-animation they sent                                       |
+| `last_shout`     | The last shout (WT/CE button) they pressed                            |
+| `autogetarea`    | `1` if auto-getarea is on (they see the area list on every move)      |
 
 The flags below come back as `1` (yes) or `0` (no):
 
@@ -353,6 +357,7 @@ order they were made.
 | `locked`      | `1` if the link is locked                        |
 | `hidden`      | `1` if the link is hidden                        |
 | `can_peek`    | `1` if you can peek through it                   |
+| `seethrough`  | `1` if the link can be seen through              |
 
 ```
 get count links.count
@@ -698,7 +703,7 @@ area's variables with everything else.
 ## Triggers
 
 Triggers watch for something happening in the area and run a command when it
-does. Area triggers are `join` and `leave`; an evidence item can also have a
+does. Area triggers are `join`, `leave` and `shout`; an evidence item can also have a
 `present` trigger. Only normal players set them off - hidden clients, CMs,
 GMs and mods are ignored.
 
@@ -737,6 +742,22 @@ CT#narrator#Welcome to the area, <!trigger_showname>!#0%
 
 The values stay until the next trigger fires (or a script overwrites them), so
 a demo has time to pick them up.
+
+You can also read any client field off the triggerer directly with
+`trigger.<field>` — it works exactly like `client[i].<field>` but always
+points at whoever fired the trigger:
+
+```
+get shout trigger.last_shout
+if shout == 2 objection
+label objection
+CT#narrator#Objection shouted by <!trigger.showname>!#0%
+goto done
+label done
+```
+
+If the trigger client left the area before the script ran, reading
+`trigger.<field>` raises an error.
 
 **Everything shares the same variables.** A demo, a trigger's command and a
 timer's command all run in the same room and read and write the same
