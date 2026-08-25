@@ -1522,28 +1522,13 @@ class GraphRenderer {
                 y: margin + row * rowSpacing + this._nodeH / 2,
             });
         });
-        // Grow the canvas height to fit every row so nothing is clipped.
-        // This is the CANVAS (viewBox) size, tracked separately from the
-        // element's own pixel size (`_width`/`_height`, see _measure) so
-        // _clientToSvg() can unwind the resulting viewBox letterboxing.
-        const rows = Math.ceil(sorted.length / cols);
-        let canvasW = w;
-        let canvasH = Math.max(h, margin * 2 + rows * rowSpacing);
-
         this._nodes.forEach((node, id) => {
             const base = this._baseLayout.get(id);
             if (!base) return;
             const off = this._offsets.get(this._offsetKey(node.area)) || { x: 0, y: 0 };
             node.x = base.x + off.x;
             node.y = base.y + off.y;
-            // Manual drags and the auto-sort placement are offsets on top
-            // of the grid; grow the canvas so they stay inside the viewBox
-            // even when they reach past the plain grid's extent.
-            canvasW = Math.max(canvasW, node.x + margin + this._nodeW / 2);
-            canvasH = Math.max(canvasH, node.y + margin + this._nodeH / 2);
         });
-        this._canvasW = canvasW;
-        this._canvasH = canvasH;
     }
 
     // --- rendering --------------------------------------------------------
@@ -1700,6 +1685,7 @@ class GraphRenderer {
         const classes = ['gr-node'];
         if (area.locked) classes.push('gr-node-locked');
         if (area.dark) classes.push('gr-node-dark');
+        if (area.id === 0) classes.push('gr-node-root');
         const g = grEl('g', {
             class: classes.join(' '),
             transform: `translate(${pos.x - this._nodeW / 2}, ${pos.y - this._nodeH / 2})`,
