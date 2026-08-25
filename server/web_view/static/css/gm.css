@@ -226,6 +226,7 @@ body {
 .gr-node:hover .gr-node-card { stroke: var(--gm-accent); }
 .gr-node { cursor: pointer; }
 .gr-node-locked .gr-node-card { stroke: var(--gm-danger); }
+.gr-node-root .gr-node-card { stroke: #4ade80; stroke-width: 2.2; }
 .gr-node-dark .gr-node-card { fill: #0d0f18; }
 .gr-thumb-fallback { fill: #202538; }
 .gr-thumb-label { fill: #5a5f78; font-size: 9px; }

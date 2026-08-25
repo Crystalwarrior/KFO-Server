@@ -10,7 +10,10 @@
  * always sort last by id) therefore always land to the right of / below
  * existing ones, never to the left. Per-node manual drag offsets are
  * layered on top of the computed grid position and persisted in
- * localStorage per hub.
+ * localStorage per hub. The ⌖ Auto-sort control additionally computes a
+ * layered left-to-right arrangement anchored at area 0 with fewer link
+ * crossings (see grSortedDegreeLayout) and applies it through those same
+ * drag offsets.
  *
  * Viewing: wheel-zoom (centered on the cursor) and click-drag pan are
  * implemented via a single <g class="gr-viewport"> transform, with
@@ -42,6 +45,219 @@ function grEl(tag, attrs) {
         }
     }
     return el;
+}
+
+/**
+ * Degree-sorted "auto-sort" layout (pure function, DOM-free -- exported
+ * at the bottom of this file so it can be unit-tested under plain Node).
+ *
+ * Columns are formed by grouping areas by their explicit-link degree
+ * (most connections → leftmost column, fewest → rightmost); within each
+ * column, barycenter sweeps reorder nodes by the mean row of their
+ * neighbours on adjacent columns to minimize edge crossings, and
+ * vertical relaxation pulls nodes toward their neighbours so linked
+ * areas sit close together rather than on rigid grid rows. Dummy nodes
+ * stand in for edges spanning multiple columns so those crossings are
+ * minimized too. fully_connected implicit edges are deliberately
+ * excluded from layout -- they are still drawn, just not laid out.
+ * Fully deterministic for a given input.
+ *
+ * Returns { positions: Map<areaId, {x, y}>, width, height }.
+ */
+function grSortedDegreeLayout(areas, opts) {
+    const o = opts || {};
+    const nodeW = o.nodeW || 280;
+    const nodeH = o.nodeH || 106;
+    const colGap = (o.colGap !== undefined) ? o.colGap : 70;
+    const rowGap = (o.rowGap !== undefined) ? o.rowGap : 60;
+    const margin = (o.margin !== undefined) ? o.margin : 90;
+    const sweeps = (o.sweeps !== undefined) ? o.sweeps : 12;
+
+    const empty = { positions: new Map(), width: margin * 2, height: margin * 2 };
+    if (!areas || !areas.length) return empty;
+
+    const byId = new Map();
+    areas.forEach((a) => byId.set(a.id, a));
+    const ids = areas.map((a) => a.id).sort((x, y) => x - y);
+
+    // Layout adjacency: explicit links only (undirected, self-loops and
+    // fully_connected meshes excluded). Degree is the undirected neighbor
+    // count, which drives column assignment.
+    const adj = new Map();
+    ids.forEach((id) => adj.set(id, new Set()));
+    areas.forEach((area) => {
+        (area.links || []).forEach((link) => {
+            if (link.target_id === area.id || !byId.has(link.target_id)) return;
+            adj.get(area.id).add(link.target_id);
+            adj.get(link.target_id).add(area.id);
+        });
+    });
+
+    // Column assignment: group by degree descending (most connected
+    // leftmost); tiebreak by id ascending for determinism.
+    const sorted = ids.slice().sort((a, b) => {
+        const dA = adj.get(a).size, dB = adj.get(b).size;
+        return dB - dA || a - b;
+    });
+    const degreeGroups = new Map();
+    sorted.forEach((id) => {
+        const d = adj.get(id).size;
+        if (!degreeGroups.has(d)) degreeGroups.set(d, []);
+        degreeGroups.get(d).push(id);
+    });
+    const columns = [];
+    Array.from(degreeGroups.keys()).sort((a, b) => b - a)
+        .forEach((d) => columns.push(degreeGroups.get(d)));
+    const numCols = columns.length;
+    const colIndex = new Map();
+    columns.forEach((col, c) => col.forEach((id) => colIndex.set(id, c)));
+
+    // Inter-column edge segments with dummy nodes for multi-column edges.
+    const augAdj = new Map();
+    ids.forEach((id) => augAdj.set(id, new Set()));
+    const connect = (a, b) => {
+        if (!augAdj.has(a)) augAdj.set(a, new Set());
+        if (!augAdj.has(b)) augAdj.set(b, new Set());
+        augAdj.get(a).add(b);
+        augAdj.get(b).add(a);
+    };
+    const segsByPair = [];
+    const seenPairs = new Set();
+    let nextDummy = -1;
+    ids.forEach((a) => {
+        Array.from(adj.get(a)).sort((x, y) => x - y).forEach((b) => {
+            const key = `${Math.min(a, b)}|${Math.max(a, b)}`;
+            if (seenPairs.has(key)) return;
+            seenPairs.add(key);
+            const ca = colIndex.get(a), cb = colIndex.get(b);
+            if (ca === cb) return;
+            const loId = ca <= cb ? a : b;
+            const hiId = ca <= cb ? b : a;
+            const loCol = Math.min(ca, cb);
+            const span = Math.abs(ca - cb);
+            let prev = loId;
+            for (let k = 1; k < span; k++) {
+                const dummy = nextDummy--;
+                columns[loCol + k].push(dummy);
+                segsByPair[loCol + k - 1] = segsByPair[loCol + k - 1] || [];
+                segsByPair[loCol + k - 1].push({ c: loCol + k - 1, lo: prev, hi: dummy });
+                connect(prev, dummy);
+                prev = dummy;
+            }
+            segsByPair[loCol + span - 1] = segsByPair[loCol + span - 1] || [];
+            segsByPair[loCol + span - 1].push({ c: loCol + span - 1, lo: prev, hi: hiId });
+            connect(prev, hiId);
+        });
+    });
+
+    const posIndex = new Map();
+    columns.forEach((col, c) => col.forEach((id, i) => posIndex.set(id, { c, i })));
+
+    const totalCrossings = () => {
+        let crossings = 0;
+        for (let c = 0; c < numCols - 1; c++) {
+            const segs = segsByPair[c] || [];
+            for (let i = 0; i < segs.length; i++) {
+                for (let j = i + 1; j < segs.length; j++) {
+                    const dLo = posIndex.get(segs[i].lo).i - posIndex.get(segs[j].lo).i;
+                    const dHi = posIndex.get(segs[i].hi).i - posIndex.get(segs[j].hi).i;
+                    if (dLo * dHi < 0) crossings++;
+                }
+            }
+        }
+        return crossings;
+    };
+
+    // Crossing minimization: barycenter sweeps over the augmented graph.
+    let bestOrders = columns.map((col) => col.slice());
+    let bestCross = totalCrossings();
+    for (let s = 0; s < sweeps && numCols > 1; s++) {
+        const forward = s % 2 === 0;
+        for (let k = 0; k < numCols; k++) {
+            const c = forward ? k : numCols - 1 - k;
+            const col = columns[c];
+            if (col.length < 2) continue;
+            const bary = new Map();
+            col.forEach((id) => {
+                let sum = 0, cnt = 0;
+                augAdj.get(id).forEach((nb) => {
+                    sum += posIndex.get(nb).i;
+                    cnt++;
+                });
+                bary.set(id, cnt ? sum / cnt : posIndex.get(id).i);
+            });
+            col.sort((a, b) => (bary.get(a) - bary.get(b)) || (a - b));
+            col.forEach((id, i) => posIndex.set(id, { c, i }));
+        }
+        const cross = totalCrossings();
+        if (cross < bestCross) {
+            bestCross = cross;
+            bestOrders = columns.map((col) => col.slice());
+        }
+    }
+    columns.forEach((col, c) => {
+        for (let i = 0; i < col.length; i++) col[i] = bestOrders[c][i];
+    });
+
+    // Vertical barycenter relaxation: pull every node toward the mean Y
+    // of its actual neighbours (dummies included) while preserving
+    // column order and minimum row-pitch separation.
+    const rowPitch = nodeH + rowGap;
+    const topY = margin + nodeH / 2;
+    const yOf = new Map();
+    columns.forEach((col) => col.forEach((id, i) => yOf.set(id, topY + i * rowPitch)));
+    for (let s = 0; s < sweeps && numCols > 1; s++) {
+        for (let c = 1; c < numCols; c++) {
+            const col = columns[c];
+            if (col.length < 2) continue;
+            const desired = col.map((id) => {
+                let sum = 0, cnt = 0;
+                augAdj.get(id).forEach((nb) => {
+                    sum += yOf.get(nb);
+                    cnt++;
+                });
+                return cnt ? sum / cnt : yOf.get(id);
+            });
+            let running = -Infinity;
+            let sumY = 0, sumDesired = 0;
+            const chained = desired.map((want) => {
+                const y = Math.max(want, running + rowPitch);
+                running = y;
+                sumY += y;
+                sumDesired += want;
+                return y;
+            });
+            const shift = (sumDesired - sumY) / col.length;
+            running = -Infinity;
+            chained.forEach((y, i) => {
+                const yy = Math.max(topY, y + shift);
+                const placed = Math.max(yy, running + rowPitch);
+                running = placed;
+                yOf.set(col[i], placed);
+            });
+        }
+    }
+
+    // Final positions.
+    const colPitch = nodeW + colGap;
+    let maxY = topY;
+    const positions = new Map();
+    columns.forEach((col, c) => {
+        col.forEach((id) => {
+            if (id < 0) return;
+            const y = Math.max(yOf.get(id), topY);
+            maxY = Math.max(maxY, y);
+            positions.set(id, {
+                x: margin + c * colPitch + nodeW / 2,
+                y,
+            });
+        });
+    });
+    return {
+        positions,
+        width: margin * 2 + (numCols - 1) * colPitch + nodeW,
+        height: maxY + margin + nodeH / 2,
+    };
 }
 
 class GraphRenderer {
@@ -489,6 +705,7 @@ class GraphRenderer {
         mk('⤡', 'Fit graph to view', () => this.fit());
         mk('⟳', 'Reset zoom & pan', () => this.resetView());
         mk('✕', 'Reset manual layout for this hub', () => this.resetOffsets());
+        mk('⌖', 'Auto-sort: arrange areas by connection count (most → left, least → right)', () => this.applySortedLayout());
         this._buildIconScaleControl(controls);
         this._buildLinkModeControl(controls);
 
@@ -1250,6 +1467,34 @@ class GraphRenderer {
         if (this._lastAreas.length) this._scheduleSnapshot(this._lastAreas, true);
     }
 
+    /** Auto-sort (press-and-apply): compute the degree-sorted layout
+     * (see grSortedDegreeLayout) and write it straight into the node
+     * placements by storing each target position as that node's manual
+     * offset against its grid base. Reusing the drag-offset machinery
+     * means the arrangement persists across reloads like any hand-drag,
+     * flows through Save/Load/Export/Import layout untouched, and ✕ Reset
+     * still returns to the plain grid -- no separate mode state exists. */
+    applySortedLayout() {
+        const areas = this._lastAreas;
+        if (!areas || !areas.length) return;
+        const result = grSortedDegreeLayout(areas, { nodeW: this._nodeW, nodeH: this._nodeH });
+        if (!result.positions.size) return;
+        // Refresh the grid base against the CURRENT area set so the stored
+        // deltas are exact even if areas changed since the last snapshot.
+        this._runLayout(areas);
+        let applied = 0;
+        areas.forEach((area) => {
+            const target = result.positions.get(area.id);
+            const base = this._baseLayout.get(area.id);
+            if (!target || !base) return;
+            this._offsets.set(this._offsetKey(area), { x: target.x - base.x, y: target.y - base.y });
+            applied++;
+        });
+        if (!applied) return;
+        this._saveOffsets();
+        this._scheduleSnapshot(areas, true);
+    }
+
     // --- layout: deterministic left-to-right grid ------------------------
 
     /**
@@ -1277,14 +1522,6 @@ class GraphRenderer {
                 y: margin + row * rowSpacing + this._nodeH / 2,
             });
         });
-        // Grow the canvas height to fit every row so nothing is clipped.
-        // This is the CANVAS (viewBox) size, tracked separately from the
-        // element's own pixel size (`_width`/`_height`, see _measure) so
-        // _clientToSvg() can unwind the resulting viewBox letterboxing.
-        const rows = Math.ceil(sorted.length / cols);
-        this._canvasW = w;
-        this._canvasH = Math.max(h, margin * 2 + rows * rowSpacing);
-
         this._nodes.forEach((node, id) => {
             const base = this._baseLayout.get(id);
             if (!base) return;
@@ -1448,6 +1685,7 @@ class GraphRenderer {
         const classes = ['gr-node'];
         if (area.locked) classes.push('gr-node-locked');
         if (area.dark) classes.push('gr-node-dark');
+        if (area.id === 0) classes.push('gr-node-root');
         const g = grEl('g', {
             class: classes.join(' '),
             transform: `translate(${pos.x - this._nodeW / 2}, ${pos.y - this._nodeH / 2})`,
@@ -2120,3 +2358,10 @@ class GraphRenderer {
         requestAnimationFrame(step);
     }
 }
+
+// Node-only export for unit tests (grSortedDegreeLayout is DOM-free);
+// ignored by browsers, where `module` is undefined.
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+    module.exports = { grSortedDegreeLayout };
+}
+
