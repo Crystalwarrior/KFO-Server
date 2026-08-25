@@ -31,6 +31,9 @@ class AOProtocol(asyncio.Protocol):
         self.client = None
         self.buffer = ""
         self.ping_timeout = None
+        # Packet rate limiting
+        self._packet_times = []
+        self._packet_kicked = False
 
     def data_received(self, data):
         """Handles any data received from the network.
@@ -43,6 +46,26 @@ class AOProtocol(asyncio.Protocol):
         """
         buf = data
         ipid = self.client.ipid
+
+        # Packet rate limiting
+        config = self.server.config.get("packet_rate_limit", {})
+        max_per_second = config.get("max_per_second", 20)
+        if max_per_second > 0 and not self._packet_kicked:
+            now = time.time()
+            self._packet_times.append(now)
+            # Purge timestamps older than 1 second
+            self._packet_times = [t for t in self._packet_times if now - t < 1.0]
+            if len(self._packet_times) > max_per_second:
+                logger.warning(
+                    "Packet rate limit exceeded from %s (%d packets/sec)",
+                    ipid, len(self._packet_times),
+                )
+                self.client.send_ooc(
+                    "You are sending packets too fast. You have been disconnected."
+                )
+                self._packet_kicked = True
+                self.client.disconnect()
+                return
 
         if buf is None:
             buf = b""
@@ -85,11 +108,37 @@ class AOProtocol(asyncio.Protocol):
 
         :param transport: the transport object
         """
+        # Global connection rate limiting (not per-IP)
+        config = self.server.config.get("global_connection_rate", {})
+        max_per_second = config.get("max_per_second", 0)
+        if max_per_second > 0:
+            now = time.time()
+            if not hasattr(self.server, "_conn_times"):
+                self.server._conn_times = []
+            self.server._conn_times.append(now)
+            self.server._conn_times = [t for t in self.server._conn_times if now - t < 1.0]
+            if len(self.server._conn_times) > max_per_second:
+                logger.warning(
+                    "Global connection rate limit exceeded (%d connections/sec)",
+                    len(self.server._conn_times),
+                )
+                transport.write(b"BD#Server is experiencing high connection volume. Please try again later.#%")
+                transport.close()
+                return
+
         try:
             self.client = self.server.new_client(transport)
         except ClientError:
             print(traceback.format_exc())
             transport.close()
+            return
+
+        if self.server.client_manager.check_connection_rate(self.client.ipid):
+            self.client.send_command(
+                "BD",
+                "Connection rate limit exceeded. Please try again later.",
+            )
+            self.client.disconnect()
             return
 
         if not self.server.client_manager.new_client_preauth(self.client):
@@ -339,6 +388,19 @@ class AOProtocol(asyncio.Protocol):
             return
         elif not self.client.is_checked:
             return
+        min_age = self.server.config.get("min_connection_age", {}).get("before_cc", 0)
+        if min_age > 0 and not self.client.is_mod and self.client not in self.client.area.owners:
+            elapsed = time.time() - self.client.connection_time
+            if elapsed < min_age:
+                self.client.send_ooc(
+                    f"Please wait {int(min_age - elapsed) + 1} more seconds before changing characters."
+                )
+                return
+        if self.client.cc_mute():
+            self.client.send_ooc(
+                f"You are changing characters too fast. Please try again after {int(self.client.cc_mute())} seconds."
+            )
+            return
 
         cid = args[1]
         try:
@@ -354,8 +416,21 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.client.is_checked:
             return
+        min_age = self.server.config.get("min_connection_age", {}).get("before_ic", 0)
+        if min_age > 0 and not self.client.is_mod and self.client not in self.client.area.owners:
+            elapsed = time.time() - self.client.connection_time
+            if elapsed < min_age:
+                self.client.send_ooc(
+                    f"Please wait {int(min_age - elapsed) + 1} more seconds before sending messages."
+                )
+                return
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
+            return
+        if self.client.ic_mute():
+            self.client.send_ooc(
+                f"You are sending messages too fast. Please try again after {int(self.client.ic_mute())} seconds."
+            )
             return
 
         showname = ""

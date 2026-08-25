@@ -94,17 +94,52 @@ debug: false
 music_change_floodguard:
   times_per_interval: 3
   interval_length: 20
-  mute_length: 180
+  mute_length: 60
 
 wtce_floodguard:
   times_per_interval: 5
   interval_length: 10
-  mute_length: 1000
+  mute_length: 60
   
 ooc_floodguard:
   times_per_interval: 5
   interval_length: 5
-  mute_length: 30
+  mute_length: 15
+
+ic_floodguard:
+  times_per_interval: 5
+  interval_length: 2
+  mute_length: 7
+
+cc_floodguard:
+  times_per_interval: 5
+  interval_length: 3
+  mute_length: 15
+
+# Per-IP connection rate limit.
+# max_connections: max new connections from one IP within interval_length seconds.
+# Set max_connections to 0 to disable. (Default: 0 = disabled)
+connection_rate_limit:
+  max_connections: 5
+  interval_length: 5
+
+# Global packet-per-second throttle per client.
+# Set max_per_second to 0 to disable. (Default: 0 = disabled)
+packet_rate_limit:
+  max_per_second: 25
+
+# Global server-wide new connections per second cap.
+# Limits total new connections across ALL IPs per second.
+# Set max_per_second to 0 to disable. (Default: 0 = disabled)
+global_connection_rate:
+  max_per_second: 5
+
+# Minimum seconds a client must be connected before they can send IC or CC.
+# Mods and CMs are exempt. Helps slow connect-spam-disconnect attacks.
+# Set to 0 to disable. (Default: 0 = disabled)
+min_connection_age:
+  before_ic: 3
+  before_cc: 3
 
 # Minimum milliseconds between /demo calls before rate limiting kicks in.
 # Set to 0 or less to disable demo rate limiting entirely. (Default: 0)

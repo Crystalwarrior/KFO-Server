@@ -357,6 +357,36 @@ class TsuServer3:
                 "interval_length": 0,
                 "mute_length": 0,
             }
+        if "ic_floodguard" not in self.config:
+            self.config["ic_floodguard"] = {
+                "times_per_interval": 1,
+                "interval_length": 0,
+                "mute_length": 0,
+            }
+        if "cc_floodguard" not in self.config:
+            self.config["cc_floodguard"] = {
+                "times_per_interval": 1,
+                "interval_length": 0,
+                "mute_length": 0,
+            }
+        if "connection_rate_limit" not in self.config:
+            self.config["connection_rate_limit"] = {
+                "max_connections": 0,
+                "interval_length": 10,
+            }
+        if "packet_rate_limit" not in self.config:
+            self.config["packet_rate_limit"] = {
+                "max_per_second": 0,
+            }
+        if "global_connection_rate" not in self.config:
+            self.config["global_connection_rate"] = {
+                "max_per_second": 0,
+            }
+        if "min_connection_age" not in self.config:
+            self.config["min_connection_age"] = {
+                "before_ic": 0,
+                "before_cc": 0,
+            }
 
         if "demo_rate_limit_ms" not in self.config:
             self.config["demo_rate_limit_ms"] = 0

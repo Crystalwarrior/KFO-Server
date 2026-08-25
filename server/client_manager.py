@@ -52,6 +52,7 @@ class ClientManager:
             self.ipid = ipid
             self.version = ""
             self.software = ""
+            self.connection_time = time.time()
 
             self.first_joined = True
             self.joined = False
@@ -105,6 +106,22 @@ class ClientManager:
                 x * self.server.config["ooc_floodguard"]["interval_length"]
                 for x in range(
                     self.server.config["ooc_floodguard"]["times_per_interval"]
+                )
+            ]
+            self.ic_counter = 0
+            self.ic_mute_time = 0
+            self.ic_time = [
+                x * self.server.config["ic_floodguard"]["interval_length"]
+                for x in range(
+                    self.server.config["ic_floodguard"]["times_per_interval"]
+                )
+            ]
+            self.cc_counter = 0
+            self.cc_mute_time = 0
+            self.cc_time = [
+                x * self.server.config["cc_floodguard"]["interval_length"]
+                for x in range(
+                    self.server.config["cc_floodguard"]["times_per_interval"]
                 )
             ]
             # security stuff
@@ -1049,7 +1066,7 @@ class ClientManager:
                 < interval_length
             ):
                 self.wtce_mute_time = time.time()
-                return self.server.config["music_change_floodguard"]["mute_length"]
+                return self.server.config["wtce_floodguard"]["mute_length"]
             self.wtce_counter = (self.wtce_counter + 1) % times_per_interval
             self.wtce_time[self.wtce_counter] = time.time()
             return 0
@@ -1083,9 +1100,79 @@ class ClientManager:
                 < interval_length
             ):
                 self.ooc_mute_time = time.time()
-                return self.server.config["music_change_floodguard"]["mute_length"]
+                return self.server.config["ooc_floodguard"]["mute_length"]
             self.ooc_counter = (self.ooc_counter + 1) % times_per_interval
             self.ooc_time[self.ooc_counter] = time.time()
+            return 0
+
+        def ic_mute(self):
+            """
+            Check if the client can send IC messages or not.
+            :returns: how many seconds the client must wait to send IC
+            """
+            if self.is_mod or self in self.area.owners:
+                return 0
+
+            if self.ic_mute_time:
+                if (
+                    time.time() - self.ic_mute_time
+                    < self.server.config["ic_floodguard"]["mute_length"]
+                ):
+                    return self.server.config["ic_floodguard"]["mute_length"] - (
+                        time.time() - self.ic_mute_time
+                    )
+                else:
+                    self.ic_mute_time = 0
+            times_per_interval = self.server.config["ic_floodguard"][
+                "times_per_interval"
+            ]
+            interval_length = self.server.config["ic_floodguard"]["interval_length"]
+            if (
+                time.time()
+                - self.ic_time[
+                    (self.ic_counter - times_per_interval + 1) % times_per_interval
+                ]
+                < interval_length
+            ):
+                self.ic_mute_time = time.time()
+                return self.server.config["ic_floodguard"]["mute_length"]
+            self.ic_counter = (self.ic_counter + 1) % times_per_interval
+            self.ic_time[self.ic_counter] = time.time()
+            return 0
+
+        def cc_mute(self):
+            """
+            Check if the client can change character or not.
+            :returns: how many seconds the client must wait to change character
+            """
+            if self.is_mod or self in self.area.owners:
+                return 0
+
+            if self.cc_mute_time:
+                if (
+                    time.time() - self.cc_mute_time
+                    < self.server.config["cc_floodguard"]["mute_length"]
+                ):
+                    return self.server.config["cc_floodguard"]["mute_length"] - (
+                        time.time() - self.cc_mute_time
+                    )
+                else:
+                    self.cc_mute_time = 0
+            times_per_interval = self.server.config["cc_floodguard"][
+                "times_per_interval"
+            ]
+            interval_length = self.server.config["cc_floodguard"]["interval_length"]
+            if (
+                time.time()
+                - self.cc_time[
+                    (self.cc_counter - times_per_interval + 1) % times_per_interval
+                ]
+                < interval_length
+            ):
+                self.cc_mute_time = time.time()
+                return self.server.config["cc_floodguard"]["mute_length"]
+            self.cc_counter = (self.cc_counter + 1) % times_per_interval
+            self.cc_time[self.cc_counter] = time.time()
             return 0
 
         def reload_character(self):
@@ -2570,6 +2657,8 @@ class ClientManager:
         self.server = server
         self.cur_id = [i for i in range(self.server.config["playerlimit"])]
         self.delays = {}
+        # Per-IP connection rate limiting: {ipid: [timestamp, ...]}
+        self.connection_times = {}
 
     def set_spam_delay(self, ipid, spam_type, value):
         if not str(ipid) in self.delays:
@@ -2587,9 +2676,32 @@ class ClientManager:
         maxclients = self.server.config["multiclient_limit"]
         for c in self.server.client_manager.clients:
             if c.ipid == client.ipid:
-                if c.clientscon > maxclients:
+                if c.clientscon >= maxclients:
                     return False
         return True
+
+    def check_connection_rate(self, ipid):
+        """
+        Check if an IP is connecting too frequently.
+        :param ipid: the IP identifier
+        :returns: True if the connection should be rejected, False otherwise
+        """
+        config = self.server.config.get("connection_rate_limit", {})
+        max_conns = config.get("max_connections", 5)
+        interval = config.get("interval_length", 5)
+        if max_conns <= 0 or interval <= 0:
+            return False
+        now = time.time()
+        if ipid not in self.connection_times:
+            self.connection_times[ipid] = []
+        # Purge old timestamps outside the window
+        self.connection_times[ipid] = [
+            t for t in self.connection_times[ipid] if now - t < interval
+        ]
+        if len(self.connection_times[ipid]) >= max_conns:
+            return True
+        self.connection_times[ipid].append(now)
+        return False
 
     def new_client(self, transport):
         """
