@@ -31,6 +31,9 @@ class AOProtocol(asyncio.Protocol):
         self.client = None
         self.buffer = ""
         self.ping_timeout = None
+        # Packet rate limiting
+        self._packet_times = []
+        self._packet_kicked = False
 
     def data_received(self, data):
         """Handles any data received from the network.
@@ -43,6 +46,26 @@ class AOProtocol(asyncio.Protocol):
         """
         buf = data
         ipid = self.client.ipid
+
+        # Packet rate limiting
+        config = self.server.config.get("packet_rate_limit", {})
+        max_per_second = config.get("max_per_second", 20)
+        if max_per_second > 0 and not self._packet_kicked:
+            now = time.time()
+            self._packet_times.append(now)
+            # Purge timestamps older than 1 second
+            self._packet_times = [t for t in self._packet_times if now - t < 1.0]
+            if len(self._packet_times) > max_per_second:
+                logger.warning(
+                    "Packet rate limit exceeded from %s (%d packets/sec)",
+                    ipid, len(self._packet_times),
+                )
+                self.client.send_ooc(
+                    "You are sending packets too fast. You have been disconnected."
+                )
+                self._packet_kicked = True
+                self.client.disconnect()
+                return
 
         if buf is None:
             buf = b""
@@ -90,6 +113,14 @@ class AOProtocol(asyncio.Protocol):
         except ClientError:
             print(traceback.format_exc())
             transport.close()
+            return
+
+        if self.server.client_manager.check_connection_rate(self.client.ipid):
+            self.client.send_command(
+                "BD",
+                "Connection rate limit exceeded. Please try again later.",
+            )
+            self.client.disconnect()
             return
 
         if not self.server.client_manager.new_client_preauth(self.client):
@@ -339,6 +370,11 @@ class AOProtocol(asyncio.Protocol):
             return
         elif not self.client.is_checked:
             return
+        if self.client.cc_mute():
+            self.client.send_ooc(
+                f"You are changing characters too fast. Please try again after {int(self.client.cc_mute())} seconds."
+            )
+            return
 
         cid = args[1]
         try:
@@ -356,6 +392,11 @@ class AOProtocol(asyncio.Protocol):
             return
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
+            return
+        if self.client.ic_mute():
+            self.client.send_ooc(
+                f"You are sending messages too fast. Please try again after {int(self.client.ic_mute())} seconds."
+            )
             return
 
         showname = ""

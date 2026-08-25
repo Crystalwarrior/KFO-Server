@@ -100,6 +100,11 @@ def ooc_cmd_switch(client, arg):
     automatically reassigned a character.
     Usage: /switch <name>
     """
+    if client.cc_mute():
+        client.send_ooc(
+            f"You are changing characters too fast. Please try again after {int(client.cc_mute())} seconds."
+        )
+        return
     if len(arg) == 0:
         client.char_select()
         return
@@ -351,6 +356,11 @@ def ooc_cmd_randomchar(client):
     Select a random character.
     Usage: /randomchar
     """
+    if client.cc_mute():
+        client.send_ooc(
+            f"You are changing characters too fast. Please try again after {int(client.cc_mute())} seconds."
+        )
+        return
     if len(client.charcurse) > 0:
         free_id = random.choice(client.charcurse)
     else:
