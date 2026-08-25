@@ -12,7 +12,7 @@
  * layered on top of the computed grid position and persisted in
  * localStorage per hub. The ⌖ Auto-sort control additionally computes a
  * layered left-to-right arrangement anchored at area 0 with fewer link
- * crossings (see grSortedLayeredLayout) and applies it through those same
+ * crossings (see grSortedDegreeLayout) and applies it through those same
  * drag offsets.
  *
  * Viewing: wheel-zoom (centered on the cursor) and click-drag pan are
@@ -48,34 +48,28 @@ function grEl(tag, attrs) {
 }
 
 /**
- * Layered left-to-right "auto-sort" layout (pure function, DOM-free --
- * exported at the bottom of this file so it can be unit-tested under
- * plain Node).
+ * Degree-sorted "auto-sort" layout (pure function, DOM-free -- exported
+ * at the bottom of this file so it can be unit-tested under plain Node).
  *
- * Classic Sugiyama, all four phases: area 0 (fallback: lowest id) is
- * pinned to the top-left corner; LONGEST-PATH layering over the directed
- * explicit-link graph (cycles broken by cutting back edges) assigns every
- * other area to a column, spreading chains rightward instead of piling
- * same-depth areas into one tall column. fully_connected implicit edges
- * are deliberately excluded from layout so an open-hub mesh can't drown
- * out deliberate link structure -- they are still drawn, just not laid
- * out. Barycenter sweeps then reorder each column by the mean row of its
- * neighbors (dummy nodes stand in for edges spanning multiple columns),
- * keeping the arrangement with the fewest edge crossings. Finally,
- * vertical relaxation pulls every node toward the mean Y of its actual
- * neighbors -- so linked areas sit close to each other rather than on
- * rigid grid rows -- while preserving column order and minimum
- * separation. Component islands without any path from the root land in
- * column 0 (their own local root). Fully deterministic for a given input.
+ * Columns are formed by grouping areas by their explicit-link degree
+ * (most connections → leftmost column, fewest → rightmost); within each
+ * column, barycenter sweeps reorder nodes by the mean row of their
+ * neighbours on adjacent columns to minimize edge crossings, and
+ * vertical relaxation pulls nodes toward their neighbours so linked
+ * areas sit close together rather than on rigid grid rows. Dummy nodes
+ * stand in for edges spanning multiple columns so those crossings are
+ * minimized too. fully_connected implicit edges are deliberately
+ * excluded from layout -- they are still drawn, just not laid out.
+ * Fully deterministic for a given input.
  *
  * Returns { positions: Map<areaId, {x, y}>, width, height }.
  */
-function grSortedLayeredLayout(areas, opts) {
+function grSortedDegreeLayout(areas, opts) {
     const o = opts || {};
     const nodeW = o.nodeW || 280;
     const nodeH = o.nodeH || 106;
-    const colGap = (o.colGap !== undefined) ? o.colGap : 70;  // horizontal gap between columns
-    const rowGap = (o.rowGap !== undefined) ? o.rowGap : 60;  // vertical gap between rows
+    const colGap = (o.colGap !== undefined) ? o.colGap : 70;
+    const rowGap = (o.rowGap !== undefined) ? o.rowGap : 60;
     const margin = (o.margin !== undefined) ? o.margin : 90;
     const sweeps = (o.sweeps !== undefined) ? o.sweeps : 12;
 
@@ -86,57 +80,39 @@ function grSortedLayeredLayout(areas, opts) {
     areas.forEach((a) => byId.set(a.id, a));
     const ids = areas.map((a) => a.id).sort((x, y) => x - y);
 
-    // Layout adjacency: explicit links only. dirAdj keeps DIRECTION (the
-    // layering phase is longest-path over the directed graph); preds is
-    // its reverse. fully_connected meshes stay out of the math entirely.
-    const dirAdj = new Map();
-    const preds = new Map();
-    ids.forEach((id) => {
-        dirAdj.set(id, new Set());
-        preds.set(id, new Set());
-    });
+    // Layout adjacency: explicit links only (undirected, self-loops and
+    // fully_connected meshes excluded). Degree is the undirected neighbor
+    // count, which drives column assignment.
+    const adj = new Map();
+    ids.forEach((id) => adj.set(id, new Set()));
     areas.forEach((area) => {
         (area.links || []).forEach((link) => {
             if (link.target_id === area.id || !byId.has(link.target_id)) return;
-            dirAdj.get(area.id).add(link.target_id);
-            preds.get(link.target_id).add(area.id);
+            adj.get(area.id).add(link.target_id);
+            adj.get(link.target_id).add(area.id);
         });
     });
 
-    const rootId = byId.has(0) ? 0 : ids[0];
-
-    // Layering: longest-path over the directed graph -- each area lands
-    // one column right of its deepest predecessor, so chains spread
-    // horizontally instead of collapsing into shallow mega-columns.
-    // Cycles (mutual pairs and loops) are broken by ignoring back edges
-    // to nodes currently being resolved. Area 0 is pinned to column 0;
-    // incoming links into it never raise it.
-    const memo = new Map([[rootId, 0]]);
-    const onStack = new Set();
-    const layerOf = (v) => {
-        if (memo.has(v)) return memo.get(v);
-        let best = 0; // component roots start at the left edge
-        onStack.add(v);
-        Array.from(preds.get(v)).sort((x, y) => x - y).forEach((u) => {
-            if (onStack.has(u) && !memo.has(u)) return; // back edge: cut it
-            const lu = layerOf(u);
-            if (lu + 1 > best) best = lu + 1;
-        });
-        onStack.delete(v);
-        memo.set(v, best);
-        return best;
-    };
-    ids.forEach((id) => layerOf(id));
-    const numCols = Math.max(0, ...Array.from(memo.values())) + 1;
+    // Column assignment: group by degree descending (most connected
+    // leftmost); tiebreak by id ascending for determinism.
+    const sorted = ids.slice().sort((a, b) => {
+        const dA = adj.get(a).size, dB = adj.get(b).size;
+        return dB - dA || a - b;
+    });
+    const degreeGroups = new Map();
+    sorted.forEach((id) => {
+        const d = adj.get(id).size;
+        if (!degreeGroups.has(d)) degreeGroups.set(d, []);
+        degreeGroups.get(d).push(id);
+    });
     const columns = [];
-    for (let c = 0; c < numCols; c++) columns.push([]);
-    ids.forEach((id) => columns[memo.get(id)].push(id));
+    Array.from(degreeGroups.keys()).sort((a, b) => b - a)
+        .forEach((d) => columns.push(degreeGroups.get(d)));
+    const numCols = columns.length;
+    const colIndex = new Map();
+    columns.forEach((col, c) => col.forEach((id) => colIndex.set(id, c)));
 
-    // Inter-column edge segments. Longest-path layering lets an edge span
-    // several columns (its target may have deeper predecessors), so every
-    // multi-column edge gets a chain of dummy nodes -- one per intermediate
-    // column -- making ALL layout-relevant hops adjacent-column segments.
-    // augAdj is the crossing/relaxation graph over reals + dummies.
+    // Inter-column edge segments with dummy nodes for multi-column edges.
     const augAdj = new Map();
     ids.forEach((id) => augAdj.set(id, new Set()));
     const connect = (a, b) => {
@@ -149,16 +125,16 @@ function grSortedLayeredLayout(areas, opts) {
     const seenPairs = new Set();
     let nextDummy = -1;
     ids.forEach((a) => {
-        Array.from(dirAdj.get(a)).sort((x, y) => x - y).forEach((b) => {
+        Array.from(adj.get(a)).sort((x, y) => x - y).forEach((b) => {
             const key = `${Math.min(a, b)}|${Math.max(a, b)}`;
             if (seenPairs.has(key)) return;
             seenPairs.add(key);
-            const la = memo.get(a), lb = memo.get(b);
-            const loId = la <= lb ? a : b;
-            const hiId = la <= lb ? b : a;
-            const loCol = Math.min(la, lb);
-            const span = Math.abs(la - lb);
-            if (span === 0) return; // same-column (cycle-cut or island) edge
+            const ca = colIndex.get(a), cb = colIndex.get(b);
+            if (ca === cb) return;
+            const loId = ca <= cb ? a : b;
+            const hiId = ca <= cb ? b : a;
+            const loCol = Math.min(ca, cb);
+            const span = Math.abs(ca - cb);
             let prev = loId;
             for (let k = 1; k < span; k++) {
                 const dummy = nextDummy--;
@@ -174,11 +150,9 @@ function grSortedLayeredLayout(areas, opts) {
         });
     });
 
-    const posIndex = new Map(); // node -> row index within its column
+    const posIndex = new Map();
     columns.forEach((col, c) => col.forEach((id, i) => posIndex.set(id, { c, i })));
 
-    // Edge crossings between consecutive columns: two segments cross when
-    // their endpoints appear in opposite vertical order.
     const totalCrossings = () => {
         let crossings = 0;
         for (let c = 0; c < numCols - 1; c++) {
@@ -194,10 +168,7 @@ function grSortedLayeredLayout(areas, opts) {
         return crossings;
     };
 
-    // Crossing minimization: barycenter sweeps, alternating left-to-right /
-    // right-to-left over the augmented graph -- every augAdj neighbor lies
-    // on an adjacent column by construction, so no filtering needed. Best
-    // arrangement wins. Single-node columns stay fixed (area 0 top-left).
+    // Crossing minimization: barycenter sweeps over the augmented graph.
     let bestOrders = columns.map((col) => col.slice());
     let bestCross = totalCrossings();
     for (let s = 0; s < sweeps && numCols > 1; s++) {
@@ -228,13 +199,9 @@ function grSortedLayeredLayout(areas, opts) {
         for (let i = 0; i < col.length; i++) col[i] = bestOrders[c][i];
     });
 
-    // Coordinate assignment (vertical barycenter relaxation): pull every
-    // node toward the mean Y of its actual neighbours (dummies included --
-    // that straightens multi-column edges) while preserving column order
-    // and minimum row-pitch separation. Each visit computes a column-wide
-    // shift so nodes drift up/down as a block toward their neighbours
-    // rather than staying on rigid grid rows. Column 0 stays untouched so
-    // area 0 remains exactly top-left.
+    // Vertical barycenter relaxation: pull every node toward the mean Y
+    // of its actual neighbours (dummies included) while preserving
+    // column order and minimum row-pitch separation.
     const rowPitch = nodeH + rowGap;
     const topY = margin + nodeH / 2;
     const yOf = new Map();
@@ -271,8 +238,7 @@ function grSortedLayeredLayout(areas, opts) {
         }
     }
 
-    // Final positions: columns at a fixed horizontal pitch; Y comes from
-    // the relaxation above. Dummy nodes get no coordinates.
+    // Final positions.
     const colPitch = nodeW + colGap;
     let maxY = topY;
     const positions = new Map();
@@ -739,7 +705,7 @@ class GraphRenderer {
         mk('⤡', 'Fit graph to view', () => this.fit());
         mk('⟳', 'Reset zoom & pan', () => this.resetView());
         mk('✕', 'Reset manual layout for this hub', () => this.resetOffsets());
-        mk('⌖', 'Auto-sort: arrange areas left-to-right by link depth from area 0, minimizing link crossings', () => this.applySortedLayout());
+        mk('⌖', 'Auto-sort: arrange areas by connection count (most → left, least → right)', () => this.applySortedLayout());
         this._buildIconScaleControl(controls);
         this._buildLinkModeControl(controls);
 
@@ -1501,18 +1467,17 @@ class GraphRenderer {
         if (this._lastAreas.length) this._scheduleSnapshot(this._lastAreas, true);
     }
 
-    /** Auto-sort (press-and-apply): compute the layered left-to-right
-     * layout anchored at area 0 (see grSortedLayeredLayout) and write it
-     * straight into the node placements by storing each target position
-     * as that node's manual offset against its grid base. Reusing the
-     * drag-offset machinery means the arrangement persists across reloads
-     * like any hand-drag, flows through Save/Load/Export/Import layout
-     * untouched, and ✕ Reset still returns to the plain grid -- no
-     * separate mode state exists. */
+    /** Auto-sort (press-and-apply): compute the degree-sorted layout
+     * (see grSortedDegreeLayout) and write it straight into the node
+     * placements by storing each target position as that node's manual
+     * offset against its grid base. Reusing the drag-offset machinery
+     * means the arrangement persists across reloads like any hand-drag,
+     * flows through Save/Load/Export/Import layout untouched, and ✕ Reset
+     * still returns to the plain grid -- no separate mode state exists. */
     applySortedLayout() {
         const areas = this._lastAreas;
         if (!areas || !areas.length) return;
-        const result = grSortedLayeredLayout(areas, { nodeW: this._nodeW, nodeH: this._nodeH });
+        const result = grSortedDegreeLayout(areas, { nodeW: this._nodeW, nodeH: this._nodeH });
         if (!result.positions.size) return;
         // Refresh the grid base against the CURRENT area set so the stored
         // deltas are exact even if areas changed since the last snapshot.
@@ -2408,9 +2373,9 @@ class GraphRenderer {
     }
 }
 
-// Node-only export for unit tests (grSortedLayeredLayout is DOM-free);
+// Node-only export for unit tests (grSortedDegreeLayout is DOM-free);
 // ignored by browsers, where `module` is undefined.
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-    module.exports = { grSortedLayeredLayout };
+    module.exports = { grSortedDegreeLayout };
 }
 
