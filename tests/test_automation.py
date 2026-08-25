@@ -737,6 +737,8 @@ def test_demo_broadcasts_to_real_clients(monkeypatch):
             "cc_floodguard": {"interval_length": 1, "times_per_interval": 1, "mute_length": 0},
             "connection_rate_limit": {"max_connections": 0, "interval_length": 10},
             "packet_rate_limit": {"max_per_second": 0},
+            "global_connection_rate": {"max_per_second": 0},
+            "min_connection_age": {"before_ic": 0, "before_cc": 0},
         },
         command_aliases={},
     )
@@ -807,6 +809,8 @@ def _make_server():
             "cc_floodguard": {"interval_length": 1, "times_per_interval": 1, "mute_length": 0},
             "connection_rate_limit": {"max_connections": 0, "interval_length": 10},
             "packet_rate_limit": {"max_per_second": 0},
+            "global_connection_rate": {"max_per_second": 0},
+            "min_connection_age": {"before_ic": 0, "before_cc": 0},
         },
     )
 
@@ -898,6 +902,8 @@ def test_executor_permissions_gm_only(monkeypatch):
             "cc_floodguard": {"interval_length": 1, "times_per_interval": 1, "mute_length": 0},
             "connection_rate_limit": {"max_connections": 0, "interval_length": 10},
             "packet_rate_limit": {"max_per_second": 0},
+            "global_connection_rate": {"max_per_second": 0},
+            "min_connection_age": {"before_ic": 0, "before_cc": 0},
         },
         command_aliases={},
     )
@@ -959,6 +965,8 @@ def test_executor_invisible_to_gm_lifecycle(monkeypatch):
             "cc_floodguard": {"interval_length": 1, "times_per_interval": 1, "mute_length": 0},
             "connection_rate_limit": {"max_connections": 0, "interval_length": 10},
             "packet_rate_limit": {"max_per_second": 0},
+            "global_connection_rate": {"max_per_second": 0},
+            "min_connection_age": {"before_ic": 0, "before_cc": 0},
         },
         command_aliases={},
     )
@@ -1011,6 +1019,8 @@ def _server_with_client_manager():
             "cc_floodguard": {"interval_length": 1, "times_per_interval": 1, "mute_length": 0},
             "connection_rate_limit": {"max_connections": 0, "interval_length": 10},
             "packet_rate_limit": {"max_per_second": 0},
+            "global_connection_rate": {"max_per_second": 0},
+            "min_connection_age": {"before_ic": 0, "before_cc": 0},
         },
         command_aliases={},
         player_state_observer=SimpleNamespace(

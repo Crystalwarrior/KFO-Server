@@ -108,6 +108,24 @@ class AOProtocol(asyncio.Protocol):
 
         :param transport: the transport object
         """
+        # Global connection rate limiting (not per-IP)
+        config = self.server.config.get("global_connection_rate", {})
+        max_per_second = config.get("max_per_second", 0)
+        if max_per_second > 0:
+            now = time.time()
+            if not hasattr(self.server, "_conn_times"):
+                self.server._conn_times = []
+            self.server._conn_times.append(now)
+            self.server._conn_times = [t for t in self.server._conn_times if now - t < 1.0]
+            if len(self.server._conn_times) > max_per_second:
+                logger.warning(
+                    "Global connection rate limit exceeded (%d connections/sec)",
+                    len(self.server._conn_times),
+                )
+                transport.write(b"BD#Server is experiencing high connection volume. Please try again later.#%")
+                transport.close()
+                return
+
         try:
             self.client = self.server.new_client(transport)
         except ClientError:
@@ -370,6 +388,14 @@ class AOProtocol(asyncio.Protocol):
             return
         elif not self.client.is_checked:
             return
+        min_age = self.server.config.get("min_connection_age", {}).get("before_cc", 0)
+        if min_age > 0 and not self.client.is_mod and self.client not in self.client.area.owners:
+            elapsed = time.time() - self.client.connection_time
+            if elapsed < min_age:
+                self.client.send_ooc(
+                    f"Please wait {int(min_age - elapsed) + 1} more seconds before changing characters."
+                )
+                return
         if self.client.cc_mute():
             self.client.send_ooc(
                 f"You are changing characters too fast. Please try again after {int(self.client.cc_mute())} seconds."
@@ -390,6 +416,14 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.client.is_checked:
             return
+        min_age = self.server.config.get("min_connection_age", {}).get("before_ic", 0)
+        if min_age > 0 and not self.client.is_mod and self.client not in self.client.area.owners:
+            elapsed = time.time() - self.client.connection_time
+            if elapsed < min_age:
+                self.client.send_ooc(
+                    f"Please wait {int(min_age - elapsed) + 1} more seconds before sending messages."
+                )
+                return
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
             return

@@ -52,6 +52,7 @@ class ClientManager:
             self.ipid = ipid
             self.version = ""
             self.software = ""
+            self.connection_time = time.time()
 
             self.first_joined = True
             self.joined = False

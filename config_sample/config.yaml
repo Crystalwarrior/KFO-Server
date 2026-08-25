@@ -128,6 +128,19 @@ connection_rate_limit:
 packet_rate_limit:
   max_per_second: 25
 
+# Global server-wide new connections per second cap.
+# Limits total new TCP connections across ALL IPs per second.
+# Set max_per_second to 0 to disable. (Default: 0 = disabled)
+global_connection_rate:
+  max_per_second: 5
+
+# Minimum seconds a client must be connected before they can send IC or CC.
+# Mods and CMs are exempt. Helps slow connect-spam-disconnect attacks.
+# Set to 0 to disable. (Default: 0 = disabled)
+min_connection_age:
+  before_ic: 3
+  before_cc: 3
+
 # Minimum milliseconds between /demo calls before rate limiting kicks in.
 # Set to 0 or less to disable demo rate limiting entirely. (Default: 0)
 demo_rate_limit_ms: 0

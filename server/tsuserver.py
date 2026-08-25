@@ -378,6 +378,15 @@ class TsuServer3:
             self.config["packet_rate_limit"] = {
                 "max_per_second": 0,
             }
+        if "global_connection_rate" not in self.config:
+            self.config["global_connection_rate"] = {
+                "max_per_second": 0,
+            }
+        if "min_connection_age" not in self.config:
+            self.config["min_connection_age"] = {
+                "before_ic": 0,
+                "before_cc": 0,
+            }
 
         if "demo_rate_limit_ms" not in self.config:
             self.config["demo_rate_limit_ms"] = 0
