@@ -129,7 +129,7 @@ packet_rate_limit:
   max_per_second: 25
 
 # Global server-wide new connections per second cap.
-# Limits total new TCP connections across ALL IPs per second.
+# Limits total new connections across ALL IPs per second.
 # Set max_per_second to 0 to disable. (Default: 0 = disabled)
 global_connection_rate:
   max_per_second: 5
