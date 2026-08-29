@@ -244,47 +244,10 @@ doorman_webhook:
   message: "A user is alone and has no one to talk to!"
   url: #webhook url
 
-# DEPRECATED -- the standalone admin panel has been folded into gm_panel (below).
-# Do NOT host admin_panel and gm_panel separately: enable gm_panel and give an
-# admin-role user a username/password (see gm_panel.users) to get the log viewer
-# and admin console. Kept only for backward compatibility.
-# Admin panel for viewing server logs in a web browser.
-# Logs are organized by hub/area and can be viewed live.
-admin_panel:
-  enabled: false
-  port: 27017
-  host: "0.0.0.0"
-  users:
-    # username: password
-    admin: changeme
-
-  # SSL: Option A - Self-signed or custom certificate (serves HTTPS directly)
-  # Generate a self-signed cert:
-  #   openssl req -x509 -newkey rsa:2048 -keyout config/admin_key.pem -out config/admin_cert.pem -days 3650 -nodes
-  ssl_cert:  # e.g. "config/admin_cert.pem"
-  ssl_key:   # e.g. "config/admin_key.pem"
-
-  # SSL: Option B - Let's Encrypt via Caddy reverse proxy (requires a domain)
-  # Set up a DNS A record pointing to this server, then create a Caddyfile:
-  #   admin.yourserver.com {
-  #       reverse_proxy localhost:27017
-  #   }
-  # Then run: caddy run
-  domain:  # e.g. "admin.yourserver.com"
-
-  # Rate limiting for login attempts
-  rate_limit:
-    max_attempts: 5        # Max failed login attempts before lockout
-    window_seconds: 300    # Time window in seconds (5 minutes)
-    lockout_seconds: 300   # Lockout duration in seconds (5 minutes)
-
 # GM Control Panel: the single web panel -- it doubles as the admin panel.
 # Lets an in-game GM micromanage their hub from a browser (areas as a graph,
 # who's present, characters, GM-scoped OOC commands, and the Automation Demos
 # system), and gives admin-role users the server log viewer + admin console.
-#
-# admin_panel (above) is deprecated: do NOT host admin_panel and gm_panel
-# separately -- enable this panel and configure `users` below instead.
 #
 # GMs bind the panel to their live client by running /gmpanel in-game, which
 # mints a one-time login link. Optionally, standing usernames/passwords (the
@@ -294,7 +257,7 @@ gm_panel:
   enabled: false
   port: 27018
   host: "0.0.0.0"
-  session_ttl_seconds: 28800        # 8h, matches admin_panel's cookie lifetime
+  session_ttl_seconds: 28800
   login_token_ttl_seconds: 60       # one-time /gmpanel link expires fast
   login_hub_ttl_seconds: 300        # time a gm login may sit on the hub picker
   users:
@@ -326,8 +289,7 @@ gm_panel:
   domain:  # e.g. "gm.yourserver.com"
 
   # Rate limiting is not needed for login (there's no password to brute
-  # force -- one-time tokens are high-entropy and single-use), but is kept
-  # here for parity/documentation with admin_panel's shape.
+  # force -- one-time tokens are high-entropy and single-use).
   rate_limit:
     max_attempts: 10
     window_seconds: 300

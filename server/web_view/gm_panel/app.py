@@ -5,7 +5,7 @@ in-game GM micromanage their hub through a browser: areas as a graph, who's
 present, characters/character-data, GM-scoped OOC commands, and the Automation
 Demos system.
 
-Unlike `admin_panel.py`, this panel never runs commands through a synthetic
+The panel never runs commands through a synthetic
 `RemoteClient`. Every privileged action executes through the GM's real, live,
 in-game `Client` object (see `GMSession.execute_command`), so the exact same
 `mod_only(area_owners=...)`/`mod_only(hub_owners=...)` checks the command layer
@@ -99,6 +99,18 @@ class GMPanelApp:
         app = web.Application()
         app["config"] = self._config
         app["server"] = self._server
+
+        # aiohttp's static handler sends no Cache-Control, so browsers
+        # heuristically cache JS/CSS for a while and keep serving stale files
+        # after an update. Force revalidation so panel code changes land
+        # immediately (304 for unchanged, 200 with fresh bytes otherwise).
+        @web.middleware
+        async def _no_cache_static(request, handler):
+            response = await handler(request)
+            if request.path.startswith("/static/"):
+                response.headers["Cache-Control"] = "no-cache"
+            return response
+        app.middlewares.append(_no_cache_static)
 
         # Page + auth routes
         app.router.add_get("/", auth_routes.handle_root)
@@ -297,8 +309,7 @@ class GMPanelApp:
             require(evidence_routes.handle_delete_evidence),
         )
 
-        # Static assets -- same physical folder as admin_panel.py's, served on a
-        # separate port, so gm.css/gm.js can't collide with admin's.
+        # Static assets -- the shared web_view/static folder, served on the panel's port.
         app.router.add_static("/static", self._static_dir)
 
         self._session_manager.start_sweep()

@@ -23,7 +23,6 @@ from server.network.aoprotocol import AOProtocol
 from server.network.aoprotocol_ws import new_websocket_client
 from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
-from server.web_view.admin_panel import create_admin_app
 from server.web_view.gm_panel import GMPanelApp
 from server.constants import remove_URL, dezalgo
 from server.medieval_parser import MedievalParser
@@ -181,23 +180,6 @@ class TsuServer3:
         if "need_webhook" in self.config and self.config["need_webhook"]["enabled"]:
             self.need_webhook = True
 
-        # Start admin panel web server if configured
-        self.admin_runner = None
-        admin_cfg = self.config.get("admin_panel", {})
-        if admin_cfg.get("enabled", False):
-            try:
-                admin_app, admin_ssl = create_admin_app(self.config, server=self)
-                admin_port = admin_cfg.get("port", 27017)
-                admin_host = admin_cfg.get("host", "0.0.0.0")
-                self.admin_runner = web.AppRunner(admin_app)
-                loop.run_until_complete(self.admin_runner.setup())
-                site = web.TCPSite(self.admin_runner, admin_host, admin_port, ssl_context=admin_ssl)
-                loop.run_until_complete(site.start())
-                proto = "HTTPS" if admin_ssl else "HTTP"
-                logger.info("Admin panel listening on %s://%s:%s", proto, admin_host, admin_port)
-            except Exception as e:
-                logger.error("Failed to start admin panel: %s", e)
-
         # Start GM panel web server if configured
         self.gm_runner = None
         gm_cfg = self.config.get("gm_panel", {})
@@ -235,8 +217,6 @@ class TsuServer3:
         ao_server.close()
         loop.run_until_complete(ao_server.wait_closed())
 
-        if self.admin_runner:
-            loop.run_until_complete(self.admin_runner.cleanup())
         if self.gm_runner:
             loop.run_until_complete(self.gm_runner.cleanup())
 

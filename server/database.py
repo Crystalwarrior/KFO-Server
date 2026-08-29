@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from functools import reduce
 from textwrap import dedent
 
@@ -39,8 +40,15 @@ class Database:
         new = not os.path.exists("storage/db.sqlite3")
         self.db = sqlite3.connect(DB_FILE, check_same_thread=False)
         self.db.execute("PRAGMA foreign_keys = ON")
+        self.db.execute("PRAGMA synchronous = NORMAL")
         self.db.row_factory = sqlite3.Row
         self._log_subscribers = []
+
+        # Panel-driven reads run inside this pool on their own connections so
+        # a slow log query never blocks the asyncio event loop. WAL lets these
+        # reader connections coexist with the single main-loop writer
+        # (`self.db`) without any locking or cross-thread connection sharing.
+        self._read_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="db-read")
         if new:
             self.migrate_json_to_v1()
         self.migrate()
@@ -149,7 +157,7 @@ class Database:
             logger.debug("Migration to v1 complete")
 
     def migrate(self):
-        for version in [2, 3, 4, 5, 6, 7]:
+        for version in [2, 3, 4, 5, 6, 7, 8]:
             self.migrate_to_version(version)
 
     def migrate_to_version(self, version):
@@ -286,6 +294,7 @@ class Database:
         unban_date: datetime
         banned_by: int
         reason: str
+        resolved_banned_by_name: str = None
 
         def __post_init__(self):
             self.ban_date = arrow.get(self.ban_date).datetime
@@ -330,6 +339,8 @@ class Database:
             Find the last known OOC name of the player who issued
             the ban.
             """
+            if self.resolved_banned_by_name is not None:
+                return self.resolved_banned_by_name
             return _database_singleton.last_known_name(self.banned_by)
 
     def find_ban(self, ipid=None, hdid=None, ban_id=None):
@@ -541,7 +552,7 @@ class Database:
         Subscribe to live log events. Returns an asyncio.Queue that will
         receive dicts with keys: 'type' ('area'|'connect'|'misc') and 'data'.
         """
-        queue = asyncio.Queue()
+        queue = asyncio.Queue(maxsize=10000)
         self._log_subscribers.append(queue)
         return queue
 
@@ -569,10 +580,16 @@ class Database:
                 for row in conn.execute(
                     dedent(
                         """
-                    SELECT * FROM (SELECT * FROM bans
+                    SELECT b.*, (
+                        SELECT ooc_name FROM area_events
+                        WHERE ipid = b.banned_by
+                            AND ooc_name IS NOT NULL AND ooc_name != ''
+                        ORDER BY event_time DESC LIMIT 1
+                    ) AS resolved_banned_by_name
+                    FROM (SELECT * FROM bans
                         WHERE ban_date IS NOT NULL
-                        ORDER BY ban_date DESC LIMIT ?)
-                    ORDER BY ban_date ASC
+                        ORDER BY ban_date DESC LIMIT ?) AS b
+                    ORDER BY b.ban_date ASC
                     """
                     ),
                     (count,),
@@ -584,9 +601,38 @@ class Database:
         with self.db as conn:
             conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
 
-    def query_area_events(self, hub_id=None, area_id=None, event_subtype=None,
-                          ipid=None, since=None, until=None, limit=100, offset=0):
-        """Query area events with optional filters."""
+    def _open_read_conn(self):
+        """Open a dedicated reader connection for off-loop queries.
+
+        Each call runs inside the reader pool thread, so the connection is
+        created, used, and closed entirely on that thread -- never shared
+        with the main-loop writer (`self.db`). WAL means a reader can run
+        concurrently with the writer without blocking it.
+        """
+        conn = sqlite3.connect(DB_FILE, timeout=5)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    async def _run_read(self, fn):
+        """Run `fn(conn)` on the reader pool with its own connection.
+
+        Keeps potentially slow SELECTs (large filtered event sets, DISTINCT
+        hub/area lists, type lookups) off the event loop entirely.
+        """
+        def _run():
+            conn = self._open_read_conn()
+            try:
+                return fn(conn)
+            finally:
+                conn.close()
+        return await asyncio.get_running_loop().run_in_executor(self._read_pool, _run)
+
+    async def query_area_events(self, hub_id=None, area_id=None, event_subtype=None,
+                                ipid=None, since=None, until=None, limit=100, offset=0):
+        """Query area events with optional filters. Returns one page
+        (`{"events": [...], "has_more": bool}`) detected by fetching `limit+1`;
+        the extra row is used to know whether another page exists without a
+        costly exact COUNT over the whole filtered set."""
         since = self._coerce_timestamp(since)
         until = self._coerce_timestamp(until)
         conditions = []
@@ -621,52 +667,16 @@ class Database:
             ORDER BY e.event_time DESC
             LIMIT ? OFFSET ?
         """)
-        params.extend([limit, offset])
+        params.extend([limit + 1, offset])
 
-        with self.db as conn:
-            rows = conn.execute(query, params).fetchall()
-            return [dict(row) for row in rows]
+        rows = await self._run_read(lambda conn: conn.execute(query, params).fetchall())
+        has_more = len(rows) > limit
+        return {"events": [dict(row) for row in rows[:limit]], "has_more": has_more}
 
-    def count_area_events(self, hub_id=None, area_id=None, event_subtype=None,
-                          ipid=None, since=None, until=None):
-        """Count area events matching filters (for pagination)."""
-        since = self._coerce_timestamp(since)
-        until = self._coerce_timestamp(until)
-        conditions = []
-        params = []
-        if hub_id is not None:
-            conditions.append("e.hub_id = ?")
-            params.append(hub_id)
-        if area_id is not None:
-            conditions.append("e.area_id = ?")
-            params.append(area_id)
-        if event_subtype is not None:
-            conditions.append("t.type_name = ?")
-            params.append(event_subtype)
-        if ipid is not None:
-            conditions.append("e.ipid = ?")
-            params.append(ipid)
-        if since is not None:
-            conditions.append("e.event_time >= ?")
-            params.append(since)
-        if until is not None:
-            conditions.append("e.event_time <= ?")
-            params.append(until)
-
-        where = " AND ".join(conditions) if conditions else "1=1"
-        query = dedent(f"""
-            SELECT COUNT(*) as cnt
-            FROM area_events e
-            JOIN area_event_types t ON e.event_subtype = t.type_id
-            WHERE {where}
-        """)
-
-        with self.db as conn:
-            return conn.execute(query, params).fetchone()["cnt"]
-
-    def query_connect_events(self, ipid=None, failed=None, since=None, until=None,
-                             limit=100, offset=0):
-        """Query connection events with optional filters."""
+    async def query_connect_events(self, ipid=None, failed=None, since=None, until=None,
+                                   limit=100, offset=0):
+        """Query connection events with optional filters. Page-based
+        `{"events": [...], "has_more": bool}` -- no exact count."""
         since = self._coerce_timestamp(since)
         until = self._coerce_timestamp(until)
         conditions = []
@@ -692,40 +702,16 @@ class Database:
             ORDER BY event_time DESC
             LIMIT ? OFFSET ?
         """)
-        params.extend([limit, offset])
+        params.extend([limit + 1, offset])
 
-        with self.db as conn:
-            rows = conn.execute(query, params).fetchall()
-            return [dict(row) for row in rows]
+        rows = await self._run_read(lambda conn: conn.execute(query, params).fetchall())
+        has_more = len(rows) > limit
+        return {"events": [dict(row) for row in rows[:limit]], "has_more": has_more}
 
-    def count_connect_events(self, ipid=None, failed=None, since=None, until=None):
-        """Count connection events matching filters."""
-        since = self._coerce_timestamp(since)
-        until = self._coerce_timestamp(until)
-        conditions = []
-        params = []
-        if ipid is not None:
-            conditions.append("ipid = ?")
-            params.append(ipid)
-        if failed is not None:
-            conditions.append("failed = ?")
-            params.append(1 if failed else 0)
-        if since is not None:
-            conditions.append("event_time >= ?")
-            params.append(since)
-        if until is not None:
-            conditions.append("event_time <= ?")
-            params.append(until)
-
-        where = " AND ".join(conditions) if conditions else "1=1"
-        query = dedent(f"SELECT COUNT(*) as cnt FROM connect_events WHERE {where}")
-
-        with self.db as conn:
-            return conn.execute(query, params).fetchone()["cnt"]
-
-    def query_misc_events(self, event_subtype=None, ipid=None, since=None, until=None,
-                          limit=100, offset=0):
-        """Query miscellaneous events with optional filters."""
+    async def query_misc_events(self, event_subtype=None, ipid=None, since=None, until=None,
+                                limit=100, offset=0):
+        """Query miscellaneous events with optional filters. Page-based
+        `{"events": [...], "has_more": bool}` -- no exact count."""
         since = self._coerce_timestamp(since)
         until = self._coerce_timestamp(until)
         conditions = []
@@ -753,52 +739,25 @@ class Database:
             ORDER BY e.event_time DESC
             LIMIT ? OFFSET ?
         """)
-        params.extend([limit, offset])
+        params.extend([limit + 1, offset])
 
-        with self.db as conn:
-            rows = conn.execute(query, params).fetchall()
-            return [dict(row) for row in rows]
+        rows = await self._run_read(lambda conn: conn.execute(query, params).fetchall())
+        has_more = len(rows) > limit
+        return {"events": [dict(row) for row in rows[:limit]], "has_more": has_more}
 
-    def count_misc_events(self, event_subtype=None, ipid=None, since=None, until=None):
-        """Count miscellaneous events matching filters."""
-        since = self._coerce_timestamp(since)
-        until = self._coerce_timestamp(until)
-        conditions = []
-        params = []
-        if event_subtype is not None:
-            conditions.append("t.type_name = ?")
-            params.append(event_subtype)
-        if ipid is not None:
-            conditions.append("e.ipid = ?")
-            params.append(ipid)
-        if since is not None:
-            conditions.append("e.event_time >= ?")
-            params.append(since)
-        if until is not None:
-            conditions.append("e.event_time <= ?")
-            params.append(until)
-
-        where = " AND ".join(conditions) if conditions else "1=1"
-        query = dedent(f"""
-            SELECT COUNT(*) as cnt
-            FROM misc_events e
-            JOIN misc_event_types t ON e.event_subtype = t.type_id
-            WHERE {where}
-        """)
-
-        with self.db as conn:
-            return conn.execute(query, params).fetchone()["cnt"]
-
-    def get_event_types(self, event_category="area"):
+    async def get_event_types(self, event_category="area"):
         """Get all event type names for a category ('area', 'misc' or 'all')."""
-        if event_category == "all":
-            return sorted(
-                set(self.get_event_types("area")) | set(self.get_event_types("misc"))
-            )
-        table = f"{event_category}_event_types"
-        with self.db as conn:
-            rows = conn.execute(f"SELECT type_name FROM {table} ORDER BY type_name").fetchall()
-            return [row["type_name"] for row in rows]
+        def _query(conn):
+            if event_category == "all":
+                area = {row["type_name"] for row in conn.execute(
+                    "SELECT type_name FROM area_event_types")}
+                misc = {row["type_name"] for row in conn.execute(
+                    "SELECT type_name FROM misc_event_types")}
+                return sorted(area | misc)
+            table = f"{event_category}_event_types"
+            return [row["type_name"] for row in conn.execute(
+                f"SELECT type_name FROM {table} ORDER BY type_name")]
+        return await self._run_read(_query)
 
     @staticmethod
     def _coerce_timestamp(value):
@@ -826,9 +785,9 @@ class Database:
         return dt.strftime("%Y-%m-%d %H:%M:%S")
 
     def _all_events_union(self, hub_id=None, area_id=None, event_subtype=None,
-                          ipid=None, since=None, until=None):
+                          ipid=None, since=None, until=None, branch_limit=None):
         """
-        Build the shared UNION ALL behind `query_all_events`/`count_all_events`.
+        Build the shared UNION ALL behind `query_all_events`.
 
         Normalizes the three event tables into one column shape:
         (event_time, category, ipid, hdid, target_ipid, event_subtype, hub_id,
@@ -839,8 +798,7 @@ class Database:
         event_subtype matches area and misc rows (connect rows have no subtype
         and drop out when set); hub/area are only defined for area rows, so
         when either is set the connect/misc branches are excluded entirely.
-        Returns `(union_sql, params)` with no ORDER BY/LIMIT -- the callers
-        wrap it (paged select vs COUNT).
+        Returns `(union_sql, params)` with no ORDER BY/LIMIT -- the caller wraps it (paged select).
         """
         since = self._coerce_timestamp(since)
         until = self._coerce_timestamp(until)
@@ -882,7 +840,7 @@ class Database:
         elif event_subtype is not None:
             connect_cond.append("1=0")
 
-        union_sql = dedent(f"""
+        area_sql = dedent(f"""
             SELECT e.event_time, 'area' AS category, e.ipid, NULL AS hdid,
                    e.target_ipid, t.type_name AS event_subtype,
                    e.hub_id, e.hub_name, e.area_id, e.area_name,
@@ -891,13 +849,15 @@ class Database:
             FROM area_events e
             JOIN area_event_types t ON e.event_subtype = t.type_id
             WHERE {" AND ".join(area_cond) if area_cond else "1=1"}
-            UNION ALL
+        """)
+        connect_sql = dedent(f"""
             SELECT c.event_time, 'connect', c.ipid, c.hdid, NULL, NULL,
                    NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                    c.failed, NULL
             FROM connect_events c
             WHERE {" AND ".join(connect_cond) if connect_cond else "1=1"}
-            UNION ALL
+        """)
+        misc_sql = dedent(f"""
             SELECT m.event_time, 'misc', m.ipid, NULL, m.target_ipid,
                    t.type_name, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                    NULL, m.event_data
@@ -905,41 +865,63 @@ class Database:
             JOIN misc_event_types t ON m.event_subtype = t.type_id
             WHERE {" AND ".join(misc_cond) if misc_cond else "1=1"}
         """)
-        return union_sql, params + connect_params + misc_params
 
-    def query_all_events(self, hub_id=None, area_id=None, event_subtype=None,
-                         ipid=None, since=None, until=None, limit=100, offset=0):
-        """Query area+connect+misc events merged into one chronological feed."""
+        if branch_limit is None:
+            union_sql = f"{area_sql} UNION ALL {connect_sql} UNION ALL {misc_sql}"
+            return union_sql, params + connect_params + misc_params
+
+        # Bound each branch to the rows the caller could possibly use. Without
+        # this the outer ORDER BY sorts every row in all three tables to return
+        # one page. A row in the global newest-N is always in its own table's
+        # newest-N, so the result is unchanged.
+        union_sql = (
+            f"SELECT * FROM ({area_sql} ORDER BY e.event_time DESC LIMIT ?)"
+            f" UNION ALL "
+            f"SELECT * FROM ({connect_sql} ORDER BY c.event_time DESC LIMIT ?)"
+            f" UNION ALL "
+            f"SELECT * FROM ({misc_sql} ORDER BY m.event_time DESC LIMIT ?)"
+        )
+        return union_sql, (
+            params + [branch_limit]
+            + connect_params + [branch_limit]
+            + misc_params + [branch_limit]
+        )
+
+    async def query_all_events(self, hub_id=None, area_id=None, event_subtype=None,
+                               ipid=None, since=None, until=None, limit=100, offset=0):
+        """Query area+connect+misc events merged into one chronological feed.
+
+        Returns one page (`{"events": [...], "has_more": bool}`): `limit+1`
+        rows are fetched and the extra one signals another page. This replaces
+        the old exact-count pagination, which was the biggest perf hog here:
+        it scanned every matching row across all three event tables for a
+        single page. Now older pages are discovered incrementally, so a giant
+        log never triggers a full-table scan to render page one.
+        """
         union_sql, params = self._all_events_union(
-            hub_id, area_id, event_subtype, ipid, since, until
+            hub_id, area_id, event_subtype, ipid, since, until,
+            branch_limit=offset + limit + 1,
         )
         query = f"SELECT * FROM ({union_sql}) ORDER BY event_time DESC LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
-        with self.db as conn:
-            rows = conn.execute(query, params).fetchall()
-            return [dict(row) for row in rows]
+        params.extend([limit + 1, offset])
+        rows = await self._run_read(lambda conn: conn.execute(query, params).fetchall())
+        has_more = len(rows) > limit
+        return {"events": [dict(row) for row in rows[:limit]], "has_more": has_more}
 
-    def count_all_events(self, hub_id=None, area_id=None, event_subtype=None,
-                         ipid=None, since=None, until=None):
-        """Count merged area+connect+misc events matching filters."""
-        union_sql, params = self._all_events_union(
-            hub_id, area_id, event_subtype, ipid, since, until
-        )
-        query = f"SELECT COUNT(*) AS cnt FROM ({union_sql})"
-        with self.db as conn:
-            return conn.execute(query, params).fetchone()["cnt"]
-
-    def get_hubs(self):
+    async def get_hubs(self):
         """Get distinct hub id/name pairs from area_events."""
-        with self.db as conn:
-            rows = conn.execute(
-                "SELECT DISTINCT hub_id, hub_name FROM area_events ORDER BY hub_id"
-            ).fetchall()
-            return [{"hub_id": row["hub_id"], "hub_name": row["hub_name"]} for row in rows]
+        def _query(conn):
+            return [
+                {"hub_id": row["hub_id"], "hub_name": row["hub_name"]}
+                for row in conn.execute(
+                    "SELECT DISTINCT hub_id, hub_name FROM area_events ORDER BY hub_id"
+                )
+            ]
+        return await self._run_read(_query)
 
-    def get_areas_for_hub(self, hub_id=None):
+    async def get_areas_for_hub(self, hub_id=None):
         """Get distinct area id/name pairs, optionally filtered by hub."""
-        with self.db as conn:
+        def _query(conn):
             if hub_id is not None:
                 rows = conn.execute(
                     "SELECT DISTINCT area_id, area_name FROM area_events WHERE hub_id = ? ORDER BY area_id",
@@ -950,6 +932,7 @@ class Database:
                     "SELECT DISTINCT hub_id, area_id, area_name FROM area_events ORDER BY hub_id, area_id"
                 ).fetchall()
             return [dict(row) for row in rows]
+        return await self._run_read(_query)
 
     def _subtype_atom(self, event_type, event_subtype):
         if event_type not in ("area", "misc"):

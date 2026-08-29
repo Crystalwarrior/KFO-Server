@@ -1,7 +1,6 @@
 """Moderator routes: the admin log viewer.
 
-These are the GM panel's port of ``server/web_view/admin_panel.py``'s moderator
-surface. They are the ONLY part of the panel that can see ipid/hdid or query the
+This is the moderator surface, ported from the legacy admin panel. They are the ONLY part of the panel that can see ipid/hdid or query the
 global event log, so every handler here is gated to sessions whose role is
 ``admin`` (a password login of ``role: admin``). Live-client GM sessions and
 ``role: gm`` remote sessions receive a 403.
@@ -55,9 +54,9 @@ class ModeratorRoutes:
         if err is not None:
             return err
         db = database._database_singleton
-        hubs = db.get_hubs()
+        hubs = await db.get_hubs()
         for hub in hubs:
-            hub["areas"] = db.get_areas_for_hub(hub["hub_id"])
+            hub["areas"] = await db.get_areas_for_hub(hub["hub_id"])
         return web.json_response(hubs)
 
     async def handle_api_areas(self, request):
@@ -65,7 +64,7 @@ class ModeratorRoutes:
         if err is not None:
             return err
         hub_id = self._int(request.query.get("hub_id"))
-        return web.json_response(database._database_singleton.get_areas_for_hub(hub_id))
+        return web.json_response(await database._database_singleton.get_areas_for_hub(hub_id))
 
     async def handle_api_event_types(self, request):
         session, err = self._require_admin(request)
@@ -74,7 +73,7 @@ class ModeratorRoutes:
         category = request.query.get("category", "area")
         if category not in ("area", "misc", "all"):
             return web.json_response({"error": "invalid category"}, status=400)
-        return web.json_response(database._database_singleton.get_event_types(category))
+        return web.json_response(await database._database_singleton.get_event_types(category))
 
     async def handle_api_all_events(self, request):
         """The unified event feed: area+connect+misc rows merged chronologically.
@@ -96,11 +95,14 @@ class ModeratorRoutes:
         until = request.query.get("until")
         limit = self._int(request.query.get("limit"), 100)
         offset = self._int(request.query.get("offset"), 0)
-        events = db.query_all_events(
+        page = await db.query_all_events(
             hub_id, area_id, event_subtype, ipid, since, until, limit, offset
         )
-        total = db.count_all_events(hub_id, area_id, event_subtype, ipid, since, until)
-        return web.json_response({"events": events, "total": total})
+        final_page = {
+            "events": page["events"],
+            "has_more": page["has_more"],
+        }
+        return web.json_response(final_page)
 
     # -- live log stream ----------------------------------------------
 
