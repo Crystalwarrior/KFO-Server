@@ -1,7 +1,7 @@
 /**
  * gm-admin-tab.js
- * AdminTab: the GM panel's port of the legacy admin panel's log viewer
- * (admin.js). The admin console is the shared Commands tab console, and the
+ * AdminTab: the GM panel's log viewer (admin-only). The admin console is
+ * the shared Commands tab console, and the
  * former players list + OOC/IC monitors now live in the Clients tab (admin
  * quick actions) and the Commands tab (monitor toggles). This tab is the
  * log viewer only -- one unified chronological feed merging the former
@@ -26,7 +26,8 @@ class AdminTab extends TabBase {
         super(shell, api, root);
 
         this.currentPage = 0;
-        this.totalCount = 0;
+        this.hasMore = false;   // whether an older page exists (no exact count)
+        this._hasRows = false;
         this.liveMode = false;
         this.hubsData = [];
 
@@ -202,7 +203,7 @@ class AdminTab extends TabBase {
         filters.offset = this.currentPage * 100;
         try {
             const data = await this.api.getAllEvents(filters);
-            this.totalCount = data.total || 0;
+            this.hasMore = !!data.has_more;
             this._renderTable(data.events || []);
             this._updatePagination();
         } catch (e) {
@@ -248,7 +249,8 @@ class AdminTab extends TabBase {
     }
 
     _renderTable(events) {
-        if (!events || events.length === 0) {
+        this._hasRows = !!(events && events.length > 0);
+        if (!this._hasRows) {
             this._contentEl.innerHTML = '<div class="gm-empty">No events found</div>';
             return;
         }
@@ -296,13 +298,15 @@ class AdminTab extends TabBase {
     }
 
     _updatePagination() {
-        if (this.totalCount === 0) { this._pagination.style.display = 'none'; return; }
+        // Page-based: no exact row count, so "next" is enabled purely from
+        // whether the server reported a further page (hasMore). The empty
+        // state hides pagination entirely.
+        if (!this._hasRows && !this.hasMore) { this._pagination.style.display = 'none'; return; }
         this._pagination.style.display = 'flex';
-        const totalPages = Math.ceil(this.totalCount / 100);
         this.root.querySelector('#admPageInfo').textContent =
-            `Page ${this.currentPage + 1} of ${totalPages} (${this.totalCount} total)`;
+            `Page ${this.currentPage + 1} - ${this.hasMore ? 'next page available' : 'no more pages left'}`;
         this.root.querySelector('#admPrevBtn').disabled = this.currentPage === 0;
-        this.root.querySelector('#admNextBtn').disabled = this.currentPage >= totalPages - 1;
+        this.root.querySelector('#admNextBtn').disabled = !this.hasMore;
     }
 
     _prevPage() { if (this.currentPage > 0) { this.currentPage--; this._loadPage(); } }
@@ -346,9 +350,18 @@ class AdminTab extends TabBase {
         if (dot) dot.classList.remove('connected');
     }
 
+    /** Live rows only belong in the table while it shows the freshest view:
+     * the first page with no filters applied. Off page 1 or with filters
+     * set, the ordered/paged view would be corrupted by injected rows. */
+    _liveViewActive() {
+        if (this.currentPage !== 0) return false;
+        return Object.keys(this._getFilters()).length === 0;
+    }
+
     /** Live rows carry the same shapes the merged query returns, minus a
      * `category` field -- the WS frame's `type` is the category. */
     _appendLiveRow(data, category) {
+        if (!this._liveViewActive()) return;
         const tbody = this._contentEl.querySelector('tbody');
         if (!tbody) { this._loadPage(); return; }
 
@@ -359,7 +372,7 @@ class AdminTab extends TabBase {
         if (tbody.firstChild) tbody.insertBefore(tr, tbody.firstChild);
         else tbody.appendChild(tr);
         while (tbody.children.length > 100) tbody.removeChild(tbody.lastChild);
-        this.totalCount++;
+        this._hasRows = true;
         this._updatePagination();
     }
 

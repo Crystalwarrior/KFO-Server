@@ -930,9 +930,8 @@ class GMSessionManager:
 
     def start_sweep(self):
         """
-        Schedule the periodic expiry sweep. Unlike `admin_panel.py`'s dead
-        `_cleanup_sessions` (defined but never invoked), this one actually runs,
-        re-scheduling itself every 60 seconds.
+        Schedule the periodic expiry sweep. Re-schedules itself every 60 seconds
+        (the legacy panel had this method defined but never invoked).
         """
         loop = asyncio.get_event_loop()
         self._sweep_handle = loop.call_later(60, self._sweep)

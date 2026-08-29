@@ -1,7 +1,6 @@
 /* ============================================================
    GM Control Panel styles.
-   Visually distinct from admin.css (neutral white/teal vs. admin's red)
-   but follows the same layout conventions: fixed-height flex
+   Neutral dark/teal theme following the shared layout conventions: fixed-height flex
    shell, dark UI, sticky table headers, small pill buttons.
    ============================================================ */
 
