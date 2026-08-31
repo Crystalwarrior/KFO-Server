@@ -396,6 +396,21 @@ if (typeof registerFieldMultilineInput !== 'function') {
 }
 registerFieldMultilineInput();
 
+// The plugin elides lines longer than maxDisplayLength (50 chars, inherited
+// from Blockly.Field) with "...". Demo script text should stay fully visible
+// on the block -- that's the whole point of the multiline fields -- so give
+// every field the plugin creates the same "never elide" treatment Blockly's
+// own FieldLabel uses (maxDisplayLength = Infinity). Fields are always
+// created through the static fromJson (block definitions and toolbox alike),
+// so wrapping it covers every instance. Only the rendered read-out and width
+// measurement are affected; editing and serialization are untouched.
+const _FMIFromJson = FieldMultilineInput.fromJson;
+FieldMultilineInput.fromJson = function (options) {
+    const field = _FMIFromJson.call(this, options);
+    field.maxDisplayLength = Infinity;
+    return field;
+};
+
 Blockly.common.defineBlocksWithJsonArray(DEMO_BLOCK_DEFS);
 
 /* --- Toolbox ------------------------------------------------------------ */

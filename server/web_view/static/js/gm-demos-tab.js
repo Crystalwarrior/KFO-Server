@@ -15,6 +15,84 @@
  * blocks, or the generator.
  */
 
+/** Static instruction cheat-sheet, mirroring docs/demo_scripting.md. */
+const DEMOS_HELP_HTML = `
+<h3>Demo Script Reference</h3>
+<p>Scripts run with <code>/demo &lt;id&gt;</code>. Lines end with a newline, or
+with <code>%</code> for packets/commands (which may span several physical
+lines). <code>//</code> starts a comment.</p>
+
+<h4>Instructions</h4>
+<table>
+<thead><tr><th>Instruction</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>wait &lt;ms&gt;</code></td><td>Pause for milliseconds</td></tr>
+<tr><td><code>MS#...#%</code>, <code>CT#...#%</code>, etc.</td><td>Send an AO packet to everyone in the area</td></tr>
+<tr><td><code>/command args%</code></td><td>Run an OOC command as the area's character</td></tr>
+<tr><td><code>set &lt;var&gt; &lt;value&gt;</code></td><td>Store a value in a variable</td></tr>
+<tr><td><code>get &lt;var&gt; &lt;source&gt;</code></td><td>Read live server state into a variable</td></tr>
+<tr><td><code>concat &lt;var&gt; &lt;value&gt; [sep]</code></td><td>Append text to a string variable</td></tr>
+<tr><td><code>rand &lt;var&gt; &lt;min&gt; &lt;max&gt;</code></td><td>Store a random whole number</td></tr>
+<tr><td><code>save &lt;char&gt; &lt;key&gt; &lt;value&gt;</code></td><td>Persist a value into a character's data</td></tr>
+<tr><td><code>if &lt;a&gt; &lt;op&gt; &lt;b&gt; &lt;label&gt;</code></td><td>Jump to a label when the comparison is true</td></tr>
+<tr><td><code>label &lt;name&gt;</code></td><td>Mark a spot to jump to</td></tr>
+<tr><td><code>goto &lt;name&gt;</code></td><td>Jump to a label, remembering where you came from</td></tr>
+<tr><td><code>return</code></td><td>Jump back to the matching <code>goto</code>; ends the script if there's nowhere to return to</td></tr>
+</tbody>
+</table>
+
+<h4>Packet headers</h4>
+<p>A demo may broadcast: <code>MS</code> <code>CT</code> <code>MC</code> <code>BN</code>
+<code>HP</code> <code>RT</code> <code>JD</code> <code>GM</code> <code>ST</code>.
+Packets don't change area state persistently (unlike the equivalent <code>/</code> commands) --
+prefer <code>/bg</code>, <code>/subtheme</code> etc. when you want the change to stick for
+new arrivals too.</p>
+
+<h4>Variables in text</h4>
+<p><code>&lt;!name&gt;</code> anywhere in a packet or command substitutes the current value of
+<code>name</code>. Comparisons use <code>== != &lt; &gt; &lt;= &gt;=</code> (or the words
+<code>eq ne lt gt le ge</code>).</p>
+
+<h4>Escapes</h4>
+<p>Need a literal <code>#</code>, <code>&amp;</code>, <code>%</code> or <code>$</code> in text?
+Write <code>&lt;num&gt;</code>, <code>&lt;and&gt;</code>, <code>&lt;percent&gt;</code>,
+<code>&lt;dollar&gt;</code>.</p>
+
+<h4>Reading live state: paths</h4>
+<table>
+<thead><tr><th>Path</th><th>Points at</th></tr></thead>
+<tbody>
+<tr><td><code>clients.count</code> / <code>client[i].&lt;field&gt;</code></td><td>People in the area (id, name, char_name, char_id, char_folder, showname, pos, pair, iniswap, hidden_in, is_cm, is_gm, is_afk, hidden, blinded, sneaking, frozen, ...)</td></tr>
+<tr><td><code>afk[i].&lt;field&gt;</code></td><td>Same fields, only AFK-marked people</td></tr>
+<tr><td><code>timer[i].&lt;field&gt;</code></td><td><code>timer[0]</code> is hub-wide, 1-20 are the area's own (remaining_ms, static_ms, set, started)</td></tr>
+<tr><td><code>evidence[i].&lt;field&gt;</code></td><td>name, desc, image, pos, show_in_dark, hiding, can_hide_in, can_take, editable</td></tr>
+<tr><td><code>links[i].&lt;field&gt;</code></td><td>target, target_pos, evidence, password, locked, hidden, can_peek, seethrough</td></tr>
+<tr><td><code>area.&lt;field&gt;</code></td><td>Everything about the current area (name, background, locked, evidence_mod, hp_def, hp_pro, music, ...)</td></tr>
+<tr><td><code>hub.&lt;field&gt;</code></td><td>The hub (name, char_list_ref, move_delay, can_gm, ...)</td></tr>
+<tr><td><code>char[&lt;name&gt;].&lt;key&gt;</code></td><td>A character's saved Character Data (id or quoted folder name)</td></tr>
+</tbody>
+</table>
+<p>Counting starts at 0. Swap <code>[i]</code> for <code>.count</code> to get a total. For
+safety, mod-only details like IP/HDID hashes and <code>is_mod</code> are never exposed to
+scripts.</p>
+
+<h4>Character data</h4>
+<p><code>save &lt;char&gt; &lt;key&gt; &lt;value&gt;</code> writes and persists immediately;
+<code>char[...]</code> reads it back. This is the shared "blackboard" between demos,
+triggers and timers.</p>
+
+<h4>Triggers &amp; timers</h4>
+<p><code>/trigger join|leave /demo N</code> and evidence <code>present</code> triggers fire a
+command when something happens; <code>&lt;cid&gt;</code>/<code>&lt;showname&gt;</code>/<code>&lt;char&gt;</code>
+in the queued command are replaced with the triggering player. <code>/timer N /demo M</code>
+queues a demo to run when timer N expires.</p>
+
+<h4>When things go wrong</h4>
+<p>Any error prints <code>[Demo] [ERROR] ...</code> to the area and stops the script (HP bars
+and background are restored). A script that runs too long stops itself at the configured step
+cap. <code>/stop_demo</code> stops playback at any time.</p>
+`;
+
 /**
  * The persistence seam for scripts. Each method is backed by the evidence
  * endpoints for now (the only storage that exists); swap the bodies for
@@ -100,6 +178,7 @@ class DemosTab extends TabBase {
         this._blocklyWrap = root.querySelector('#demosBlockly');
         this._blocklyWarningsEl = root.querySelector('#demosBlocklyWarnings');
         this._statusBox = root.querySelector('#demosStatusBox');
+        this._helpBox = root.querySelector('#demosHelpBox');
         this._runBtn = root.querySelector('#demosRunBtn');
         this._stopBtn = root.querySelector('#demosStopBtn');
 
@@ -123,7 +202,10 @@ class DemosTab extends TabBase {
         this._runBtn.addEventListener('click', () => this._run());
         this._stopBtn.addEventListener('click', () => this._stop());
         this._evalBtn.addEventListener('click', () => this._evaluate());
+        root.querySelector('#demosHelpToggleBtn').addEventListener('click', () => this._toggleHelp());
         this._textEditor.addEventListener('input', () => this._onTextInput());
+
+        this._helpBox.innerHTML = DEMOS_HELP_HTML;
 
         // Warn before the browser closes the page with unsaved script edits.
         window.addEventListener('beforeunload', (e) => {
@@ -132,6 +214,10 @@ class DemosTab extends TabBase {
                 e.returnValue = '';
             }
         });
+    }
+
+    _toggleHelp() {
+        this._helpBox.classList.toggle('hidden');
     }
 
     /** Open a specific script, switching this tab to it (used by the
