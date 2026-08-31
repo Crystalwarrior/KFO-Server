@@ -115,7 +115,10 @@ class EvidenceTab extends TabBase {
         this._evidenceList = [];
         this._selectedEvidenceId = null;
         this._reloadRetried = false;
-        this._statusTimer = null;
+        // Last persisted snapshot of every editable field, used as the
+        // baseline for dirty tracking; null while no item is loaded.
+        this._savedSnapshot = null;
+        this._saving = false;
 
         this._areaLabel = root.querySelector('#evidenceAreaLabel');
         this._areaSelect = root.querySelector('#evidenceAreaSelect');
@@ -124,6 +127,9 @@ class EvidenceTab extends TabBase {
         this._imageInput = root.querySelector('#evidenceImageInput');
         this._iconPreview = root.querySelector('#evidenceIconPreview');
         this._iconOverrideBtn = root.querySelector('#evidenceIconOverrideBtn');
+        // The evidence description (desc) doubles as the demo script -- this
+        // editor is where a GM reads/writes it as plain item text; the Demos
+        // tab is the richer Text/Visual authoring surface for the same field.
         this._editor = root.querySelector('#evidenceScriptEditor');
         this._warningsEl = root.querySelector('#evidenceParseWarnings');
         this._posInput = root.querySelector('#evidencePosInput');
@@ -135,25 +141,18 @@ class EvidenceTab extends TabBase {
         this._canTakeCheck = root.querySelector('#evidenceCanTakeCheck');
         this._editableCheck = root.querySelector('#evidenceEditableCheck');
         this._triggersInput = root.querySelector('#evidenceTriggersInput');
-        this._statusBox = root.querySelector('#evidenceStatusBox');
-        this._evalInput = root.querySelector('#evidenceEvalInput');
-        this._evalResult = root.querySelector('#evidenceEvalResult');
         this._packSelect = root.querySelector('#evidencePackSelect');
         this._packOverlayCheck = root.querySelector('#evidencePackOverlayCheck');
         this._packNameInput = root.querySelector('#evidencePackNameInput');
         this._helpBox = root.querySelector('#evidenceHelpBox');
-        this._runBtn = root.querySelector('#evidenceRunBtn');
-        this._stopBtn = root.querySelector('#evidenceStopBtn');
 
         this._areaSelect.addEventListener('change', () => this._onAreaPicked());
         root.querySelector('#evidenceRefreshBtn').addEventListener('click', () => this.reload());
         root.querySelector('#evidenceNewBtn').addEventListener('click', () => this._newEvidence());
         root.querySelector('#evidenceStopAllBtn').addEventListener('click', () => this._stopAll());
         root.querySelector('#evidenceSaveBtn').addEventListener('click', () => this._saveItem());
-        this._runBtn.addEventListener('click', () => this._run());
-        this._stopBtn.addEventListener('click', () => this._stop());
+        root.querySelector('#evidenceEditScriptBtn').addEventListener('click', () => this._editScript());
         root.querySelector('#evidenceDeleteBtn').addEventListener('click', () => this._delete());
-        root.querySelector('#evidenceEvalBtn').addEventListener('click', () => this._evaluate());
         root.querySelector('#evidencePackLoadBtn').addEventListener('click', () => this._loadPack());
         root.querySelector('#evidencePackSaveBtn').addEventListener('click', () => this._savePack());
         root.querySelector('#evidenceHelpToggleBtn').addEventListener('click', () => this._toggleHelp());
@@ -162,6 +161,14 @@ class EvidenceTab extends TabBase {
         this._posAddSelect.addEventListener('change', () => this._onPosAdd());
 
         this._helpBox.innerHTML = EVIDENCE_HELP_HTML;
+
+        // Warn before the browser closes the page with unsaved item edits.
+        window.addEventListener('beforeunload', (e) => {
+            if (this._dirty && this._selectedEvidenceId !== null) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
     }
 
     /** Late-inject local content resolution (mirrors AreasGraphTab). */
@@ -175,13 +182,15 @@ class EvidenceTab extends TabBase {
         if (this._areaId === null) this._areaId = this._currentAreaId();
         await this.reload();
         await this._loadPacks();
-        this._startStatusPolling();
         this._startPolling();
     }
 
     deactivate() {
         super.deactivate();
-        this._stopStatusPolling();
+        // Persist any unsaved edits before the user switches to another
+        // tab. Fire-and-forget: _autoSave captures the item id up front, so
+        // a late completion can't touch a newer item's baseline.
+        if (this._dirty && this._selectedEvidenceId !== null) this._autoSave();
         this._stopPolling();
     }
 
@@ -250,6 +259,7 @@ class EvidenceTab extends TabBase {
     }
 
     async _onAreaPicked() {
+        if (!(await this._guardUnsaved())) return;
         const val = parseInt(this._areaSelect.value, 10);
         if (Number.isNaN(val)) return;
         this._areaId = val;
@@ -270,7 +280,6 @@ class EvidenceTab extends TabBase {
             }
             this._refreshPosOptions();
             this._renderList();
-            this._updateRunStopState();
             if (this._selectedEvidenceId !== null && !this._evidenceList.some((d) => d.id === this._selectedEvidenceId)) {
                 this._selectedEvidenceId = null;
                 this._clearEditor();
@@ -333,9 +342,10 @@ class EvidenceTab extends TabBase {
         });
     }
 
-    _onTableClick(e) {
+    async _onTableClick(e) {
         const row = e.target.closest('tr[data-id]');
         if (!row) return;
+        if (!(await this._guardUnsaved())) return;
         this._openEvidence(parseInt(row.dataset.id, 10));
     }
 
@@ -346,13 +356,13 @@ class EvidenceTab extends TabBase {
             this._nameInput.value = d.name || '';
             this._imageInput.value = d.image || '';
             this._editor.value = d.desc || '';
-            // note: just because evidence is not "player editable" doesn't mean we should lock out
-            // the literal game master from editing it too
             this._editor.readOnly = false;
             this._renderWarnings(d.parse_warnings || []);
             this._populateProps(d);
+            // Baseline everything (name, image, desc, props) after all the
+            // fields are populated, so only real edits count as dirty.
+            this._savedSnapshot = this._captureSnapshot();
             this._renderList();
-            this._updateRunStopState();
             this._loadDetailIcon();
         } catch (e) {
             this.shell.toast('Failed to load evidence item: ' + e.message, 'error');
@@ -448,6 +458,7 @@ class EvidenceTab extends TabBase {
         this._nameInput.value = '';
         this._imageInput.value = '';
         this._editor.value = '';
+        this._savedSnapshot = null;
         this._editor.readOnly = false;
         this._warningsEl.innerHTML = '';
         this._iconPreview.innerHTML = '<span class="gm-icon-fallback">?</span>';
@@ -509,19 +520,93 @@ class EvidenceTab extends TabBase {
             : '';
     }
 
-    _newEvidence() {
+    // --- dirty tracking & autosave ---------------------------------------
+
+    /** Capture the current value of every editable field. Doubles as the
+     * baseline for dirty tracking and as the basis for the autosave payload. */
+    _captureSnapshot() {
+        return {
+            name: this._nameInput.value,
+            image: this._imageInput.value,
+            desc: this._editor.value,
+            props: this._collectProps(),
+        };
+    }
+
+    /** True when any editable field differs from the last persisted one. */
+    get _dirty() {
+        if (this._savedSnapshot === null) return false;
+        const cur = this._captureSnapshot();
+        const snap = this._savedSnapshot;
+        return snap.name !== cur.name
+            || snap.image !== cur.image
+            || snap.desc !== cur.desc
+            || JSON.stringify(snap.props) !== JSON.stringify(cur.props);
+    }
+
+    /**
+     * Persist the current item (name, image, description and all property
+     * fields) if anything has unsaved edits. Returns true when the item is
+     * safely on the server (saved, or nothing to save). The payload is the
+     * same shape the Save button sends; the area/evidence id is captured up
+     * front so a save finishing after the user has moved on can't touch the
+     * baseline of whatever is loaded then.
+     */
+    async _autoSave() {
+        if (this._selectedEvidenceId === null || this._saving) return true;
+        if (!this._dirty) return true;
+        this._saving = true;
+        const areaId = this._areaId;
+        const evidenceId = this._selectedEvidenceId;
+        const payload = {
+            name: this._nameInput.value.trim() || 'Untitled',
+            image: this._imageInput.value,
+            desc: this._editor.value,
+            props: this._collectProps(),
+        };
+        try {
+            await this.api.putEvidenceItem(areaId, evidenceId, payload);
+            if (this._selectedEvidenceId === evidenceId && this._areaId === areaId) {
+                this._savedSnapshot = this._captureSnapshot();
+                this.shell.toast('Autosaved.', 'success');
+            }
+            return true;
+        } catch (e) {
+            this.shell.toast('Autosave failed: ' + e.message, 'error');
+            return false;
+        } finally {
+            this._saving = false;
+        }
+    }
+
+    /**
+     * Guard used before leaving the current evidence item (area switch, row
+     * click, new item, pack load, Demos handoff): autosave unsaved changes,
+     * and if that fails ask whether to proceed anyway. Returns true when
+     * it's safe to proceed.
+     */
+    async _guardUnsaved() {
+        if (!this._dirty || this._selectedEvidenceId === null) return true;
+        if (await this._autoSave()) return true;
+        return confirm("Could not autosave this evidence item's changes. Proceed and lose unsaved changes?");
+    }
+
+    async _newEvidence() {
+        if (!(await this._guardUnsaved())) return;
         this._selectedEvidenceId = null;
         this._clearEditor();
         this._nameInput.value = 'New Evidence';
         this._nameInput.focus();
         this._renderList();
-        this._updateRunStopState();
     }
 
     async _saveItem() {
         const name = this._nameInput.value.trim() || 'Untitled';
         const image = this._imageInput.value;
+        // The description IS the demo script (evidence `desc` doubles as it),
+        // so the description editor writes the same field the Demos tab edits.
         const desc = this._editor.value;
+        const savedId = this._selectedEvidenceId;
         const props = this._collectProps();
         try {
             if (this._selectedEvidenceId === null) {
@@ -530,9 +615,8 @@ class EvidenceTab extends TabBase {
                 await this.reload();
                 if (created && created.id !== undefined) await this._openEvidence(created.id);
             } else {
-                await this.api.putEvidenceItem(this._areaId, this._selectedEvidenceId, { name, desc, image, props });
+                await this.api.putEvidenceItem(this._areaId, savedId, { name, desc, image, props });
                 this.shell.toast('Evidence saved.', 'success');
-                const savedId = this._selectedEvidenceId;
                 await this.reload();
                 await this._openEvidence(savedId);
             }
@@ -555,36 +639,22 @@ class EvidenceTab extends TabBase {
         }
     }
 
-    /** Reflect the editor selection onto the Run button; Stop is always
-     * available -- Run/Stop act on the picked area, wherever the GM happens
-     * to be, and a Stop with nothing playing is just a failed result toast. */
-    _updateRunStopState() {
-        this._runBtn.disabled = this._selectedEvidenceId === null;
-        this._runBtn.title = this._selectedEvidenceId === null ? 'Select or save an evidence item first.' : '';
-        this._stopBtn.disabled = false;
-        this._stopBtn.title = '';
-    }
-
-    async _run() {
-        if (this._selectedEvidenceId === null) { this.shell.toast('Select or save an evidence item first.', 'error'); return; }
-        try {
-            const result = await this.api.runEvidence(this._areaId, this._selectedEvidenceId);
-            this.shell.toast((result.output || []).join(' ') || 'Evidence script started.', result.ok ? 'success' : 'error');
-            await this.reload();
-            this._refreshStatus();
-        } catch (e) {
-            this.shell.toast('Failed to run: ' + e.message, 'error');
+    /** Send the selected evidence item's script to the Demos tab, which now
+     * owns script authoring (Text + Visual/Blockly). */
+    async _editScript() {
+        if (this._selectedEvidenceId === null) {
+            this.shell.toast('Select an evidence item first.', 'error');
+            return;
         }
-    }
-
-    async _stop() {
-        try {
-            const result = await this.api.stopEvidence(this._areaId);
-            this.shell.toast((result.output || []).join(' ') || 'Stopped.', result.ok ? 'success' : 'error');
-            await this.reload();
-            this._refreshStatus();
-        } catch (e) {
-            this.shell.toast('Failed to stop: ' + e.message, 'error');
+        // The Demos tab will load the item fresh from the server, so persist
+        // any unsaved description edit first.
+        if (!(await this._guardUnsaved())) return;
+        const demosTab = this.shell.tabs.get('demos');
+        if (demosTab && typeof demosTab.openScript === 'function') {
+            this.shell.switchTab('demos');
+            demosTab.openScript(this._areaId, this._selectedEvidenceId);
+        } else {
+            this.shell.toast('The Demos tab is not available.', 'error');
         }
     }
 
@@ -593,59 +663,8 @@ class EvidenceTab extends TabBase {
         try {
             const result = await this.api.stopAllEvidence(this._areaId);
             this.shell.toast((result.output || []).join(' ') || 'Stopped all demos in the hub.', result.ok ? 'success' : 'error');
-            this._refreshStatus();
         } catch (e) {
             this.shell.toast('Failed to stop all: ' + e.message, 'error');
-        }
-    }
-
-    _startStatusPolling() {
-        this._stopStatusPolling();
-        this._refreshStatus();
-        this._statusTimer = setInterval(() => this._refreshStatus(), 1000);
-    }
-
-    _stopStatusPolling() {
-        if (this._statusTimer) { clearInterval(this._statusTimer); this._statusTimer = null; }
-    }
-
-    async _refreshStatus() {
-        if (!this.isActive || this._areaId === null) return;
-        try {
-            const status = await this.api.getEvidenceStatus(this._areaId);
-            this._renderStatus(status);
-        } catch (e) {
-            // transient poll failure -- leave the last known status showing
-        }
-    }
-
-    _renderStatus(s) {
-        if (!s.running) {
-            this._statusBox.innerHTML = '<div class="dim">No script running in this area.</div>';
-            return;
-        }
-        const pct = s.instruction_count ? Math.min(100, Math.round((s.index / s.instruction_count) * 100)) : 0;
-        const varsHtml = Object.entries(s.variables || {})
-            .map(([k, v]) => `<tr><td class="mono">${esc(k)}</td><td>${esc(fmtValue(v))}</td></tr>`).join('');
-        this._statusBox.innerHTML = `
-            <div class="gm-progress"><div class="gm-progress-bar" style="width:${pct}%"></div></div>
-            <div class="dim">Step ${s.index}/${s.instruction_count} · ${s.steps}/${s.max_steps} total steps taken</div>
-            ${s.labels && s.labels.length ? `<div class="dim">Labels: ${esc(s.labels.join(', '))}</div>` : ''}
-            ${s.modified_packets && s.modified_packets.length ? `<div class="dim">Modified packets (revert on stop): ${esc(s.modified_packets.join(', '))}</div>` : ''}
-            ${varsHtml ? `<table class="gm-table gm-var-table"><thead><tr><th>Variable</th><th>Value</th></tr></thead><tbody>${varsHtml}</tbody></table>` : ''}
-        `;
-    }
-
-    async _evaluate() {
-        const expr = this._evalInput.value.trim();
-        if (!expr || this._areaId === null) return;
-        try {
-            const result = await this.api.evalExpression(this._areaId, expr);
-            this._evalResult.textContent = result.ok ? `= ${fmtValue(result.value)}` : `Error: ${result.error}`;
-            this._evalResult.classList.toggle('error', !result.ok);
-        } catch (e) {
-            this._evalResult.textContent = 'Error: ' + e.message;
-            this._evalResult.classList.add('error');
         }
     }
 
@@ -666,6 +685,8 @@ class EvidenceTab extends TabBase {
         if (!name) return;
         const overlay = this._packOverlayCheck.checked;
         if (!overlay && !confirm(`Replace this area's evidence list with "${name}"?`)) return;
+        // Loading a pack replaces the list; keep any unsaved description edit.
+        if (!(await this._guardUnsaved())) return;
         try {
             const result = await this.api.loadEvidencePack(name, this._areaId, overlay);
             this.shell.toast((result.output || []).join(' ') || 'Pack loaded.', result.ok ? 'success' : 'error');

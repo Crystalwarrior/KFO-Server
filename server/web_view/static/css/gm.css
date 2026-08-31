@@ -369,6 +369,35 @@ body {
 /* --- Area picker (Evidence tab) --- */
 #evidenceAreaSelect { min-width: 160px; }
 
+/* --- Evidence description (the item's desc, which doubles as the demo
+   script -- see the Demos tab for the Text/Visual block editors) ---
+   The desc section flexes to fill the editor column, and the textarea fills
+   the section, so the script editor takes the full available height instead
+   of sitting in a small box. */
+.gm-evidence-desc { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.gm-evidence-desc-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem;
+    font-size: 0.76rem; color: var(--gm-text-dim);
+}
+.gm-evidence-desc-head span:first-child { color: var(--gm-accent); font-weight: 600; }
+.gm-evidence-desc .gm-script-editor { flex: 1; min-height: 120px; resize: vertical; }
+
+/* --- Demos tab (Text/Visual script editing) --- */
+#demosAreaSelect, #demosScriptSelect { min-width: 160px; }
+.gm-demos-bodies {
+    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.6rem;
+}
+.gm-demos-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gm-demos-editor-box { flex: 1; min-height: 0; }
+.gm-demos-editor-box .gm-script-editor { min-height: 220px; }
+/* The Blockly workspace container. Blockly injects its own SVG + CSS; this
+ * gives the workspace a real box to fill so blocks render at full size. */
+.gm-blockly-wrap {
+    flex: 1; min-height: 420px; border: 1px solid var(--gm-border); border-radius: 6px;
+    background: #0b0d14; overflow: hidden; position: relative;
+}
+.gm-blockly-wrap .blocklySvg { width: 100%; height: 100%; }
+
 /* --- Local Content settings modal --- */
 .gm-modal-backdrop {
     position: fixed; inset: 0; background: rgba(6,7,12,0.65); z-index: 3000;

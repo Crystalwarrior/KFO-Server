@@ -27,6 +27,7 @@ from server.web_view.gm_panel.routes.auth import AuthRoutes
 from server.web_view.gm_panel.routes.characters import CharacterRoutes
 from server.web_view.gm_panel.routes.clients import ClientRoutes
 from server.web_view.gm_panel.routes.commands import CommandRoutes
+from server.web_view.gm_panel.routes.demos import DemosRoutes
 from server.web_view.gm_panel.routes.evidence import EvidenceRoutes
 from server.web_view.gm_panel.routes.hub_data import HubDataRoutes
 from server.web_view.gm_panel.routes.moderator import ModeratorRoutes
@@ -91,6 +92,7 @@ class GMPanelApp:
         character_routes = CharacterRoutes(self._session_manager, self._server)
         hub_data_routes = HubDataRoutes(self._session_manager, self._server, self.bridge)
         evidence_routes = EvidenceRoutes(self._session_manager, self._server)
+        demos_routes = DemosRoutes(self._session_manager, self._server)
         asset_routes = AssetRoutes(self._server, self._config)
         moderator_routes = ModeratorRoutes(self._session_manager, self._server)
 
@@ -269,6 +271,11 @@ class GMPanelApp:
 
         app.router.add_get("/api/gm/music", require(hub_data_routes.handle_music_get))
         app.router.add_post("/api/gm/music/apply", require(hub_data_routes.handle_music_apply))
+
+        # Demos tab -- the demo-scripting language surface. Kept under its own
+        # /api/gm/demos/* prefix (rather than /api/gm/evidence/*) because
+        # evidence and demo scripting are meant to be separated eventually.
+        app.router.add_post("/api/gm/demos/parse", require(demos_routes.handle_parse))
 
         # Evidence tab (formerly "Demos") -- literal routes registered before the
         # dynamic {evidence_id} route so e.g. "status" isn't swallowed as an id.
