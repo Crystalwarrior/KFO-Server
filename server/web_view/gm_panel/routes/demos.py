@@ -13,6 +13,7 @@ backend.
 from aiohttp import web
 
 from server.script_runner import parse_demo_description
+from server.scripting import live_path_menu
 
 from server.web_view.gm_panel.serializers import EvidenceSerializer
 
@@ -67,3 +68,17 @@ class DemosRoutes:
             "instructions": [list(instr) for instr in instructions],
             "warnings": EvidenceSerializer._out_of_range_warnings(area, instructions),
         })
+
+    async def handle_live_paths(self, request):
+        """List every live-state path the demo language can read.
+
+        Generated from the scripting whitelists themselves
+        (`scripting.live_path_menu`), so the get block's "insert variable"
+        dropdown always matches exactly what the runner accepts - no
+        hand-maintained mirror to drift out of sync. No area is needed: the
+        field whitelists are server-wide (only the *values* are per-area).
+        """
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        return web.json_response({"ok": True, "paths": list(live_path_menu())})

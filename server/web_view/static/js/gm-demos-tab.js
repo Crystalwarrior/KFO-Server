@@ -135,6 +135,11 @@ class DemosScriptStore {
     parse(text, areaId) {
         return this._api.parseScript(text, areaId);
     }
+
+    /** The full live-state path menu, generated from the server whitelists. */
+    livePaths() {
+        return this._api.getLivePaths();
+    }
 }
 
 class DemosTab extends TabBase {
@@ -185,6 +190,11 @@ class DemosTab extends TabBase {
         this._visualEditor = new DemoBlockEditor(this._blocklyWrap, (text, warnings) => {
             this._onVisualChange(text, warnings);
         });
+        // Fill the get block's "insert variable" dropdown with the
+        // server-generated live-path menu (the editor keeps a small built-in
+        // fallback until this lands). Fire-and-forget: a failure just leaves
+        // the fallback in place, and the next panel load retries.
+        this._loadLivePaths();
 
         // --- Sub-tab navigation ---
         this._subtabButtons = Array.from(root.querySelectorAll('.gm-subtab[data-subtab]'));
@@ -218,6 +228,18 @@ class DemosTab extends TabBase {
 
     _toggleHelp() {
         this._helpBox.classList.toggle('hidden');
+    }
+
+    /** Fetch the server-generated live-path menu into the block editor. */
+    async _loadLivePaths() {
+        try {
+            const data = await this._store.livePaths();
+            if (data && Array.isArray(data.paths)) {
+                this._visualEditor.setInsertPathOptions(data.paths);
+            }
+        } catch (e) {
+            // non-fatal: the visual editor keeps its built-in fallback list
+        }
     }
 
     /** Open a specific script, switching this tab to it (used by the

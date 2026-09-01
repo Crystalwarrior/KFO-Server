@@ -31,6 +31,45 @@
 /* --- Block definitions -------------------------------------------------- */
 
 /**
+ * Fallback live-state paths for the get block's "insert variable" dropdown,
+ * mirroring the reference's "Reading live state: paths" table (gm-demos-tab
+ * DEMOS_HELP_HTML; docs/demo_scripting.md). Each entry is inserted verbatim
+ * into the get block's PATH field: a bare path like `clients.count` is
+ * exactly what the runner's `get <var> <source>` operand grammar accepts
+ * (script_runner.py `_resolve_operand` -> `live_get`). Script variables
+ * from the workspace are prepended dynamically by demoGetInsertOptions -- a
+ * bare variable name copies the variable's current value.
+ *
+ * This static list is only a stopgap: the Demos tab replaces it with the
+ * server-generated menu (scripting.py `live_path_menu`, served at
+ * GET /api/gm/demos/paths -> DemoBlockEditor.setInsertPathOptions), so every
+ * whitelisted path the runner actually accepts can be inserted -- not just
+ * this hand-picked fifteen. The fallback stays in force on pages that load
+ * this file standalone (e.g. the Blockly smoke test) or when the panel API
+ * is unreachable.
+ *
+ * Must be declared before DEMO_BLOCK_DEFS: the get block's JSON spreads it
+ * while the array literal is evaluated.
+ */
+let DEMO_INSERT_PATH_OPTIONS = [
+    'clients.count',
+    'client[0].showname',
+    'client[0].char_name',
+    'client[0].char_id',
+    'client[0].pos',
+    'afk[0].showname',
+    'timer[0].remaining_ms',
+    'timer[1].remaining_ms',
+    'evidence[0].name',
+    'evidence[0].desc',
+    'links[0].target',
+    'area.name',
+    'area.background',
+    'area.music',
+    'hub.name',
+].map((p) => [p, p]);
+
+/**
  * Colour hues follow Blockly's own category palette so the toolbox matches
  * the blocks: control = blue, variables = magenta, packets = orange,
  * commands = green.
@@ -112,9 +151,22 @@ const DEMO_BLOCK_DEFS = [
     {
         type: 'demo_get',
         message0: 'get %1 = %2',
+        message1: 'insert %1',
         args0: [
             { type: 'field_variable', name: 'VAR', variable: 'x' },
             { type: 'field_input', name: 'PATH', text: '' },
+        ],
+        args1: [
+            // "Insert variable…" dropdown: picking an entry replaces the
+            // PATH field with the bare path or variable name. Options are
+            // refreshed from the workspace's variables + curated live paths
+            // by demoRefreshGetInsertOptions; the static list below is the
+            // fallback for fresh blocks before that first refresh.
+            {
+                type: 'field_dropdown',
+                name: 'INSERT_VAR',
+                options: [['Insert variable…', ''], ...DEMO_INSERT_PATH_OPTIONS],
+            },
         ],
         previousStatement: null,
         nextStatement: null,
@@ -546,6 +598,64 @@ function demoRefreshVariablesFlyout(workspace) {
         // switch.
         toolbox.refreshSelection();
     }
+}
+
+/* --- Get block "insert variable" dropdown ------------------------------- */
+
+/**
+ * Build the get block's "insert variable" dropdown options for a workspace:
+ * the placeholder, then the workspace's script variables, then the live
+ * paths (DEMO_INSERT_PATH_OPTIONS, declared above the block defs; replaced
+ * by the server-generated menu via demoSetInsertPathOptions).
+ * Every entry is inserted into PATH as the bare name -- for a get operand
+ * the wrapped `<!name>` form is not a valid source (script_runner.py
+ * resolves `get`'s second operand as a live path or plain value).
+ */
+function demoGetInsertOptions(workspace) {
+    const options = [['Insert variable…', '']];
+    workspace.getVariableMap()
+        .getVariablesOfType('')
+        .sort(Blockly.Variables.compareByName)
+        .forEach((v) => options.push([v.name, v.name]));
+    options.push(...DEMO_INSERT_PATH_OPTIONS);
+    return options;
+}
+
+/**
+ * Replace the curated live-path menu offered by every get block's "insert
+ * variable" dropdown with a server-generated one. `paths` are bare path
+ * strings exactly as `get <var> <source>` accepts them (see
+ * server/scripting.py `live_path_menu`). The Demos tab calls this with the
+ * GET /api/gm/demos/paths payload once it loads; until then (and on error),
+ * DEMO_INSERT_PATH_OPTIONS above remains in force. Any get blocks already
+ * in a workspace get their dropdown rebuilt in place via the same refresh
+ * path variable create/delete uses -- setOptions preserves each block's
+ * current (placeholder) value, so no change events fire.
+ */
+function demoSetInsertPathOptions(workspace, paths) {
+    if (Array.isArray(paths)) {
+        DEMO_INSERT_PATH_OPTIONS = paths.map((p) => [p, p]);
+    }
+    if (workspace) demoRefreshGetInsertOptions(workspace);
+}
+
+/**
+ * Rebuild every get block's "insert variable" dropdown from the current
+ * variable map (and the live-path list). Called when a script loads, on
+ * variable create/rename/delete, and on block create (so toolbox-dragged
+ * get blocks pick up the workspace's variables too). setOptions only
+ * replaces the menu contents -- the current (empty) value is untouched, so
+ * no change events fire.
+ */
+function demoRefreshGetInsertOptions(workspace) {
+    const options = demoGetInsertOptions(workspace);
+    workspace.getAllBlocks(false).forEach((b) => {
+        if (b.type !== 'demo_get') return;
+        const field = b.getField('INSERT_VAR');
+        if (field && typeof field.setOptions === 'function') {
+            field.setOptions(options);
+        }
+    });
 }
 
 /* --- Text helpers ------------------------------------------------------- */
@@ -1129,14 +1239,35 @@ class DemoBlockEditor {
         // changes: creating a variable immediately puts a set/get pair for
         // it in the flyout, like Blockly's own category.
         demoRefreshVariablesFlyout(this._workspace);
+        demoRefreshGetInsertOptions(this._workspace);
         this._workspace.addChangeListener((event) => {
             // Skip UI-only events (selection, clicks) and events fired while
             // we are programmatically loading a script.
             if (this._loading || !event || event.isUiEvent) return;
             // Creating, renaming or deleting a variable changes what the
-            // Variables flyout should offer; refresh that one category.
+            // Variables flyout should offer; refresh that one category (and
+            // the get blocks' insert dropdown, which lists the variables).
             if (event.type === 'var_create' || event.type === 'var_rename' || event.type === 'var_delete') {
                 demoRefreshVariablesFlyout(this._workspace);
+                demoRefreshGetInsertOptions(this._workspace);
+            } else if (event.type === 'create') {
+                // Blocks dragged in from the toolbox need the workspace's
+                // variables in their insert dropdown. setOptions is cheap
+                // (no flyout rebuild), so refresh on every block create.
+                demoRefreshGetInsertOptions(this._workspace);
+            }
+            if (event.type === 'change') {
+                if (event.name === 'INSERT_VAR' && event.newValue) {
+                    // "Insert variable…" picked: replace the PATH field
+                    // with the chosen path or variable name, then reset
+                    // the dropdown to its placeholder.
+                    const block = this._workspace.getBlockById(event.blockId);
+                    if (block && block.type === 'demo_get') {
+                        this._setPath(block, event.newValue);
+                        const dropdown = block.getField('INSERT_VAR');
+                        if (dropdown) dropdown.setValue('');
+                    }
+                }
             }
             this._emit();
         });
@@ -1174,9 +1305,32 @@ class DemoBlockEditor {
             this._loading = false;
         }
         // Loading (or clearing) can change the variable set without firing
-        // variable events, so resync the flyout here.
+        // variable events, so resync the flyout and the get insert dropdown.
         demoRefreshVariablesFlyout(this._workspace);
+        demoRefreshGetInsertOptions(this._workspace);
         this._emit();
+    }
+
+    /**
+     * Replace a get block's PATH field with the picked path or variable
+     * name. The dropdown's "insert" action swaps the whole value rather
+     * than appending, so a chosen live path can't get silently glued onto
+     * stale text already in the field.
+     */
+    _setPath(block, name) {
+        block.getField('PATH').setValue(String(name));
+    }
+
+    /**
+     * Replace the get blocks' curated live-path dropdown menu with the
+     * server-generated list (GET /api/gm/demos/paths -> scripting.py
+     * `live_path_menu`), updating any get blocks already in the workspace.
+     * Safe to call before the workspace exists: the options apply when the
+     * first get block appears. The built-in fallback list stays in force
+     * until this is called.
+     */
+    setInsertPathOptions(paths) {
+        demoSetInsertPathOptions(this._workspace, paths);
     }
 
     /** Clear the workspace (new script). */
@@ -1189,6 +1343,7 @@ class DemoBlockEditor {
             this._loading = false;
         }
         demoRefreshVariablesFlyout(this._workspace);
+        demoRefreshGetInsertOptions(this._workspace);
         this._emit();
     }
 

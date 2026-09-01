@@ -203,6 +203,11 @@ class ApiClient {
         return this.post('/api/gm/demos/parse', body);
     }
 
+    // Every live-state path the demo language accepts, generated server-side
+    // from the scripting whitelists (used to populate the get block's
+    // "insert variable" dropdown in the Visual sub-tab).
+    getLivePaths() { return this.get('/api/gm/demos/paths'); }
+
     getEvidencePacks() { return this.get('/api/gm/evidence_packs'); }
     loadEvidencePack(name, areaId, overlay) {
         return this.post(`/api/gm/evidence_packs/${encodeURIComponent(name)}/load`, {
