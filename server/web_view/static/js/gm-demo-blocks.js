@@ -705,6 +705,20 @@ let DEMO_COMMAND_CATALOG = [];
 let DEMO_COMMANDS_EXPANDED = true;
 
 /**
+ * Parse a command arg's boolean spelling into a real boolean, mirroring
+ * the server's _TRUE_VALUES/_FALSE_VALUES (server/commands/__init__.py):
+ * on/true/1/yes -> true, off/false/0/no -> false (case-insensitive),
+ * anything else -> false. Needed both ways: the importer must hand the
+ * checkbox a real boolean (Blockly v13's FieldCheckbox only accepts
+ * true/false or the strings 'TRUE'/'FALSE'), and the generator rereads
+ * that TRUE/FALSE string back into the command's own on/off language.
+ */
+function parseDemoBool(value) {
+    if (typeof value === 'boolean') return value;
+    return ['true', 'on', '1', 'yes'].includes(String(value).toLowerCase());
+}
+
+/**
  * Build one Blockly field for a catalogued command arg. Fields are named
  * ARG_0..ARG_N in declaration order so the shared generator can walk them
  * without knowing the command. Mapping: choices -> dropdown, bool ->
@@ -768,7 +782,10 @@ function demoCommandBlockDef(name, cmd) {
  * declaration order (from the catalog) and re-emits `/name arg1 arg2 ...`
  * with the mandatory `%` line terminator (a command line only ends at `%`
  * -- newlines are content, so omitting it would swallow the rest of the
- * script into this one command). Bools become on/off, values with
+ * script into this one command). Bool args round-trip through the
+ * command's own on/off vocabulary (server/commands/__init__.py
+ * _TRUE_VALUES/_FALSE_VALUES: the checkbox reports 'TRUE'/'FALSE',
+ * which parseDemoBool maps back), values with
  * whitespace are quoted, and a variadic list is split into
  * individually-quoted tokens so it doesn't collapse into one argument.
  * Rest args stay bare: they capture the raw remainder of the line either
@@ -784,9 +801,17 @@ function demoCommandBlockGenerator(block) {
         const field = block.getField(`ARG_${i}`);
         if (!field) break;
         let value = field.getValue();
-        if (typeof value === 'boolean') value = value ? 'on' : 'off';
-        value = String(value);
-        if (!value) continue;
+        if (meta[i].type === 'bool') {
+            // FieldCheckbox reports 'TRUE'/'FALSE' (or real booleans from
+            // setValue); map back to the command's own vocabulary so
+            // /lights on stays /lights on. An unchecked bool always
+            // emits 'off' -- it is an explicit, meaningful value (e.g.
+            // /lights toggles with no arg but /lights off forces it).
+            value = parseDemoBool(value) ? 'on' : 'off';
+        } else {
+            value = String(value);
+            if (!value) continue;
+        }
         if (meta[i].variadic) {
             value.split(/\s+/).filter(Boolean)
                 .forEach((tok) => parts.push(quoteDemoOperand(escapeDemoText(tok))));
@@ -953,7 +978,19 @@ function mapDemoCommandToBlock(meta, name, argText) {
     }
     if (ti < tokens.length) return generic; // too many tokens
     const fields = {};
-    values.forEach((v, i) => { fields[`ARG_${i}`] = v; });
+    values.forEach((v, i) => {
+        const spec = args[i] || {};
+        if (spec.type === 'bool') {
+            // The checkbox can't hold the raw spelling (FieldCheckbox
+            // only accepts true/false or 'TRUE'/'FALSE'), so map every
+            // accepted token through parseDemoBool onto a real boolean;
+            // an absent optional arg falls back to the catalog default
+            // instead of '' (which would fail field validation too).
+            fields[`ARG_${i}`] = v === '' ? !!spec.default : parseDemoBool(v);
+        } else {
+            fields[`ARG_${i}`] = v;
+        }
+    });
     return { type: `demo_cmd_${name}`, fields };
 }
 
