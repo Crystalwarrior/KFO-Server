@@ -832,8 +832,6 @@ function demoCommandToolboxDef() {
         collapsible: 'true',
         expanded: 'true',
         contents: [
-            { kind: 'button', text: 'Expand all', callbackKey: 'COMMANDS_EXPAND_ALL' },
-            { kind: 'button', text: 'Collapse all', callbackKey: 'COMMANDS_COLLAPSE_ALL', gap: 12 },
             ...moduleCategories,
             { kind: 'block', type: 'demo_command', gap: 12 },
         ],
@@ -1575,16 +1573,6 @@ class DemoBlockEditor {
         if (typeof this._workspace.registerButtonCallback === 'function') {
             this._workspace.registerButtonCallback('CREATE_VARIABLE', (button) => {
                 Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace());
-            });
-            // Expand/Collapse all for the Commands category's per-module
-            // sub-categories. Registered on the workspace like
-            // CREATE_VARIABLE: flyout buttons look their callback up on
-            // the target workspace, never on the toolbox.
-            this._workspace.registerButtonCallback('COMMANDS_EXPAND_ALL', (button) => {
-                demoSetCommandsExpanded(button.getTargetWorkspace(), true);
-            });
-            this._workspace.registerButtonCallback('COMMANDS_COLLAPSE_ALL', (button) => {
-                demoSetCommandsExpanded(button.getTargetWorkspace(), false);
             });
         }
         // Prime the Variables category with the current variables (a script
