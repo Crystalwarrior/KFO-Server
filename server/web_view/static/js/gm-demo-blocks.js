@@ -289,78 +289,98 @@ const DEMO_BLOCK_DEFS = [
         tooltip: 'Change the background (BN packet) for everyone in the area. Use /bg for a persistent change that new arrivals also see.',
     },
     {
-        // Full AO 2.8 IC message (MS) packet, field-for-field with the
-        // server's spec in aoprotocol.py (the "KFO Client validation
-        // monstrosity" layout). Arg types follow that spec: STR fields
-        // require at least 1 character, STR_OR_EMPTY fields may be blank.
-        // folder/pos/sfx/frames_*/effect are STR in the spec but the demo
-        // runtime legitimately sends them empty (narration; a blank pos even
-        // inherits the area's last IC message position), so only the STR
-        // fields the server itself never sends empty are validated below.
+        // Full IC message (MS) packet in the SERVER -> CLIENT layout,
+        // field-for-field with what area.send_ic actually broadcasts
+        // (aoprotocol.py's net_cmd_ms parses the different CLIENT -> SERVER
+        // field order, but demos broadcast raw via area.send_command, so
+        // clients read the fields in the server order -- docs/demo_scripting.md:
+        // "if choosing between Client and Server version of the packet, use
+        // the Server packet"). Wire values the server always fills (msg_type,
+        // charid_pair, offset_pair, sfx_looping) are validated below; the
+        // pairing fields (other_*, third_*) are legitimately blank when no
+        // one is paired, and folder/pos/sfx/frames_*/effect may be empty for
+        // narration (a blank pos even inherits the area's last IC message
+        // position).
         type: 'demo_packet_ms',
         message0: 'MS (IC message)',
-        message1: 'msg_type %1   pre %2   folder %3',
-        message2: 'anim %1   text %2   pos %3',
-        message3: 'sfx %1   emote_mod %2   cid %3',
-        message4: 'sfx_delay %1   button %2   evidence %3',
-        message5: 'flip %1   ding %2   color %3',
-        message6: 'showname %1   charid_pair %2   offset_pair %3',
-        message7: 'nonint_pre %1   sfx_looping %2   screenshake %3',
-        message8: 'frames_shake %1   frames_realization %2   frames_sfx %3',
-        message9: 'additive %1   effect %2   third_charid %3   video %4',
+        message1: 'msg_type %1   pre %2   folder %3   anim %4',
+        message2: 'text %1',
+        message3: 'pos %1   sfx %2   emote_mod %3   cid %4   sfx_delay %5   button %6   evidence %7',
+        message4: 'flip %1   ding %2   color %3   showname %4   charid_pair %5   other_folder %6',
+        message5: 'other_emote %1   offset_pair %2   other_offset %3   other_flip %4   nonint_pre %5   sfx_looping %6',
+        message6: 'screenshake %1   frames_shake %2   frames_realization %3   frames_sfx %4   additive %5   effect %6',
+        message7: 'third_charid %1   third_folder %2   third_emote %3   third_offset %4   third_flip %5   video %6',
         args1: [
-            { type: 'field_input', name: 'MSG_TYPE', text: '1' },
+            { type: 'field_dropdown', name: 'MSG_TYPE', options: [
+                    ['Desk Hide', '0'],
+                    ['Desk Show', '1'],
+                    ['Desk Emote Only', '2'],
+                    ['Desk Pre Only', '3'],
+                    ['Desk Emote Only Ex.', '4'],
+                    ['Desk Pre Only Ex.', '5'],
+                ],
+            },
             { type: 'field_input', name: 'PRE', text: '' },
             { type: 'field_input', name: 'FOLDER', text: '' },
+            { type: 'field_input', name: 'ANIM', text: '' },
         ],
         args2: [
-            { type: 'field_input', name: 'ANIM', text: '' },
-            // field_multilinetext: multi-line IC text (Message 2 is the
-            // "text" argument of the MS packet). Enter commits, Shift+Enter
-            // inserts a newline.
+            // field_multilinetext: multi-line IC text, alone on its own line
+            // (Message 2 is the "text" argument of the MS packet). Enter
+            // commits, Shift+Enter inserts a newline.
             { type: 'field_multilinetext', name: 'TEXT', text: '' },
-            { type: 'field_input', name: 'POS', text: '' },
         ],
         args3: [
+            { type: 'field_input', name: 'POS', text: '' },
             { type: 'field_input', name: 'SFX', text: '' },
-            { type: 'field_number', name: 'EMOTE_MOD', value: 0 },
+            { type: 'field_dropdown', name: 'EMOTE_MOD', options: [
+                    ['Idle', '0'],
+                    ['Pre-Animation', '1'],
+                    ['Zoom', '5'],
+                    ['Zoom Pre-Animation', '6'],
+                ],
+            },
             { type: 'field_number', name: 'CID', value: -1 },
-        ],
-        args4: [
             { type: 'field_number', name: 'SFX_DELAY', value: 0 },
             { type: 'field_input', name: 'BUTTON', text: '0' },
             { type: 'field_number', name: 'EVIDENCE', value: -1 },
         ],
-        args5: [
-            { type: 'field_number', name: 'FLIP', value: 0 },
-            { type: 'field_number', name: 'DING', value: 0 },
-            { type: 'field_number', name: 'COLOR', value: 0 },
-        ],
-        args6: [
+        args4: [
+            { type: 'field_checkbox', name: 'FLIP', checked: false },
+            { type: 'field_checkbox', name: 'DING', checked: false },
+            { type: 'field_number', name: 'COLOR', value: 0, min: 0 },
             { type: 'field_input', name: 'SHOWNAME', text: '' },
             { type: 'field_input', name: 'CHARID_PAIR', text: '-1' },
+            { type: 'field_input', name: 'OTHER_FOLDER', text: '' },
+        ],
+        args5: [
+            { type: 'field_input', name: 'OTHER_EMOTE', text: '' },
             { type: 'field_input', name: 'OFFSET_PAIR', text: '0' },
+            { type: 'field_input', name: 'OTHER_OFFSET', text: '0' },
+            { type: 'field_checkbox', name: 'OTHER_FLIP', checked: false },
+            { type: 'field_checkbox', name: 'NONINT_PRE', checked: false },
+            { type: 'field_checkbox', name: 'SFX_LOOPING', checked: false },
         ],
-        args7: [
-            { type: 'field_number', name: 'NONINT_PRE', value: 0 },
-            { type: 'field_input', name: 'SFX_LOOPING', text: '0' },
-            { type: 'field_number', name: 'SCREENSHAKE', value: 0 },
-        ],
-        args8: [
+        args6: [
+            { type: 'field_checkbox', name: 'SCREENSHAKE', checked: false },
             { type: 'field_input', name: 'FRAMES_SHAKE', text: '' },
             { type: 'field_input', name: 'FRAMES_REALIZATION', text: '' },
             { type: 'field_input', name: 'FRAMES_SFX', text: '' },
-        ],
-        args9: [
-            { type: 'field_number', name: 'ADDITIVE', value: 0 },
+            { type: 'field_checkbox', name: 'ADDITIVE', checked: false },
             { type: 'field_input', name: 'EFFECT', text: '' },
+        ],
+        args7: [
             { type: 'field_number', name: 'THIRD_CHARID', value: -1 },
+            { type: 'field_input', name: 'THIRD_FOLDER', text: '' },
+            { type: 'field_input', name: 'THIRD_EMOTE', text: '' },
+            { type: 'field_input', name: 'THIRD_OFFSET', text: '' },
+            { type: 'field_checkbox', name: 'THIRD_FLIP', checked: false },
             { type: 'field_input', name: 'VIDEO', text: '' },
         ],
         previousStatement: null,
         nextStatement: null,
         colour: 20,
-        tooltip: 'Broadcast an IC (MS) message with all AO 2.8 fields. STR fields need at least 1 character; STR_OR_EMPTY fields (pre, anim, text, showname, video) may be blank. Leave pos blank for narration -- the demo runner reuses the area\'s last IC message position. Use <!var> inside text/showname to drop in a variable.',
+        tooltip: 'Broadcast an IC (MS) message using the server-to-client layout (the exact field order the server itself broadcasts -- demos bypass the client parser). Fill at least msg_type, folder, text and pos; other_folder/other_emote/offset_pair/other_offset/other_flip are for pairing, third_* for a third character, both blank when unused. Leave pos blank for narration -- the demo runner reuses the area\'s last IC message position. Use <!var> inside text/showname to drop in a variable. Color: 0=White, 1=Green, 2=Orange, 3=Red, 4=Blue, 5=Cyan, 6=Purple, 7=Yellow, 8=Grey; 9+ are custom client-side colors.',
     },
     {
         // HP penalty bars: HP#<side:int>#<val:int>#% (aoprotocol net_cmd_hp;
@@ -523,6 +543,12 @@ const DEMO_TOOLBOX = {
             kind: 'category',
             name: 'Commands',
             colour: '160',
+            // Collapsible so the catalog's per-module sub-categories render
+            // as a tree (Blockly only nests categories under a collapsible
+            // parent); the static toolbox carries just the free-form
+            // fallback until the command catalog lands.
+            collapsible: 'true',
+            expanded: 'true',
             contents: [
                 { kind: 'block', type: 'demo_command' },
             ],
@@ -656,6 +682,281 @@ function demoRefreshGetInsertOptions(workspace) {
             field.setOptions(options);
         }
     });
+}
+
+/* --- Commands toolbox (dynamic) ------------------------------------------ */
+
+/**
+ * Server-generated command catalog for the Commands toolbox category: one
+ * entry per command a demo may run, from GET /api/gm/demos/commands
+ * (CommandLister minus mod-only commands). Each entry is
+ * `{name, module, summary, usage, permission, args:[{name, type, required,
+ * default, choices, rest, variadic, help}]}`. Populated by
+ * demoSetCommandCatalog; the toolbox renders one block per command whose
+ * fields mirror the `@command(...)` Arg declarations, grouped into
+ * collapsible per-module sub-categories (Blockly's `collapsible` tree
+ * feature -- v13's flyout has no category inflater, so the nesting lives
+ * in the toolbox itself and is applied by rebuilding the toolbox when the
+ * catalog lands).
+ */
+let DEMO_COMMAND_CATALOG = [];
+
+/** Whether the per-module command sub-categories start expanded. */
+let DEMO_COMMANDS_EXPANDED = true;
+
+/**
+ * Build one Blockly field for a catalogued command arg. Fields are named
+ * ARG_0..ARG_N in declaration order so the shared generator can walk them
+ * without knowing the command. Mapping: choices -> dropdown, bool ->
+ * checkbox (emitted as on/off), int -> number field, everything else
+ * (str, custom converters, rest, variadic) -> text field.
+ */
+function demoCommandArgField(arg, idx) {
+    const name = `ARG_${idx}`;
+    if (arg.choices && arg.choices.length) {
+        const options = arg.choices.map((c) => [String(c), String(c)]);
+        const def = (arg.default === null || arg.default === undefined) ? null : String(arg.default);
+        const field = { type: 'field_dropdown', name, options };
+        if (def !== null && options.some((o) => o[1] === def)) field.value = def;
+        return field;
+    }
+    if (arg.type === 'bool') {
+        return { type: 'field_checkbox', name, checked: !!arg.default };
+    }
+    if (arg.type === 'int') {
+        const dv = Number(arg.default);
+        return { type: 'field_number', name, value: Number.isFinite(dv) ? dv : 0 };
+    }
+    return {
+        type: 'field_input',
+        name,
+        text: (arg.default === null || arg.default === undefined) ? '' : String(arg.default),
+    };
+}
+
+/** Tooltip for one command block: summary, usage line, then each arg's help. */
+function demoCommandBlockTooltip(cmd) {
+    const lines = [];
+    if (cmd.summary) lines.push(cmd.summary);
+    if (cmd.usage) lines.push(cmd.usage);
+    (cmd.args || []).forEach((a) => {
+        const req = a.required ? '' : ' (optional)';
+        lines.push(`${a.name}${req}${a.help ? `: ${a.help}` : ''}`);
+    });
+    return lines.join('\n');
+}
+
+/** Block definition for one catalogued command (`/name arg1 arg2 ...`). */
+function demoCommandBlockDef(name, cmd) {
+    const args = cmd.args || [];
+    const fields = args.map(demoCommandArgField);
+    const placeholders = args.map((_, i) => `%${i + 1}`).join(' ');
+    const def = {
+        type: `demo_cmd_${name}`,
+        message0: `/${name}${placeholders ? ` ${placeholders}` : ''}`,
+        previousStatement: null,
+        nextStatement: null,
+        colour: 160,
+        tooltip: demoCommandBlockTooltip(cmd),
+    };
+    if (fields.length) def.args0 = fields;
+    return def;
+}
+
+/**
+ * Shared generator for every `demo_cmd_*` block: reads ARG_0..ARG_N in
+ * declaration order (from the catalog) and re-emits `/name arg1 arg2 ...`
+ * with the mandatory `%` line terminator (a command line only ends at `%`
+ * -- newlines are content, so omitting it would swallow the rest of the
+ * script into this one command). Bools become on/off, values with
+ * whitespace are quoted, and a variadic list is split into
+ * individually-quoted tokens so it doesn't collapse into one argument.
+ * Rest args stay bare: they capture the raw remainder of the line either
+ * way, and quoting them would break the text -> blocks round trip (the
+ * script parser would hand the quotes back). Empty optional args are
+ * dropped.
+ */
+function demoCommandBlockGenerator(block) {
+    const name = block.type.slice('demo_cmd_'.length);
+    const meta = (DEMO_COMMAND_CATALOG.find((c) => c.name === name) || {}).args || [];
+    const parts = [];
+    for (let i = 0; i < meta.length; i++) {
+        const field = block.getField(`ARG_${i}`);
+        if (!field) break;
+        let value = field.getValue();
+        if (typeof value === 'boolean') value = value ? 'on' : 'off';
+        value = String(value);
+        if (!value) continue;
+        if (meta[i].variadic) {
+            value.split(/\s+/).filter(Boolean)
+                .forEach((tok) => parts.push(quoteDemoOperand(escapeDemoText(tok))));
+        } else if (meta[i].rest) {
+            parts.push(escapeDemoText(value));
+        } else {
+            parts.push(quoteDemoOperand(escapeDemoText(value)));
+        }
+    }
+    return (parts.length ? `/${name} ${parts.join(' ')}` : `/${name}`) + '%';
+}
+
+/**
+ * Build the full category-toolbox definition with the command catalog baked
+ * into the Commands category: per-module collapsible sub-categories
+ * (Blockly's native `collapsible` tree -- v13.2.1's flyout has no category
+ * inflater, so nesting must live at the toolbox level, and nested items
+ * only materialize under a collapsible parent), plus Expand/Collapse-all
+ * flyout buttons and the free-form `demo_command` block as a failsafe. The
+ * other categories are copied from the static DEMO_TOOLBOX untouched.
+ */
+function demoCommandToolboxDef() {
+    const byModule = new Map();
+    DEMO_COMMAND_CATALOG.forEach((cmd) => {
+        const module = cmd.module || 'other';
+        if (!byModule.has(module)) byModule.set(module, []);
+        byModule.get(module).push({ kind: 'block', type: `demo_cmd_${cmd.name}` });
+    });
+    const moduleCategories = [...byModule.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([module, blocks]) => ({
+            kind: 'category',
+            name: module,
+            colour: '160',
+            collapsible: 'true',
+            expanded: DEMO_COMMANDS_EXPANDED ? 'true' : 'false',
+            contents: blocks,
+        }));
+    const commandsCategory = {
+        kind: 'category',
+        name: 'Commands',
+        colour: '160',
+        collapsible: 'true',
+        expanded: 'true',
+        contents: [
+            { kind: 'button', text: 'Expand all', callbackKey: 'COMMANDS_EXPAND_ALL' },
+            { kind: 'button', text: 'Collapse all', callbackKey: 'COMMANDS_COLLAPSE_ALL', gap: 12 },
+            ...moduleCategories,
+            { kind: 'block', type: 'demo_command', gap: 12 },
+        ],
+    };
+    return {
+        kind: 'categoryToolbox',
+        contents: DEMO_TOOLBOX.contents
+            .filter((c) => !c || c.name !== 'Commands')
+            .concat(commandsCategory),
+    };
+}
+
+/**
+ * Apply the command catalog to the toolbox: rebuild it so the Commands
+ * category gains its collapsible per-module sub-categories. updateToolbox()
+ * is the only API that creates child toolbox items with DOM
+ * (updateFlyoutContents only builds flyout items, so nested categories
+ * added that way would never render); it re-creates every category, so the
+ * Variables chips and get-block dropdowns are reapplied afterwards.
+ */
+function demoRefreshCommandsToolbox(workspace) {
+    if (!workspace || !DEMO_COMMAND_CATALOG.length) return;
+    if (typeof workspace.updateToolbox !== 'function') return;
+    workspace.updateToolbox(demoCommandToolboxDef());
+    demoRefreshVariablesFlyout(workspace);
+    demoRefreshGetInsertOptions(workspace);
+}
+
+/**
+ * Install the server's command catalog. Safe to call before the workspace
+ * exists: the block definitions are registered and the toolbox rebuild
+ * happens when the workspace is created. Re-calling with a fresh catalog
+ * (e.g. after /refresh) redefines the blocks and rebuilds in place.
+ */
+function demoSetCommandCatalog(workspace, commands) {
+    if (!Array.isArray(commands)) return;
+    DEMO_COMMAND_CATALOG = commands;
+    const defs = [];
+    commands.forEach((cmd) => {
+        const name = String(cmd.name || '').replace(/[^a-z0-9_]/gi, '_');
+        if (!name) return;
+        defs.push(demoCommandBlockDef(name, cmd));
+        demoGenerator.forBlock[`demo_cmd_${name}`] = demoCommandBlockGenerator;
+    });
+    if (defs.length) {
+        Blockly.common.defineBlocksWithJsonArray(defs);
+    }
+    demoRefreshCommandsToolbox(workspace);
+}
+
+/**
+ * Expand or collapse every command sub-category. The buttons live in the
+ * Commands flyout; they walk the collapsible category's child toolbox
+ * items directly (setExpanded), so no toolbox rebuild is needed and the
+ * open flyout survives. Toggling also updates the default the next
+ * toolbox rebuild uses.
+ */
+function demoSetCommandsExpanded(workspace, expanded) {
+    DEMO_COMMANDS_EXPANDED = !!expanded;
+    const toolbox = workspace && workspace.getToolbox && workspace.getToolbox();
+    if (!toolbox) return;
+    const items = (typeof toolbox.getToolboxItems === 'function') ? toolbox.getToolboxItems() : [];
+    const commands = items.find((item) => (
+        typeof item.getName === 'function' && item.getName() === 'Commands'
+    ));
+    // Only a collapsible parent materializes its children as toolbox items.
+    if (!commands || typeof commands.getChildToolboxItems !== 'function') return;
+    commands.getChildToolboxItems().forEach((child) => {
+        if (child && typeof child.setExpanded === 'function') {
+            child.setExpanded(expanded);
+        }
+    });
+}
+
+/**
+ * Best-effort map of a parsed command instruction back to its per-arg block.
+ * The server parser splits a command line on plain spaces (script_runner.py
+ * parse_demo_description), so tokenizing the same way and validating each
+ * token against the arg spec keeps the round trip lossless. Anything that
+ * doesn't fit -- unknown command, quoted-with-space token, wrong type,
+ * too few/too many tokens -- falls back to the free-form demo_command block.
+ */
+function mapDemoCommandToBlock(meta, name, argText) {
+    const generic = { type: 'demo_command', fields: { CMD: argText ? `${name} ${argText}` : name } };
+    if (!meta) return generic;
+    const args = meta.args || [];
+    const tokens = argText.trim() ? argText.trim().split(/\s+/) : [];
+    const tokenOk = (tok, spec) => {
+        if (tok.includes('"') || tok.includes("'")) return false; // a split quoted value
+        if (spec.choices && spec.choices.length) {
+            return spec.choices.some((c) => String(c).toLowerCase() === tok.toLowerCase());
+        }
+        if (spec.type === 'int') return /^-?\d+$/.test(tok);
+        if (spec.type === 'bool') return /^(on|off|true|false|1|0|yes|no)$/i.test(tok);
+        return true;
+    };
+    const values = [];
+    let ti = 0;
+    for (const spec of args) {
+        if (spec.rest) {
+            values.push(argText.trim());
+            ti = tokens.length;
+        } else if (spec.variadic) {
+            const rest = tokens.slice(ti);
+            if (!rest.length && spec.required) return generic;
+            if (rest.some((t) => !tokenOk(t, spec))) return generic;
+            values.push(rest.join(' '));
+            ti = tokens.length;
+        } else {
+            if (ti >= tokens.length) {
+                if (spec.required) return generic;
+                values.push('');
+            } else {
+                const tok = tokens[ti++];
+                if (!tokenOk(tok, spec)) return generic;
+                values.push(tok);
+            }
+        }
+    }
+    if (ti < tokens.length) return generic; // too many tokens
+    const fields = {};
+    values.forEach((v, i) => { fields[`ARG_${i}`] = v; });
+    return { type: `demo_cmd_${name}`, fields };
 }
 
 /* --- Text helpers ------------------------------------------------------- */
@@ -794,7 +1095,9 @@ demoGenerator.forBlock.demo_packet_ct = function (block) {
 
 demoGenerator.forBlock.demo_packet_mc = function (block) {
     const song = escapeDemoPacketField(block.getFieldValue('SONG') || '');
-    const loop = block.getFieldValue('LOOP') ? '1' : '0';
+    // FieldCheckbox.getValue() returns 'TRUE'/'FALSE' strings (truthy!), so
+    // a truthiness check would always emit 1 -- compare explicitly.
+    const loop = (block.getFieldValue('LOOP') === true || block.getFieldValue('LOOP') === 'TRUE') ? '1' : '0';
     const fx = escapeDemoPacketField(block.getFieldValue('FX') ?? '0');
     return `MC#${song}#-1##${loop}#0#${fx}%`;
 };
@@ -805,22 +1108,35 @@ demoGenerator.forBlock.demo_packet_bn = function (block) {
 };
 
 demoGenerator.forBlock.demo_packet_ms = function (block) {
-    // One field per MS arg, index-aligned with aoprotocol.py's 28-arg spec.
+    // One field per MS arg, index-aligned with the SERVER -> CLIENT layout
+    // that area.send_ic broadcasts (NOT the client -> server order that
+    // aoprotocol.py's net_cmd_ms parses -- demos broadcast raw packets, so
+    // clients read these fields in the server order).
     // String fields go through escapeDemoPacketField (only `&` and `$` can
     // be represented inside a packet field; `#`/`%` are warned about).
-    const s = (name, dflt) => escapeDemoPacketField(String(block.getFieldValue(name) ?? dflt));
-    const n = (name, dflt) => String(block.getFieldValue(name) ?? dflt);
+    // Checkbox fields return the strings 'TRUE'/'FALSE' from Blockly v13's
+    // FieldCheckbox (booleans from older versions); the AO wire protocol
+    // always uses int (0/1) for bools.
+    const toWire = (v) => (
+        v === true || v === 'TRUE' ? '1'
+        : v === false || v === 'FALSE' ? '0'
+        : v
+    );
+    const s = (name, dflt) => escapeDemoPacketField(String(toWire(block.getFieldValue(name) ?? dflt)));
+    const n = (name, dflt) => String(toWire(block.getFieldValue(name) ?? dflt));
     return 'MS#' + [
         s('MSG_TYPE', '1'), s('PRE', ''), s('FOLDER', ''),
         s('ANIM', ''), s('TEXT', ''), s('POS', ''),
         s('SFX', ''), n('EMOTE_MOD', 0), n('CID', -1),
         n('SFX_DELAY', 0), s('BUTTON', '0'), n('EVIDENCE', -1),
         n('FLIP', 0), n('DING', 0), n('COLOR', 0),
-        s('SHOWNAME', ''), s('CHARID_PAIR', '-1'), s('OFFSET_PAIR', '0'),
-        n('NONINT_PRE', 0), s('SFX_LOOPING', '0'), n('SCREENSHAKE', 0),
-        s('FRAMES_SHAKE', ''), s('FRAMES_REALIZATION', ''), s('FRAMES_SFX', ''),
+        s('SHOWNAME', ''), s('CHARID_PAIR', '-1'), s('OTHER_FOLDER', ''),
+        s('OTHER_EMOTE', ''), s('OFFSET_PAIR', '0'), s('OTHER_OFFSET', '0'),
+        n('OTHER_FLIP', 0), n('NONINT_PRE', 0), s('SFX_LOOPING', '0'),
+        n('SCREENSHAKE', 0), s('FRAMES_SHAKE', ''), s('FRAMES_REALIZATION', ''), s('FRAMES_SFX', ''),
         n('ADDITIVE', 0), s('EFFECT', ''), n('THIRD_CHARID', -1),
-        s('VIDEO', ''),
+        s('THIRD_FOLDER', ''), s('THIRD_EMOTE', ''), s('THIRD_OFFSET', ''),
+        n('THIRD_FLIP', 0), s('VIDEO', ''),
     ].join('#') + '%';
 };
 
@@ -962,15 +1278,17 @@ function demoValidateWorkspace(workspace) {
                 }
                 break;
             case 'demo_packet_ms': {
-                // STR fields the server itself never sends empty: the spec's
-                // "requires at least 1 character" rule (aoprotocol.py). The
-                // remaining STR fields (folder/pos/sfx/frames_*/effect) are
-                // legitimately blank for narration in the demo runtime.
+                // Wire values the server always fills on broadcast (msg_type,
+                // charid_pair, offset_pair, sfx_looping) -- mirrors the
+                // client parser's "requires at least 1 character" STR rule.
+                // The remaining fields (folder/pos/sfx/frames_*/effect,
+                // other_*, third_*) are legitimately blank for narration or
+                // when no one is paired in the demo runtime.
                 ['MSG_TYPE', 'CHARID_PAIR', 'OFFSET_PAIR', 'SFX_LOOPING'].forEach((fld) => {
                     missing(b, fld, `The MS field "${fld.toLowerCase()}" requires at least 1 character (STR).`);
                 });
                 missing(b, 'BUTTON', 'The MS field "button" needs a value (0 for none).');
-                const badHash = ['MSG_TYPE', 'PRE', 'FOLDER', 'ANIM', 'TEXT', 'POS', 'SFX', 'SHOWNAME', 'CHARID_PAIR', 'OFFSET_PAIR', 'SFX_LOOPING', 'FRAMES_SHAKE', 'FRAMES_REALIZATION', 'FRAMES_SFX', 'EFFECT', 'VIDEO', 'BUTTON']
+                const badHash = ['MSG_TYPE', 'PRE', 'FOLDER', 'ANIM', 'TEXT', 'POS', 'SFX', 'SHOWNAME', 'CHARID_PAIR', 'OTHER_FOLDER', 'OTHER_EMOTE', 'OFFSET_PAIR', 'OTHER_OFFSET', 'SFX_LOOPING', 'FRAMES_SHAKE', 'FRAMES_REALIZATION', 'FRAMES_SFX', 'EFFECT', 'THIRD_FOLDER', 'THIRD_EMOTE', 'THIRD_OFFSET', 'VIDEO', 'BUTTON']
                     .filter((fld) => fieldHas(b, fld, '#'));
                 if (badHash.length) {
                     warnings.push('An MS field contains "#" -- a "#" inside a packet field splits it into extra fields, so it can\'t be sent literally.');
@@ -1044,35 +1362,56 @@ function demoInstructionsToWorkspaceState(instructions) {
                     };
                 } else if (hdr === 'BN' && args.length === 1) {
                     block = { type: 'demo_packet_bn', fields: { BG: args[0] } };
-                } else if (hdr === 'MS' && args.length <= 28) {
+                } else if (hdr === 'MS' && args.length <= 36) {
                     // Every MS packet maps onto the structured MS block,
-                    // however many fields the script has: older AO clients and
-                    // hand-written scripts send shorter layouts, which are just
-                    // the same fields with trailing blanks missing. The
-                    // positional mapping below fills missing slots with the
-                    // same defaults the generator emits (e.g. 27 args = the
-                    // full packet with an empty trailing `video` field, since
-                    // the parser drops a `#` before `%`). Over-long MS packets
-                    // (> 28 args) still fall through to the generic packet
-                    // block instead, so no fields are ever dropped.
+                    // however many fields the script has: hand-written scripts
+                    // send shorter layouts, which are just the same fields
+                    // with trailing blanks missing. The positional mapping
+                    // below fills missing slots with the same defaults the
+                    // generator emits (e.g. 35 args = the full packet with an
+                    // empty trailing `video` field, since the parser drops a
+                    // `#` before `%`). Over-long MS packets (> 36 args) still
+                    // fall through to the generic packet block instead, so no
+                    // fields are ever dropped.
                     const a = (i, dflt) => (i < args.length ? args[i] : dflt);
                     const num = (i, dflt) => {
                         const v = Number(a(i, dflt));
                         return Number.isFinite(v) ? v : dflt;
                     };
+                    // Dropdown fields store string option values and Blockly's
+                    // setValue matches them with strict equality, so a numeric
+                    // value (or one outside the option list, from a
+                    // hand-written script) would throw "unavailable option"
+                    // and kill the whole import. Coerce to a valid option,
+                    // falling back to the default.
+                    const dropdown = (i, dflt, options) => {
+                        const v = a(i, dflt);
+                        return options.includes(v) ? v : dflt;
+                    };
+                    // Checkbox fields must load as booleans: Blockly v13's
+                    // FieldCheckbox only validates true/false and
+                    // 'TRUE'/'FALSE', so a numeric 0/1 would be rejected and
+                    // the default silently kept -- a script with flip=1
+                    // would import with the flag cleared.
+                    const flag = (i, dflt) => {
+                        const v = a(i, dflt);
+                        return v === true || v === 'TRUE' || String(v).toLowerCase() === 'true' || String(v) === '1';
+                    };
                     block = {
                         type: 'demo_packet_ms',
                         fields: {
-                            MSG_TYPE: a(0, '1'), PRE: a(1, ''), FOLDER: a(2, ''),
+                            MSG_TYPE: dropdown(0, '1', ['0', '1', '2', '3', '4', '5']), PRE: a(1, ''), FOLDER: a(2, ''),
                             ANIM: a(3, ''), TEXT: a(4, ''), POS: a(5, ''),
-                            SFX: a(6, ''), EMOTE_MOD: num(7, 0), CID: num(8, -1),
+                            SFX: a(6, ''), EMOTE_MOD: dropdown(7, '0', ['0', '1', '5', '6']), CID: num(8, -1),
                             SFX_DELAY: num(9, 0), BUTTON: a(10, '0'), EVIDENCE: num(11, -1),
-                            FLIP: num(12, 0), DING: num(13, 0), COLOR: num(14, 0),
-                            SHOWNAME: a(15, ''), CHARID_PAIR: a(16, '-1'), OFFSET_PAIR: a(17, '0'),
-                            NONINT_PRE: num(18, 0), SFX_LOOPING: a(19, '0'), SCREENSHAKE: num(20, 0),
-                            FRAMES_SHAKE: a(21, ''), FRAMES_REALIZATION: a(22, ''), FRAMES_SFX: a(23, ''),
-                            ADDITIVE: num(24, 0), EFFECT: a(25, ''), THIRD_CHARID: num(26, -1),
-                            VIDEO: a(27, ''),
+                            FLIP: flag(12, false), DING: flag(13, false), COLOR: num(14, 0),
+                            SHOWNAME: a(15, ''), CHARID_PAIR: a(16, '-1'), OTHER_FOLDER: a(17, ''),
+                            OTHER_EMOTE: a(18, ''), OFFSET_PAIR: a(19, '0'), OTHER_OFFSET: a(20, '0'),
+                            OTHER_FLIP: flag(21, false), NONINT_PRE: flag(22, false), SFX_LOOPING: flag(23, false),
+                            SCREENSHAKE: flag(24, false), FRAMES_SHAKE: a(25, ''), FRAMES_REALIZATION: a(26, ''), FRAMES_SFX: a(27, ''),
+                            ADDITIVE: flag(28, false), EFFECT: a(29, ''), THIRD_CHARID: num(30, -1),
+                            THIRD_FOLDER: a(31, ''), THIRD_EMOTE: a(32, ''), THIRD_OFFSET: a(33, ''),
+                            THIRD_FLIP: flag(34, false), VIDEO: a(35, ''),
                         },
                     };
                 } else if (
@@ -1104,9 +1443,14 @@ function demoInstructionsToWorkspaceState(instructions) {
                 break;
             }
             case 'command': {
-                const cmd = rest[0];
+                // Map onto the per-arg block when the command is in the
+                // catalog and the tokens fit its spec; otherwise fall back to
+                // the free-form command block (aliases, mod-only commands,
+                // unparseable leftovers all land there).
+                const cmd = String(rest[0] || '').toLowerCase();
                 const arg = rest[1] || '';
-                block = { type: 'demo_command', fields: { CMD: arg ? `${cmd} ${arg}` : cmd } };
+                const meta = DEMO_COMMAND_CATALOG.find((c) => c.name === cmd);
+                block = mapDemoCommandToBlock(meta, cmd, arg);
                 break;
             }
             case 'set':
@@ -1232,14 +1576,28 @@ class DemoBlockEditor {
             this._workspace.registerButtonCallback('CREATE_VARIABLE', (button) => {
                 Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace());
             });
+            // Expand/Collapse all for the Commands category's per-module
+            // sub-categories. Registered on the workspace like
+            // CREATE_VARIABLE: flyout buttons look their callback up on
+            // the target workspace, never on the toolbox.
+            this._workspace.registerButtonCallback('COMMANDS_EXPAND_ALL', (button) => {
+                demoSetCommandsExpanded(button.getTargetWorkspace(), true);
+            });
+            this._workspace.registerButtonCallback('COMMANDS_COLLAPSE_ALL', (button) => {
+                demoSetCommandsExpanded(button.getTargetWorkspace(), false);
+            });
         }
         // Prime the Variables category with the current variables (a script
         // whose set/get blocks reference variables gets a chip per variable
         // right away), then keep it in step whenever the variable map
         // changes: creating a variable immediately puts a set/get pair for
-        // it in the flyout, like Blockly's own category.
+        // it in the flyout, like Blockly's own category. The Commands
+        // category gets the server's command catalog the same way (the
+        // static toolbox only carries the free-form fallback until the
+        // catalog lands).
         demoRefreshVariablesFlyout(this._workspace);
         demoRefreshGetInsertOptions(this._workspace);
+        demoRefreshCommandsToolbox(this._workspace);
         this._workspace.addChangeListener((event) => {
             // Skip UI-only events (selection, clicks) and events fired while
             // we are programmatically loading a script.
@@ -1331,6 +1689,16 @@ class DemoBlockEditor {
      */
     setInsertPathOptions(paths) {
         demoSetInsertPathOptions(this._workspace, paths);
+    }
+
+    /**
+     * Populate the Commands toolbox category with one block per command the
+     * demo may run (GET /api/gm/demos/commands -> server/scripting.py's
+     * CommandLister). Safe to call before the workspace exists: the block
+     * definitions are registered and applied when the workspace is created.
+     */
+    setCommandCatalog(commands) {
+        demoSetCommandCatalog(this._workspace, commands);
     }
 
     /** Clear the workspace (new script). */

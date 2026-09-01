@@ -140,6 +140,11 @@ class DemosScriptStore {
     livePaths() {
         return this._api.getLivePaths();
     }
+
+    /** The commands a demo may run, with their @command(...) arg specs. */
+    commands() {
+        return this._api.getDemoCommands();
+    }
 }
 
 class DemosTab extends TabBase {
@@ -195,6 +200,10 @@ class DemosTab extends TabBase {
         // fallback until this lands). Fire-and-forget: a failure just leaves
         // the fallback in place, and the next panel load retries.
         this._loadLivePaths();
+        // Populate the Commands toolbox category with one block per command
+        // (the static toolbox keeps only the free-form fallback until this
+        // lands). Same fire-and-forget semantics.
+        this._loadCommands();
 
         // --- Sub-tab navigation ---
         this._subtabButtons = Array.from(root.querySelectorAll('.gm-subtab[data-subtab]'));
@@ -239,6 +248,19 @@ class DemosTab extends TabBase {
             }
         } catch (e) {
             // non-fatal: the visual editor keeps its built-in fallback list
+        }
+    }
+
+    /** Fetch the command catalog into the block editor's Commands category. */
+    async _loadCommands() {
+        try {
+            const data = await this._store.commands();
+            if (data && Array.isArray(data.commands)) {
+                this._visualEditor.setCommandCatalog(data.commands);
+            }
+        } catch (e) {
+            // non-fatal: the Commands category keeps only the free-form
+            // fallback block until the next panel load retries
         }
     }
 

@@ -405,6 +405,12 @@ def mod_only(area_owners=False, hub_owners=False):
                 raise ClientError("You must be authorized to do that.")
             func(client, arg, *args, **kwargs)
 
+        # Expose the gate for tooling (the GM panel's command catalog):
+        # (False, False) = any mod, (True, False) = area owners/CMs,
+        # (False, True) = hub owners/GMs. `functools.wraps` copied the inner
+        # @command wrapper's `command_spec` into this wrapper's __dict__, so
+        # both attributes coexist here.
+        wrapper_mod_only.mod_only_gate = (area_owners, hub_owners)
         return wrapper_mod_only
 
     return decorator

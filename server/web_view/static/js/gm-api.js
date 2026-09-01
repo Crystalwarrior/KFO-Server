@@ -208,6 +208,11 @@ class ApiClient {
     // "insert variable" dropdown in the Visual sub-tab).
     getLivePaths() { return this.get('/api/gm/demos/paths'); }
 
+    // The OOC commands a demo may run, each with its @command(...) argument
+    // spec (used to build the Commands toolbox category in the Visual
+    // sub-tab). Mod-only commands are filtered out server-side.
+    getDemoCommands() { return this.get('/api/gm/demos/commands'); }
+
     getEvidencePacks() { return this.get('/api/gm/evidence_packs'); }
     loadEvidencePack(name, areaId, overlay) {
         return this.post(`/api/gm/evidence_packs/${encodeURIComponent(name)}/load`, {

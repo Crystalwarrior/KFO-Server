@@ -56,7 +56,59 @@ class CommandLister:
     _cache = None
 
     @staticmethod
-    def _describe(name, func):
+    def _arg_spec(spec):
+        """Serialize one `Arg` declaration into a JSON-friendly dict.
+
+        `type` is the converter's name (str/int/bool are the native ones;
+        anything else is a custom converter and renders as a free-text field).
+        Defaults and choices are normalized so they always survive json.dumps.
+        """
+        if spec.type is str:
+            type_name = "str"
+        elif spec.type is int:
+            type_name = "int"
+        elif spec.type is bool:
+            type_name = "bool"
+        else:
+            type_name = getattr(spec.type, "__name__", str(spec.type))
+
+        def _jsonable(value):
+            if value is None or isinstance(value, (str, int, float, bool)):
+                return value
+            return str(value)
+
+        return {
+            "name": spec.name,
+            "type": type_name,
+            "required": bool(spec.required),
+            "default": _jsonable(spec.default),
+            "choices": [_jsonable(c) for c in spec.choices] if spec.choices else None,
+            "rest": spec.rest,
+            "variadic": spec.variadic,
+            "help": spec.help,
+        }
+
+    @staticmethod
+    def _permission(func):
+        """Map a function's `mod_only` gate to a permission tier.
+
+        No gate means public; `mod_only(area_owners=True)` is reachable by
+        CMs, GMs, mods and system executors; `mod_only(hub_owners=True)` by
+        GMs, mods and system executors; a bare `mod_only()` is mods only.
+        """
+        gate = getattr(func, "mod_only_gate", None)
+        if gate is None:
+            return "public"
+        if gate == (True, False):
+            return "area_owners"
+        if gate == (False, True):
+            return "hub_owners"
+        if gate == (True, True):
+            return "any_owner"
+        return "mod_only"
+
+    @classmethod
+    def _describe(cls, name, func, module_name):
         doc = inspect.getdoc(func) or ""
         lines = [ln.strip() for ln in doc.splitlines() if ln.strip()]
         summary = lines[0] if lines else ""
@@ -65,8 +117,11 @@ class CommandLister:
         display_name = name[len(prefix):] if name.startswith(prefix) else name
         return {
             "name": display_name,
+            "module": module_name,
             "summary": summary,
             "usage": " ".join(usage_lines),
+            "permission": cls._permission(func),
+            "args": [cls._arg_spec(spec) for spec in getattr(func, "command_spec", ())],
         }
 
     @classmethod
@@ -84,7 +139,7 @@ class CommandLister:
                 func = getattr(module, name, None)
                 if func is None:
                     continue
-                cmd_list.append(cls._describe(name, func))
+                cmd_list.append(cls._describe(name, func, module_name))
             cmd_list.sort(key=lambda c: c["name"])
             groups.append({"module": module_name, "commands": cmd_list})
         groups.sort(key=lambda g: g["module"])
@@ -95,6 +150,15 @@ class CommandLister:
         if cls._cache is None:
             cls._cache = cls._build()
         return cls._cache
+
+    @classmethod
+    def to_flat(cls):
+        """The whole catalog as one list of command dicts (each carrying its
+        module name), preserving the per-module sort order."""
+        out = []
+        for group in cls.to_groups():
+            out.extend(group["commands"])
+        return out
 
     @classmethod
     def invalidate(cls):
