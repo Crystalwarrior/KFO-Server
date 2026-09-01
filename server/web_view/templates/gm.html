@@ -25,6 +25,7 @@
     <div class="gm-tab" data-tab="clients">Clients</div>
     <div class="gm-tab" data-tab="characters">Characters</div>
     <div class="gm-tab" data-tab="commands">Commands</div>
+    <div class="gm-tab" data-tab="demos">Demos</div>
     <div class="gm-tab" data-tab="evidence">Evidence</div>
     <div class="gm-tab" data-tab="data">Hub Data</div>
     <div class="gm-tab" data-tab="admin">Admin</div>
@@ -154,6 +155,57 @@
         </div>
     </section>
 
+    <!-- DEMOS TAB: authoring home for demo scripts (Text + Visual/Blockly) -->
+    <section class="gm-tab-panel" id="tab-demos">
+        <div class="gm-toolbar">
+            <span class="hub-label" id="demosAreaLabel">Loading area…</span>
+            <label class="gm-inline-form" style="gap:0.25rem">
+                <span class="dim">Area:</span>
+                <select id="demosAreaSelect"></select>
+            </label>
+            <label class="gm-inline-form" style="gap:0.25rem">
+                <span class="dim">Script:</span>
+                <select id="demosScriptSelect"></select>
+            </label>
+            <button class="btn-sm" id="demosRefreshBtn">Refresh</button>
+            <button class="btn-sm" id="demosNewBtn">New Script</button>
+            <button class="btn-sm" id="demosSaveBtn">Save</button>
+            <button class="btn-sm" id="demosRunBtn">Run</button>
+            <button class="btn-sm" id="demosStopBtn">Stop</button>
+            <button class="btn-sm danger" id="demosStopAllBtn">Stop All (Hub)</button>
+            <button class="btn-sm" id="demosHelpToggleBtn">Instruction Reference</button>
+            <span class="gm-toolbar-hint" id="demosScriptHint"></span>
+        </div>
+        <div class="gm-subtabs" role="tablist" aria-label="Demos editor mode">
+            <button type="button" class="gm-subtab active" data-subtab="text" role="tab">Text</button>
+            <button type="button" class="gm-subtab" data-subtab="visual" role="tab">Visual (blocks)</button>
+        </div>
+        <div class="gm-demos-bodies">
+            <div class="gm-demos-body gm-demos-text" data-subtab="text">
+                <div class="gm-panel-box gm-demos-editor-box">
+                    <textarea id="demosScriptEditor" class="gm-script-editor" spellcheck="false"
+                        placeholder="wait 500&#10;CT#narrator#Hello everyone!%"></textarea>
+                    <div id="demosParseWarnings"></div>
+                    <div class="gm-inline-form">
+                        <input type="text" id="demosEvalInput" placeholder="Eval expression, e.g. client[0].showname">
+                        <button class="btn-sm" id="demosEvalBtn">Eval</button>
+                        <span id="demosEvalResult" class="mono"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="gm-demos-body gm-demos-visual hidden" data-subtab="visual">
+                <div class="gm-panel-box gm-demos-editor-box">
+                    <div id="demosBlockly" class="gm-blockly-wrap"></div>
+                    <div id="demosBlocklyWarnings"></div>
+                </div>
+            </div>
+        </div>
+        <div class="gm-panel-box gm-demo-help hidden" id="demosHelpBox"></div>
+        <div class="gm-panel-box gm-demo-status" id="demosStatusBox">
+            <div class="dim">No script running in this area.</div>
+        </div>
+    </section>
+
     <!-- EVIDENCE TAB (was "Demos") -->
     <section class="gm-tab-panel" id="tab-evidence">
         <div class="gm-toolbar">
@@ -165,7 +217,6 @@
             <button class="btn-sm" id="evidenceRefreshBtn">Refresh</button>
             <button class="btn-sm" id="evidenceNewBtn">New Evidence</button>
             <button class="btn-sm danger" id="evidenceStopAllBtn">Stop All (Hub)</button>
-            <button class="btn-sm" id="evidenceHelpToggleBtn">Instruction Reference</button>
         </div>
         <div class="gm-split gm-split-evidence">
             <div class="gm-panel-box gm-demo-list-box">
@@ -196,8 +247,14 @@
                     <input type="text" id="evidenceImageInput" placeholder="Image (optional)">
                     <button class="btn-sm" id="evidenceIconOverrideBtn" title="Set a local icon override for this image name">Set icon</button>
                 </div>
-                <textarea id="evidenceScriptEditor" class="gm-script-editor" spellcheck="false"
-                    placeholder="wait 500&#10;CT#narrator#Hello everyone!%"></textarea>
+                <div class="gm-evidence-desc">
+                    <div class="gm-evidence-desc-head">
+                        <span>Description</span>
+                        <span class="dim">doubles as the demo script — the Demos tab adds Text/Visual block editing</span>
+                    </div>
+                    <textarea id="evidenceScriptEditor" class="gm-script-editor" spellcheck="false"
+                        placeholder="wait 500&#10;CT#narrator#Hello everyone!%"></textarea>
+                </div>
                 <div id="evidenceParseWarnings"></div>
                 <div class="gm-evidence-props">
                     <label class="gm-evidence-prop gm-evidence-prop-pos" title="The &lt;owner=...&gt; positions where this evidence shows: 'all', 'hidden', or comma-separated pos names">
@@ -235,21 +292,11 @@
                 </div>
                 <div class="gm-toolbar">
                     <button class="btn-sm" id="evidenceSaveBtn">Save</button>
-                    <button class="btn-sm" id="evidenceRunBtn">Run</button>
-                    <button class="btn-sm" id="evidenceStopBtn">Stop</button>
+                    <button class="btn-sm" id="evidenceEditScriptBtn"
+                        title="Open this item's script in the Demos tab (Text or Visual blocks editor)">Edit script in Demos</button>
                     <button class="btn-sm danger" id="evidenceDeleteBtn">Delete</button>
                 </div>
-                <div class="gm-panel-box gm-demo-status" id="evidenceStatusBox">
-                    <div class="dim">No script running in this area.</div>
-                </div>
-                <div class="gm-inline-form">
-                    <input type="text" id="evidenceEvalInput" placeholder="Eval expression, e.g. client[0].showname">
-                    <button class="btn-sm" id="evidenceEvalBtn">Eval</button>
-                    <span id="evidenceEvalResult" class="mono"></span>
-                </div>
             </div>
-
-            <div class="gm-panel-box gm-demo-help hidden" id="evidenceHelpBox"></div>
         </div>
     </section>
 
@@ -424,6 +471,19 @@
 <script src="/static/js/gm-characters-tab.js"></script>
 <script src="/static/js/gm-commands-tab.js"></script>
 <script src="/static/js/gm-evidence-tab.js"></script>
+<!-- Vendored Blockly (v13.2.1) -- loaded before the demo block definitions.
+     msg/en.js must come after blockly_compressed.js per the UMD load order.
+     The two plugins below are also vendored from RaspberryPiFoundation/blockly
+     (commit 1aa51c0ec48f73ca1214397fa70d141ac47a57fe):
+     @blockly/field-multilineinput v13.1.0 (registers the field_multilinetext
+     field type) and @blockly/theme-dark v13.1.0 (Blockly.Themes.Dark) -- see
+     vendor/blockly/plugins/. Both must load before gm-demo-blocks.js. -->
+<script src="/static/vendor/blockly/blockly_compressed.js"></script>
+<script src="/static/vendor/blockly/msg/en.js"></script>
+<script src="/static/vendor/blockly/plugins/field_multilineinput_compressed.js"></script>
+<script src="/static/vendor/blockly/plugins/theme_dark.js"></script>
+<script src="/static/js/gm-demo-blocks.js"></script>
+<script src="/static/js/gm-demos-tab.js"></script>
 <script src="/static/js/gm-data-tab.js"></script>
 <script src="/static/js/gm-admin-tab.js"></script>
 <script src="/static/js/gm-shell.js"></script>

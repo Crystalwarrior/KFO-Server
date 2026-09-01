@@ -190,6 +190,24 @@ class ApiClient {
         return this.post('/api/gm/evidence/eval', { area_id: areaId, expression });
     }
 
+    // --- Demos tab (scripting language surface) ------------------------------
+    // Scripts currently live inside evidence items' `desc`; this endpoint is
+    // the one scripting-language API that is deliberately NOT evidence-shaped
+    // (see routes/demos.py) so the Demos tab can outlive the evidence
+    // coupling. It parses arbitrary script text with the authoritative server
+    // parser and reports the same warnings the evidence list shows.
+
+    parseScript(text, areaId) {
+        const body = { text };
+        if (areaId !== undefined && areaId !== null) body.area_id = areaId;
+        return this.post('/api/gm/demos/parse', body);
+    }
+
+    // Every live-state path the demo language accepts, generated server-side
+    // from the scripting whitelists (used to populate the get block's
+    // "insert variable" dropdown in the Visual sub-tab).
+    getLivePaths() { return this.get('/api/gm/demos/paths'); }
+
     getEvidencePacks() { return this.get('/api/gm/evidence_packs'); }
     loadEvidencePack(name, areaId, overlay) {
         return this.post(`/api/gm/evidence_packs/${encodeURIComponent(name)}/load`, {

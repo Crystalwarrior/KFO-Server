@@ -702,3 +702,39 @@ def live_sources(area):
         "char_count": len(getattr(getattr(area, "area_manager", None), "char_list", ())),
     }
     return sources
+
+
+def live_path_menu():
+    """
+    The complete menu of live-state paths the demo language can read.
+
+    Generated straight from the field whitelists above, so the set of paths
+    a UI can offer always matches exactly what `live_get` accepts - a menu
+    maintained by hand would drift out of sync (forgotten fields, typos,
+    or stale entries for renamed properties). `char[<name>].<key>` is left
+    out because its keys are per-character user data, not a fixed whitelist.
+
+    Used by the GM panel's Demos tab (GET /api/gm/demos/paths) to populate
+    the get block's "insert variable" dropdown; every returned path is a
+    valid `get <var> <path>` operand. Indexed entries use `[0]` as the
+    example index (any expression works there, including `[i]` with a loop
+    variable); `timer` is offered as both `timer[0]` (hub-wide) and
+    `timer[1]` (the first area timer).
+    """
+    menu = [
+        "clients.count",
+        "afk.count",
+        "timer.count",
+        "evidence.count",
+        "links.count",
+    ]
+    menu.extend(f"client[0].{field}" for field in sorted(_CLIENT_FIELDS))
+    menu.extend(f"afk[0].{field}" for field in sorted(_CLIENT_FIELDS))
+    menu.extend(f"trigger.{field}" for field in sorted(_CLIENT_FIELDS))
+    menu.extend(f"timer[0].{field}" for field in sorted(_TIMER_FIELDS))
+    menu.extend(f"timer[1].{field}" for field in sorted(_TIMER_FIELDS))
+    menu.extend(f"evidence[0].{field}" for field in sorted(_EVIDENCE_FIELDS))
+    menu.extend(f"links[0].{field}" for field in sorted(_LINK_FIELDS))
+    menu.extend(f"area.{field}" for field in sorted(_AREA_FIELDS))
+    menu.extend(f"hub.{field}" for field in sorted(_HUB_FIELDS))
+    return menu
