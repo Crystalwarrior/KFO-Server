@@ -15,6 +15,7 @@ from aiohttp import web
 from server.script_runner import parse_demo_description
 from server.scripting import live_path_menu
 
+from server.web_view.gm_panel.commands_meta import CommandLister
 from server.web_view.gm_panel.serializers import EvidenceSerializer
 
 
@@ -82,3 +83,21 @@ class DemosRoutes:
         if not session.is_valid():
             return web.json_response({"error": "session_invalid"}, status=401)
         return web.json_response({"ok": True, "paths": list(live_path_menu())})
+
+    async def handle_commands(self, request):
+        """List the OOC commands a demo may run, with their argument specs.
+
+        Same auto-generated catalog as the Commands tab (CommandLister),
+        minus plain mod-only commands: the demo executor acts as a GM, so it
+        passes area-owner and hub-owner gates but never a bare mod gate. Each
+        entry carries its `@command(...)` Arg declarations (`args`), so the
+        Demos tab's Visual editor can turn it into a Blockly block whose
+        inputs match the command's own spec - no hand-maintained mirror.
+        """
+        session = request["gm_session"]
+        if not session.is_valid():
+            return web.json_response({"error": "session_invalid"}, status=401)
+        commands = [
+            cmd for cmd in CommandLister.to_flat() if cmd["permission"] != "mod_only"
+        ]
+        return web.json_response({"ok": True, "commands": commands})

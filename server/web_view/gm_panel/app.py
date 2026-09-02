@@ -277,6 +277,7 @@ class GMPanelApp:
         # evidence and demo scripting are meant to be separated eventually.
         app.router.add_post("/api/gm/demos/parse", require(demos_routes.handle_parse))
         app.router.add_get("/api/gm/demos/paths", require(demos_routes.handle_live_paths))
+        app.router.add_get("/api/gm/demos/commands", require(demos_routes.handle_commands))
 
         # Evidence tab (formerly "Demos") -- literal routes registered before the
         # dynamic {evidence_id} route so e.g. "status" isn't swallowed as an id.

@@ -1130,7 +1130,7 @@ class AOProtocol(asyncio.Protocol):
                 else:
                     evidence = 0
 
-            if evidence > 1:
+            if evidence > 1 and evidence < len(self.client.evi_list):
                 evidence = self.client.evi_list[evidence]
                 evi = area.evi_list.evidences[evidence - 1]
                 self.client.area.broadcast_ooc(
