@@ -288,7 +288,10 @@ def ooc_cmd_vote(client, id):
         raise ArgumentError("Target not found.")
     target = targets[0]
     client.area.votes.setdefault(target.char_name, []).append(client.char_name)
-    client.area.broadcast_ooc(f"[{client.id}] {client.showname} cast a vote.")
+    if client.area.public_votes:
+        client.area.broadcast_ooc(f"[{client.id}] {client.showname} cast a vote for [{target.id}] {target.showname}.")
+    else:
+        client.area.broadcast_ooc(f"[{client.id}] {client.showname} cast a vote.")
     database.log_area("vote", client, client.area)
 
 

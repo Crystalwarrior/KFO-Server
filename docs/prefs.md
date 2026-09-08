@@ -87,6 +87,10 @@ If you're looking for the list of commands, it can be found [here](commands.md).
     - If True, all area OOC enter/leave messages are hidden.
     - If False, area OOC enter/leave messages are shown unless the player is hidden, sneaking, a spectator, etc.
     - Default: *False*
+* **public_votes**
+    - If True, /vote command will also reveal who you voted for.
+    - If False, /vote command only tells others you voted, not your target.
+    - Default: *False*
 ### Game Masters and above
 * **can_cm**
     - Whether or not someone can become a Case Maker in this area.

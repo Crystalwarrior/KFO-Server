@@ -78,6 +78,7 @@ class Area:
         self.can_scrum_debate = False
         self.can_panic_talk_action = False
         self.force_sneak = False
+        self.public_votes = False
         # Whether the area is dark or not
         self.dark = False
         # The background to set when area's lights are turned off

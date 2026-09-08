@@ -59,6 +59,7 @@ AREA_PREF_CM_ALLOWED = frozenset([
     "present_reveals_evidence",
     "ooc_actions_enabled",
     "medieval_mode",
+    "public_votes",
 ])
 
 
