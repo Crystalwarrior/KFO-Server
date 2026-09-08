@@ -367,6 +367,8 @@ class TsuServer3:
                 "before_ic": 0,
                 "before_cc": 0,
             }
+        if "login_cooldown_ms" not in self.config:
+            self.config["login_cooldown_ms"] = 3000
 
         if "demo_rate_limit_ms" not in self.config:
             self.config["demo_rate_limit_ms"] = 0

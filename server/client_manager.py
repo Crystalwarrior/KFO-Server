@@ -2584,7 +2584,8 @@ class ClientManager:
 
         def set_login_delay(self):
             """Begin the login cooldown (throttles brute-force attempts)."""
-            self.login_time = round(time.time() * 1000.0 + 3000)
+            cooldown_ms = self.server.config.get("login_cooldown_ms", 3000)
+            self.login_time = round(time.time() * 1000.0 + cooldown_ms)
 
         def can_attempt_login(self):
             """Whether or not the client can currently attempt to log in."""
