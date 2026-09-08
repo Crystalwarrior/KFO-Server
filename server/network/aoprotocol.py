@@ -97,9 +97,8 @@ class AOProtocol(asyncio.Protocol):
                 logger.debug(
                     "Unknown incoming message from %s: %s", ipid, msg)
             except Exception:
-                traceback_string = traceback.format_exc()
-                print(traceback_string)
-                self.client.send_command("KK", f'An error has occurred!\n{traceback_string}\n\nPlease contact the server owner to report this issue.')
+                logger.exception("Unhandled exception processing packet from %s", ipid)
+                self.client.send_command("KK", "An internal server error occurred. Please reconnect.")
                 self.client.disconnect()
                 raise
 

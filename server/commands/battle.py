@@ -132,6 +132,7 @@ def ooc_cmd_info_fighter(client):
         client.send_ooc("You have to choose a fighter first!")
 
 
+@mod_only(hub_owners=True)
 @command(
     Arg("name", help="fighter name"),
     Arg("hp", float),
@@ -162,6 +163,12 @@ def ooc_cmd_create_fighter(client, name, hp, mana, atk, defe, spa, spd, spe):
         return
 
     fighter_list = os.listdir("storage/battlesystem")
+
+    if len(fighter_list) >= 1000:
+        client.send_ooc(
+            "Fighter storage is full! Please contact the server host to resolve this issue."
+        )
+        return
 
     path = derelative(name.lower())
     if f"{path}.yaml" in fighter_list:

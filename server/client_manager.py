@@ -3,6 +3,7 @@ import string
 import time
 import math
 import os
+import hmac
 import arrow
 from heapq import heappop, heappush
 
@@ -2252,9 +2253,14 @@ class ClientManager:
             """
             modpasses = self.server.config["modpass"]
             if isinstance(modpasses, dict):
-                matches = [k for k in modpasses if modpasses[k]
-                           ["password"] == password]
-            elif modpasses == password:
+                matches = [
+                    k
+                    for k in modpasses
+                    if hmac.compare_digest(
+                        str(modpasses[k]["password"]), str(password)
+                    )
+                ]
+            elif hmac.compare_digest(str(modpasses), str(password)):
                 matches = ["default"]
             else:
                 matches = []
@@ -2299,6 +2305,14 @@ class ClientManager:
         @sfx_time.setter
         def sfx_time(self, value):
             self.server.client_manager.set_spam_delay(self.ipid, "sfx", value)
+
+        @property
+        def login_time(self):
+            return self.server.client_manager.get_spam_delay(self.ipid, "login")
+
+        @login_time.setter
+        def login_time(self, value):
+            self.server.client_manager.set_spam_delay(self.ipid, "login", value)
 
         @property
         def ip(self):
@@ -2567,6 +2581,15 @@ class ClientManager:
         def can_call_mod(self):
             """Whether or not the client can currently call mod."""
             return (time.time() * 1000.0 - self.mod_call_time) > 0
+
+        def set_login_delay(self):
+            """Begin the login cooldown (throttles brute-force attempts)."""
+            cooldown_ms = self.server.config.get("login_cooldown_ms", 3000)
+            self.login_time = round(time.time() * 1000.0 + cooldown_ms)
+
+        def can_attempt_login(self):
+            """Whether or not the client can currently attempt to log in."""
+            return (time.time() * 1000.0 - self.login_time) > 0
 
         def set_case_call_delay(self):
             """Begin the case announcement cooldown."""
