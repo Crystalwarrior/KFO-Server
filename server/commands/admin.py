@@ -297,10 +297,15 @@ def ooc_cmd_login(client, password):
     """
     if not password:
         raise ArgumentError("You must specify the password.")
+    if not client.can_attempt_login():
+        raise ClientError(
+            "Too many failed login attempts. Please wait a moment and try again."
+        )
     login_name = None
     try:
         login_name = client.auth_mod(password)
     except ClientError:
+        client.set_login_delay()
         database.log_misc("login.invalid", client)
         raise
 

@@ -2,6 +2,7 @@ from time import gmtime, strftime
 
 import requests
 import json
+import asyncio
 
 from server import database
 
@@ -43,20 +44,36 @@ class Webhooks:
             embed["title"] = title
             embed["color"] = color
             data["embeds"].append(embed)
-        result = requests.post(
-            url, data=json.dumps(data), headers={"Content-Type": "application/json"}
-        )
-        try:
-            result.raise_for_status()
-        except requests.exceptions.HTTPError as err:
-            database.log_misc("webhook.err", data=err.response.status_code)
-        else:
-            database.log_misc(
-                "webhook.ok",
-                data="successfully delivered payload, code {}".format(
-                    result.status_code
-                ),
+        def _post():
+            return requests.post(
+                url,
+                data=json.dumps(data),
+                headers={"Content-Type": "application/json"},
+                timeout=5,
             )
+
+        loop = asyncio.get_running_loop()
+        future = loop.run_in_executor(None, _post)
+
+        def _handle_result(fut):
+            try:
+                result = fut.result()
+            except Exception as err:
+                database.log_misc("webhook.err", data=str(err))
+                return
+            try:
+                result.raise_for_status()
+            except requests.exceptions.HTTPError as err:
+                database.log_misc("webhook.err", data=err.response.status_code)
+            else:
+                database.log_misc(
+                    "webhook.ok",
+                    data="successfully delivered payload, code {}".format(
+                        result.status_code
+                    ),
+                )
+
+        future.add_done_callback(_handle_result)
 
     def modcall(self, char, ipid, area, reason=None):
         is_enabled = self.server.config["modcall_webhook"]["enabled"]

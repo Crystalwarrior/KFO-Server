@@ -33,6 +33,11 @@ modpass:
   Admin:
     password: mod
 
+# Cooldown (in milliseconds) after a failed /login attempt before another
+# attempt is allowed from the same IPID. Throttles mod-password brute force.
+# Set to 0 to disable. (Default: 3000)
+login_cooldown_ms: 3000
+
 # Password to use the /restart command
 restartpass: restart
 
