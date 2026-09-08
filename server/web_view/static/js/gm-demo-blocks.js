@@ -816,7 +816,11 @@ function demoCommandBlockGenerator(block) {
             value.split(/\s+/).filter(Boolean)
                 .forEach((tok) => parts.push(quoteDemoOperand(escapeDemoText(tok))));
         } else if (meta[i].rest) {
-            parts.push(escapeDemoText(value));
+            // A rest arg can legitimately end up empty (its tokens were
+            // all consumed by earlier positional args, or the script
+            // never had one); emitting it would append a stray trailing
+            // space, and an empty rest operand is identical to no arg.
+            if (value) parts.push(escapeDemoText(value));
         } else {
             parts.push(quoteDemoOperand(escapeDemoText(value)));
         }
@@ -957,7 +961,7 @@ function mapDemoCommandToBlock(meta, name, argText) {
     let ti = 0;
     for (const spec of args) {
         if (spec.rest) {
-            values.push(argText.trim());
+            values.push(tokens.slice(ti).join(' '));
             ti = tokens.length;
         } else if (spec.variadic) {
             const rest = tokens.slice(ti);
