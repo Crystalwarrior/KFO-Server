@@ -188,7 +188,7 @@ class AreaManager:
         """Load the character list from a YAML file."""
         if self.char_list_ref == charlist:
             return
-        charlist = derelative(charlist.lower())
+        charlist = derelative(charlist.lower()).replace("/", "").replace("\\", "")
         self.char_list_ref = charlist
         if charlist != "":
             new_chars = None
