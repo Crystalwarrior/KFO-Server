@@ -392,7 +392,6 @@ class AreaManager:
         clients = area.clients.copy()
         for client in clients:
             if getattr(client, "is_automation", False):
-                # The automation executor lives and dies with its home area.
                 area.area_manager.owners.discard(client)
                 area._owners.discard(client)
                 client.leave_area()

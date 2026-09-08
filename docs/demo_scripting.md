@@ -505,11 +505,10 @@ character list, music list and movement delay. It's spelled `hub` in paths -
 
 ## Character data: remembering things between demos
 
-Area variables live and die with the demo. **Character data** is the
-persistent store: a bag of `key: value` pairs per character, saved to
-`config/character_data.yaml`, surviving restarts, and shared by every area in
+Area variables live in the area and stay there. **Character data** is saved to
+`config/character_data.yaml`, surviving restarts, and accessible from any area in
 the hub. GMs already use it for keys, descriptions, movement delay and
-inventory; demos and triggers can use it for anything else.
+inventory so demos and triggers can use it for variables as well.
 
 **Read** a saved value with the `char` path. `<name>` is a **character id**
 (the index into the server's character list — the number `/charids` shows,
