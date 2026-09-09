@@ -20,6 +20,7 @@ __all__ = [
     "ooc_cmd_evidence_present",
     "ooc_cmd_evidence_mod",  # Not strictly casing - to be reorganized
     "ooc_cmd_evidence_swap",  # Not strictly casing - to be reorganized
+    "ooc_cmd_evidence_insert",  # Not strictly casing - to be reorganized
     "ooc_cmd_cm",
     "ooc_cmd_uncm",
     "ooc_cmd_setcase",
@@ -310,6 +311,27 @@ def ooc_cmd_evidence_swap(client, a, b):
     """
     try:
         client.area.evi_list.evidence_swap(
+            client, a - 1, b - 1)
+        client.area.broadcast_evidence_list()
+    except Exception:
+        raise ClientError("you must specify 2 numbers")
+
+
+@mod_only(area_owners=True)
+@command(
+    Arg("a", int, help="evidence id to move"),
+    Arg("b", int, help="target position"),
+)
+def ooc_cmd_evidence_insert(client, a, b):
+    """
+    Move an evidence item to a new position on the evidence list, shifting
+    the items in between (unlike /evidence_swap, which exchanges two ids).
+    The ID of each evidence can be displayed by mousing over it in 2.8 client,
+    or simply its number starting from 1.
+    Usage: /evidence_insert <id> <position>
+    """
+    try:
+        client.area.evi_list.evidence_insert(
             client, a - 1, b - 1)
         client.area.broadcast_evidence_list()
     except Exception:

@@ -227,12 +227,16 @@ class EvidenceTab extends TabBase {
                 ? '<span class="badge running">RUNNING</span>'
                 : `<span class="dim">${d.instruction_count} steps</span>`;
             const rowClass = d.id === this._selectedEvidenceId ? ' class="selected"' : '';
+            const dis = (cond) => (cond ? ' disabled' : '');
             return `<tr${rowClass} data-id="${d.id}">
                 <td class="mono">${d.id}</td>
                 <td><span class="gm-icon-slot" data-evi="${d.id}"><span class="gm-icon-fallback">${esc((d.name || '?').slice(0, 1).toUpperCase())}</span></span></td>
                 <td>${esc(d.name)}${warn}</td>
                 <td>${status}</td>
-                <td><button class="btn-sm" data-action="open" data-id="${d.id}">Open</button></td>
+                <td><button class="btn-sm" data-action="open" data-id="${d.id}">Open</button>
+                    <button class="btn-sm" data-action="up" data-id="${d.id}" title="Move up"${dis(d.id === 0)}>&#9650;</button>
+                    <button class="btn-sm" data-action="down" data-id="${d.id}" title="Move down"${dis(d.id === this._evidenceList.length - 1)}>&#9660;</button>
+                    <button class="btn-sm" data-action="to" data-id="${d.id}" title="Move to position">&#8594;#</button></td>
             </tr>`;
         }).join('');
         this._loadListIcons();
@@ -258,6 +262,25 @@ class EvidenceTab extends TabBase {
     }
 
     async _onTableClick(e) {
+        // Order buttons live inside the row, so intercept them before the
+        // row-open branch below.
+        const btn = e.target.closest('[data-action="up"],[data-action="down"],[data-action="to"]');
+        if (btn && this._tbody.contains(btn)) {
+            const id = parseInt(btn.dataset.id, 10);
+            if (btn.dataset.action === 'to') {
+                const target = prompt(`Move evidence ${id + 1} to position (1-${this._evidenceList.length}):`);
+                if (target === null) return; // cancelled
+                const to = parseInt(target, 10);
+                if (Number.isNaN(to) || to < 1 || to > this._evidenceList.length) {
+                    this.shell.toast(`Position must be between 1 and ${this._evidenceList.length}.`, 'error');
+                    return;
+                }
+                await this._moveEvidence(id, { to: to - 1 });
+            } else {
+                await this._moveEvidence(id, { direction: btn.dataset.action });
+            }
+            return;
+        }
         const row = e.target.closest('tr[data-id]');
         if (!row) return;
         if (!(await this._guardUnsaved())) return;
@@ -537,6 +560,31 @@ class EvidenceTab extends TabBase {
             }
         } catch (e) {
             this.shell.toast('Failed to save evidence: ' + e.message, 'error');
+        }
+    }
+
+    /**
+     * Move an evidence item (up/down/absolute) and keep the editor on the
+     * moved item. `_guardUnsaved` runs first because a move re-indexes the
+     * ids the editor's save path targets.
+     */
+    async _moveEvidence(id, body) {
+        if (!(await this._guardUnsaved())) return;
+        try {
+            const result = await this.api.moveEvidenceItem(this._areaId, id, body);
+            if (!result.ok) {
+                if (result.error === 'at_boundary') return; // arrow at the end: nothing to do
+                this.shell.toast('Failed to move evidence: ' + (result.error || 'rejected'), 'error');
+                return;
+            }
+            // Follow the moved item to its new index; reload() keeps the
+            // selection because the id exists in the refreshed list, then
+            // _openEvidence re-fetches the detail for the moved item.
+            this._selectedEvidenceId = result.id;
+            await this.reload();
+            await this._openEvidence(result.id);
+        } catch (e) {
+            this.shell.toast('Failed to move evidence: ' + e.message, 'error');
         }
     }
 

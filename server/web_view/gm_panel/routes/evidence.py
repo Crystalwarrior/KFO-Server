@@ -147,6 +147,46 @@ class EvidenceRoutes:
             return web.json_response({"ok": False, "error": "not_authorized_or_invalid"}, status=403)
         return web.json_response({"ok": True})
 
+    async def handle_move_evidence(self, request):
+        """
+        POST /api/gm/evidence/{area_id}/{evidence_id}/move
+        Body: {"direction": "up"|"down"} or {"to": <0-based index>}.
+        Moving past either end is reported as `at_boundary` with 200 so the
+        UI can simply no-op; success returns the item's new index (`id`)
+        so the client can reselect the moved row.
+        """
+        session = request["gm_session"]
+        area, evidence_id, err = self._resolve(session, request)
+        if err is not None:
+            return err
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "error": "invalid_request"}, status=400)
+        count = len(area.evi_list.evidences)
+        direction = data.get("direction")
+        if direction is not None:
+            if direction == "up":
+                to_id = evidence_id - 1
+            elif direction == "down":
+                to_id = evidence_id + 1
+            else:
+                return web.json_response({"ok": False, "error": "invalid_direction"}, status=400)
+        else:
+            try:
+                to_id = int(data.get("to"))
+            except (TypeError, ValueError):
+                return web.json_response({"ok": False, "error": "invalid_request"}, status=400)
+        if to_id < 0 or to_id >= count:
+            return web.json_response({"ok": False, "error": "at_boundary"})
+        try:
+            ok = session.move_evidence_direct(area, evidence_id, to_id)
+        except SessionInvalid:
+            return web.json_response({"error": "session_invalid"}, status=401)
+        if not ok:
+            return web.json_response({"ok": False, "error": "not_authorized_or_invalid"}, status=403)
+        return web.json_response({"ok": True, "id": to_id})
+
     async def handle_run_evidence(self, request):
         session = request["gm_session"]
         if not session.is_valid():

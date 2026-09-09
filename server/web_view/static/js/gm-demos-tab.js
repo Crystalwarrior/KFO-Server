@@ -175,6 +175,14 @@ class DemosTab extends TabBase {
         // Last text persisted to the server (baseline for dirty tracking).
         this._savedText = '';
         this._saving = false;
+        // Monotonic load-generation counter: reload/_openScript capture
+        // it at start and discard their results on resume when a newer
+        // load superseded them. Without this, two overlapping loads
+        // (poll vs pending-open vs activate) can interleave at their
+        // awaits and land stale responses last -- reverting _areaId or
+        // pairing one script's text with another's id, which turns the
+        // next autosave into silent data corruption.
+        this._loadSeq = 0;
 
         this._areaLabel = root.querySelector('#demosAreaLabel');
         this._areaSelect = root.querySelector('#demosAreaSelect');
@@ -279,10 +287,18 @@ class DemosTab extends TabBase {
         this._pendingOpen = null;
         await this._loadAreaOptions();
         if (this._hubAreas.some((a) => a.id === areaId)) {
+            // Invalidate activate()'s in-flight reload for the old area:
+            // it must not resume after ours and revert _areaId (which
+            // would make the _openScript below load against the wrong
+            // area -- the 'edit script in Demos loaded the wrong thing'
+            // bug).
+            this._loadSeq++;
             this._areaId = areaId;
             this._areaSelect.value = String(areaId);
             await this.reload();
             await this._openScript(scriptId);
+        } else {
+            this.shell.toast(`Area ${areaId} is not available; script not opened.`, 'error');
         }
     }
 
@@ -298,7 +314,16 @@ class DemosTab extends TabBase {
         // Any pending open must land before the visual sync runs, so the
         // workspace is built from the opened script -- not stale text.
         if (this._pendingOpen) await this._consumePendingOpen();
-        if (this._activeSubtab === 'visual') await this._syncTextToVisual();
+        // Fresh activation (or an area swap while away) can leave the
+        // dropdown displaying its first option over an empty editor.
+        // Load that first script so what's shown is what's open; only
+        // when something is already loaded does the visual workspace
+        // need its activation resync.
+        if (this._selectedScriptId === null && this._scripts.length) {
+            await this._openScript(this._scripts[0].id);
+        } else if (this._activeSubtab === 'visual') {
+            await this._syncTextToVisual();
+        }
     }
 
     deactivate() {
@@ -369,14 +394,26 @@ class DemosTab extends TabBase {
         if (!(await this._guardUnsaved())) return;
         const val = parseInt(this._areaSelect.value, 10);
         if (Number.isNaN(val)) return;
+        // Invalidate any in-flight load for the old area before touching
+        // state: a stale reload resuming after this would otherwise
+        // revert _areaId (and the script list) to the previous area.
+        this._loadSeq++;
         this._areaId = val;
         this._clearSelection();
         await this.reload();
+        // Open the area's first script so the dropdown's displayed
+        // selection is actually loaded. Leaving the browser's default
+        // first-option display over an empty editor invites typing into
+        // a detached buffer -- and a later autosave writing it somewhere
+        // the user isn't looking.
+        if (this._scripts.length) await this._openScript(this._scripts[0].id);
     }
 
     async reload() {
+        const seq = ++this._loadSeq;
         try {
             const data = await this._store.listScripts(this._areaId);
+            if (seq !== this._loadSeq) return; // a newer load superseded this one
             this._areaId = data.area_id;
             this._scripts = data.evidence || [];
             this._areaLabel.textContent = `Area ${data.area_id}: ${data.area_name}`;
@@ -388,6 +425,9 @@ class DemosTab extends TabBase {
             if (this._selectedScriptId !== null && !this._scripts.some((s) => s.id === this._selectedScriptId)) {
                 this._selectedScriptId = null;
                 this._clearSelection();
+                // Same display-vs-actual rule as _onAreaPicked: don't
+                // leave the dropdown showing an option that isn't loaded.
+                if (this._scripts.length) await this._openScript(this._scripts[0].id);
             }
         } catch (e) {
             if (!this._reloadRetried && /area_not_found/.test(e.message || '')) {
@@ -421,8 +461,10 @@ class DemosTab extends TabBase {
 
     async _openScript(id, opts) {
         opts = opts || {};
+        const seq = ++this._loadSeq;
         try {
             const d = await this._store.loadScript(this._areaId, id);
+            if (seq !== this._loadSeq) return; // superseded while in flight
             this._selectedScriptId = id;
             this._itemName = d.name || '';
             this._itemImage = d.image || '';
@@ -440,6 +482,9 @@ class DemosTab extends TabBase {
             this._renderScriptSelect();
             this._updateRunStopState();
         } catch (e) {
+            // Superseded while in flight: the failure belongs to a load
+            // that no longer matters (a newer _openScript/reload won).
+            if (seq !== this._loadSeq) return;
             this.shell.toast('Failed to load script: ' + e.message, 'error');
         }
     }

@@ -183,6 +183,7 @@ class ApiClient {
     deleteEvidenceItem(areaId, evidenceId) { return this.del(`/api/gm/evidence/${areaId}/${evidenceId}`); }
 
     runEvidence(areaId, evidenceId) { return this.post(`/api/gm/evidence/${areaId}/${evidenceId}/run`); }
+    moveEvidenceItem(areaId, evidenceId, body) { return this.post(`/api/gm/evidence/${areaId}/${evidenceId}/move`, body); }
     stopEvidence(areaId) { return this.post(`/api/gm/evidence/${areaId}/stop`); }
     stopAllEvidence(areaId) { return this.post(`/api/gm/evidence/${areaId}/stop_all`); }
     getEvidenceStatus(areaId) { return this.get(`/api/gm/evidence/${areaId}/status`); }

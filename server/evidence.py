@@ -243,6 +243,49 @@ class EvidenceList:
                     "1",
                 )
 
+    def evidence_insert(self, client, from_id, to_id):
+        """
+        Move an evidence item to a new position, shifting the items in
+        between (a true insert, unlike `evidence_swap`'s two-item swap).
+        :param client: origin
+        :param from_id: evidence ID to move (0-based)
+        :param to_id: target position (0-based)
+
+        """
+        # Failure paths return False and success True (matching
+        # del_evidence's contract -- callers such as the GM panel's
+        # move_evidence_direct consume the return value to decide whether
+        # to broadcast; evidence_swap's fire-and-forget None would read as
+        # a rejected move even though the reorder happened).
+        if not self.login(client):
+            return False
+        if from_id not in range(len(self.evidences)):
+            return False
+        if to_id not in range(len(self.evidences)):
+            return False
+        if from_id == to_id:
+            return True
+        evi = self.evidences.pop(from_id)
+        self.evidences.insert(to_id, evi)
+
+        # Inform the CMs of evidence manipulation (same pattern as
+        # evidence_swap: owners command, then CMs present in the area).
+        client.area.send_owner_command(
+            "CT",
+            client.server.config["hostname"],
+            f"[{client.id}] {client.showname} moved evidence {from_id+1}: {evi.name} to position {to_id+1} in area [{client.area.id}] {client.area.name}.",
+            "1",
+        )
+        for c in client.area.owners:
+            if c in client.area.clients:
+                c.send_command(
+                    "CT",
+                    client.server.config["hostname"],
+                    f"[{client.id}] {client.showname} moved evidence {from_id+1}: {evi.name} to position {to_id+1} in this area.",
+                    "1",
+                )
+        return True
+
     def create_evi_list(self, client):
         """
         Compose an evidence list to send to a client.

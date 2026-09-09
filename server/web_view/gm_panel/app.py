@@ -307,6 +307,12 @@ class GMPanelApp:
             "/api/gm/evidence/{area_id}/{evidence_id}/run",
             require(evidence_routes.handle_run_evidence),
         )
+        # Before the dynamic {evidence_id} routes so "move" isn't
+        # swallowed as an evidence id (same pattern as the run sub-route).
+        app.router.add_post(
+            "/api/gm/evidence/{area_id}/{evidence_id}/move",
+            require(evidence_routes.handle_move_evidence),
+        )
         app.router.add_get(
             "/api/gm/evidence/{area_id}/{evidence_id}", require(evidence_routes.handle_get_evidence)
         )

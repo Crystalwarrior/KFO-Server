@@ -318,6 +318,29 @@ class GMSession:
             area.broadcast_evidence_list()
         return bool(ok)
 
+    def move_evidence_direct(self, area, from_id, to_id):
+        """
+        Move an evidence item to a new position (a true insert, shifting the
+        items in between) through `EvidenceList.evidence_insert`, which
+        gates through `EvidenceList.login()` against the real bound client
+        evaluated in the target area -- same permission path as the other
+        evidence `*_direct` methods.
+        """
+        if not self.is_valid() or not self._area_in_scope(area):
+            raise SessionInvalid()
+        if from_id < 0 or to_id < 0:
+            return False
+        if from_id >= len(area.evi_list.evidences):
+            return False
+        if to_id >= len(area.evi_list.evidences):
+            return False
+        ok = self._call_on_target_area(
+            area, lambda c: area.evi_list.evidence_insert(c, from_id, to_id)
+        )
+        if ok:
+            area.broadcast_evidence_list()
+        return bool(ok)
+
     def set_evidence_props_direct(self, area, demo_id, props):
         """
         Apply property overrides (pos, can_hide_in, show_in_dark, can_take,
