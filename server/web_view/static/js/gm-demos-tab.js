@@ -175,14 +175,23 @@ class DemosTab extends TabBase {
         // Last text persisted to the server (baseline for dirty tracking).
         this._savedText = '';
         this._saving = false;
-        // Monotonic load-generation counter: reload/_openScript capture
-        // it at start and discard their results on resume when a newer
-        // load superseded them. Without this, two overlapping loads
-        // (poll vs pending-open vs activate) can interleave at their
-        // awaits and land stale responses last -- reverting _areaId or
-        // pairing one script's text with another's id, which turns the
-        // next autosave into silent data corruption.
+        // Monotonic load-generation counter for list reloads: each
+        // reload() captures it at start and discards its results on
+        // resume when a newer load superseded them. Without this, two
+        // overlapping loads can interleave at their awaits and land
+        // stale responses last -- reverting _areaId to the previous
+        // area and desyncing the script list from the picker.
         this._loadSeq = 0;
+        // Separate generation counter for script OPENs. An open must
+        // only be superseded by a NEWER open (user intent) or an area
+        // switch -- never by a background poll reload: reload() bumping
+        // _loadSeq mid-open used to silently discard the in-flight
+        // open, leaving the dropdown (and editor) on the old script.
+        this._openSeq = 0;
+        // In-flight _consumePendingOpen promise, so activate() can wait
+        // for an open that already started (openScript fires the consume
+        // unawaited when the tab is already active).
+        this._consumeChain = null;
 
         this._areaLabel = root.querySelector('#demosAreaLabel');
         this._areaSelect = root.querySelector('#demosAreaSelect');
@@ -278,7 +287,13 @@ class DemosTab extends TabBase {
      * the area list has loaded. */
     openScript(areaId, scriptId) {
         this._pendingOpen = { areaId, scriptId };
-        if (this.isActive) this._consumePendingOpen();
+        if (this.isActive && !this._consumeChain) {
+            // The consume runs as its own chain (activate() may already
+            // be awaiting elsewhere); keep the promise so activate() can
+            // wait for the open to land before syncing editors.
+            this._consumeChain = this._consumePendingOpen()
+                .finally(() => { this._consumeChain = null; });
+        }
     }
 
     async _consumePendingOpen() {
@@ -313,7 +328,16 @@ class DemosTab extends TabBase {
         this._startStatusPolling();
         // Any pending open must land before the visual sync runs, so the
         // workspace is built from the opened script -- not stale text.
-        if (this._pendingOpen) await this._consumePendingOpen();
+        // The consume may already be running as its own chain (openScript
+        // fired it when the tab was still inactive): _pendingOpen is then
+        // already null, so await the chain instead -- skipping this wait
+        // let the sync below race the open and pair stale text with the
+        // newly selected script (the autosave-overwrites-vote bug).
+        if (this._pendingOpen && !this._consumeChain) {
+            this._consumeChain = this._consumePendingOpen()
+                .finally(() => { this._consumeChain = null; });
+        }
+        if (this._consumeChain) await this._consumeChain;
         // Fresh activation (or an area swap while away) can leave the
         // dropdown displaying its first option over an empty editor.
         // Load that first script so what's shown is what's open; only
@@ -461,10 +485,16 @@ class DemosTab extends TabBase {
 
     async _openScript(id, opts) {
         opts = opts || {};
-        const seq = ++this._loadSeq;
+        // Superseded only by a newer open or an area switch: a background
+        // reload() must not cancel an in-flight open (it would silently
+        // leave the dropdown on the previous script). The area check also
+        // stops a late load from pairing another area's id with this
+        // area's editor state.
+        const seq = ++this._openSeq;
+        const areaId = this._areaId;
         try {
-            const d = await this._store.loadScript(this._areaId, id);
-            if (seq !== this._loadSeq) return; // superseded while in flight
+            const d = await this._store.loadScript(areaId, id);
+            if (seq !== this._openSeq || this._areaId !== areaId) return;
             this._selectedScriptId = id;
             this._itemName = d.name || '';
             this._itemImage = d.image || '';
@@ -483,8 +513,8 @@ class DemosTab extends TabBase {
             this._updateRunStopState();
         } catch (e) {
             // Superseded while in flight: the failure belongs to a load
-            // that no longer matters (a newer _openScript/reload won).
-            if (seq !== this._loadSeq) return;
+            // that no longer matters (a newer open or an area switch won).
+            if (seq !== this._openSeq || this._areaId !== areaId) return;
             this.shell.toast('Failed to load script: ' + e.message, 'error');
         }
     }
@@ -539,9 +569,23 @@ class DemosTab extends TabBase {
      */
     async _syncTextToVisual() {
         try {
-            const parsed = await this._store.parse(this._scriptText, this._areaId);
+            // Snapshot what is being parsed: if a newer open (or a text
+            // edit) lands while the parse is in flight, importing this
+            // result would clobber the newer content in the workspace --
+            // and via _onVisualChange push the stale text back into
+            // _scriptText, marking the new script dirty with the old
+            // one's body (the autosave-overwrites-the-script bug).
+            const seq = this._openSeq;
+            const areaId = this._areaId;
+            const text = this._scriptText;
+            const parsed = await this._store.parse(text, this._areaId);
+            const stale = () => (
+                seq !== this._openSeq || this._areaId !== areaId || this._scriptText !== text
+            );
+            if (stale()) return;
             // Give Blockly a visible, sized container before injecting.
             requestAnimationFrame(() => {
+                if (stale()) return;
                 this._visualEditor.importInstructions(parsed.instructions || []);
             });
         } catch (e) {
