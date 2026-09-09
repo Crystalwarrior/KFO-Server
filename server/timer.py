@@ -86,4 +86,8 @@ def start_schedule(timer):
     if timer.schedule:
         timer.schedule.cancel()
     if timer.started:
-        timer.schedule = asyncio.get_running_loop().call_later(int(timer.static.total_seconds()), timer.timer_expired)
+        try:
+            timer.schedule = asyncio.get_running_loop().call_later(int(timer.static.total_seconds()), timer.timer_expired)
+        except RuntimeError:
+            # No running event loop, skip scheduling
+            logger.debug("No event loop running, skipping timer schedule")
