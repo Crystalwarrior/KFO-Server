@@ -432,7 +432,11 @@ class Database:
                 self.unban(ban_id)
                 self.log_misc("auto_unban", data={"id": ban_id})
 
-            asyncio.get_running_loop().call_later(time_to_unban, auto_unban)
+            try:
+                asyncio.get_running_loop().call_later(time_to_unban, auto_unban)
+            except RuntimeError:
+                # No running event loop, skip scheduling
+                logger.debug("No event loop running, skipping unban scheduling for ban_id %s", ban_id)
 
     def log_area(self, event_subtype, client, area, message=None, target=None):
         """
