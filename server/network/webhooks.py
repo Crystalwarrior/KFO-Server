@@ -3,8 +3,11 @@ from time import gmtime, strftime
 import requests
 import json
 import asyncio
+import logging
 
 from server import database
+
+logger = logging.getLogger("webhooks")
 
 
 class Webhooks:
@@ -52,28 +55,38 @@ class Webhooks:
                 timeout=5,
             )
 
-        loop = asyncio.get_running_loop()
-        future = loop.run_in_executor(None, _post)
+        try:
+            loop = asyncio.get_running_loop()
+            future = loop.run_in_executor(None, _post)
 
-        def _handle_result(fut):
+            def _handle_result(fut):
+                try:
+                    result = fut.result()
+                except Exception as err:
+                    database.log_misc("webhook.err", data=str(err))
+                    return
+                try:
+                    result.raise_for_status()
+                except requests.exceptions.HTTPError as err:
+                    database.log_misc("webhook.err", data=err.response.status_code)
+                else:
+                    database.log_misc(
+                        "webhook.ok",
+                        data="successfully delivered payload, code {}".format(
+                            result.status_code
+                        ),
+                    )
+
+            future.add_done_callback(_handle_result)
+        except RuntimeError:
+            # No running event loop, execute synchronously
+            logger.debug("No event loop running, executing webhook synchronously")
             try:
-                result = fut.result()
+                result = _post()
+                result.raise_for_status()
+                database.log_misc("webhook.ok", data=f"synchronously delivered payload, code {result.status_code}")
             except Exception as err:
                 database.log_misc("webhook.err", data=str(err))
-                return
-            try:
-                result.raise_for_status()
-            except requests.exceptions.HTTPError as err:
-                database.log_misc("webhook.err", data=err.response.status_code)
-            else:
-                database.log_misc(
-                    "webhook.ok",
-                    data="successfully delivered payload, code {}".format(
-                        result.status_code
-                    ),
-                )
-
-        future.add_done_callback(_handle_result)
 
     def modcall(self, char, ipid, area, reason=None):
         is_enabled = self.server.config["modcall_webhook"]["enabled"]
@@ -144,7 +157,7 @@ class Webhooks:
         if pingoption:
             message += f"<@&{self.server.config['need_webhook']['role_id']}> \n"
         message += self.server.config["need_webhook"]["message"]
-        description = f"[{client.id}] {client.name} ({client.showname}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name} {'without reason (using <2.6?)' if reason is None else f'needs: {reason}'}"
+        description = f"[{client.id}] {client.name} ({client.showname}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name} {'without reason (using <2.6?)' if reason is None else f'with reason: {reason}'}"
 
         self.send_webhook(
             username=username,
