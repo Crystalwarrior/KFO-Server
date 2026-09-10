@@ -380,7 +380,7 @@ const DEMO_BLOCK_DEFS = [
         previousStatement: null,
         nextStatement: null,
         colour: 20,
-        tooltip: 'Broadcast an IC (MS) message using the server-to-client layout (the exact field order the server itself broadcasts -- demos bypass the client parser). Fill at least msg_type, folder, text and pos; other_folder/other_emote/offset_pair/other_offset/other_flip are for pairing, third_* for a third character, both blank when unused. Leave pos blank for narration -- the demo runner reuses the area\'s last IC message position. Use <!var> inside text/showname to drop in a variable. Color: 0=White, 1=Green, 2=Orange, 3=Red, 4=Blue, 5=Cyan, 6=Purple, 7=Yellow, 8=Grey; 9+ are custom client-side colors.',
+        tooltip: 'Broadcast an IC (MS) message using the server-to-client layout (the exact field order the server itself broadcasts -- demos bypass the client parser). Fill at least msg_type, folder, text and pos; other_folder/other_emote/offset_pair/other_offset/other_flip are for pairing, third_* for a third character, both blank when unused. Leave pos blank for narration -- the demo runner reuses the area\'s last IC message position. Use <!var> inside text/showname to drop in a variable. Color defaults can be seen by opening the Color Dropdown in your Client and counting with White as 0, e.g. White=0, Green=1, Red=2, etc.',
     },
     {
         // HP penalty bars: HP#<side:int>#<val:int>#% (aoprotocol net_cmd_hp;
