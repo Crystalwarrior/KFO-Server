@@ -2010,82 +2010,6 @@ class AOProtocol(asyncio.Protocol):
                         # Ignore those losers with listenpos for testimony
                         c.send_command("MS", *statement)
 
-    def net_cmd_setcase(self, args):
-        """Sets the casing preferences of the given client.
-
-        SETCASE#<cases:string>#<will_cm:int>#<will_def:int>#<will_pro:int>#<will_judge:int>#<will_jury:int>#<will_steno:int>#%
-
-        Note: Though all but the first arguments are ints, they technically behave as bools of 0 and 1 value.
-
-        """
-        self.client.casing_cases = args[0]
-        self.client.casing_cm = args[1] == "1"
-        self.client.casing_def = args[2] == "1"
-        self.client.casing_pro = args[3] == "1"
-        self.client.casing_jud = args[4] == "1"
-        self.client.casing_jur = args[5] == "1"
-        self.client.casing_steno = args[6] == "1"
-
-    def net_cmd_casea(self, args):
-        """Announces a case with a title, and specific set of people to look for.
-
-        CASEA#<casetitle:string>#<need_cm:int>#<need_def:int>#<need_pro:int>#<need_judge:int>#<need_jury:int>#<need_steno:int>#%
-
-        Note: Though all but the first arguments are ints, they technically behave as bools of 0 and 1 value.
-
-        """
-        if not self.client.is_checked:
-            return
-        if self.client in self.client.area.owners:
-            if not self.client.can_call_case():
-                self.client.send_ooc(
-                    "Please wait 60 seconds between case announcements!"
-                )
-                return
-
-            if (
-                not args[1] == "1"
-                and not args[2] == "1"
-                and not args[3] == "1"
-                and not args[4] == "1"
-                and not args[5] == "1"
-            ):
-                self.client.send_ooc(
-                    "You should probably announce the case to at least one person."
-                )
-                return
-            msg = "=== Case Announcement ===\r\n{} [{}] is hosting {}, looking for ".format(
-                self.client.showname, self.client.id, args[0]
-            )
-
-            lookingfor = [
-                p
-                for p, q in zip(
-                    ["defense", "prosecutor", "judge", "juror", "stenographer"],
-                    args[1:],
-                )
-                if q == "1"
-            ]
-
-            msg += ", ".join(lookingfor) + ".\r\n=================="
-
-            self.client.server.send_all_cmd_pred(
-                "CASEA", msg, args[1], args[2], args[3], args[4], args[5], "1"
-            )
-
-            self.client.set_case_call_delay()
-
-            log_data = {
-                k: v
-                for k, v in zip(("message", "def", "pro", "jud", "jur", "steno"), args)
-            }
-            database.log_area("case", self.client,
-                              self.client.area, message=log_data)
-        else:
-            self.client.send_ooc(
-                "You cannot announce a case in an area where you are not a CM!"
-            )
-
     def net_cmd_hp(self, args):
         """Sets the penalty bar.
 
@@ -2270,20 +2194,6 @@ class AOProtocol(asyncio.Protocol):
                 pred=lambda c: c.is_mod,
             )
 
-    def net_cmd_opKICK(self, args):
-        """
-        Unused; kick a user from the client UI.
-
-        """
-        self.net_cmd_ct(["opkick", "/kick {}".format(args[0])])
-
-    def net_cmd_opBAN(self, args):
-        """
-        Unused; ban a user from the client UI.
-
-        """
-        self.net_cmd_ct(["opban", "/ban {}".format(args[0])])
-
     def net_cmd_tt(self, args):
         """
         Sended when the client is typing on the IC chat.
@@ -2379,15 +2289,11 @@ class AOProtocol(asyncio.Protocol):
         "CT": net_cmd_ct,  # OOC message
         "MC": net_cmd_mc,  # play song
         "RT": net_cmd_rt,  # WT/CE buttons
-        "SETCASE": net_cmd_setcase,  # set case-announcement preferences for user
-        "CASEA": net_cmd_casea,  # announce a case
         "HP": net_cmd_hp,  # penalties
         "PE": net_cmd_pe,  # add evidence
         "DE": net_cmd_de,  # delete evidence
         "EE": net_cmd_ee,  # edit evidence
         "ZZ": net_cmd_zz,  # call mod button
-        "opKICK": net_cmd_opKICK,  # /kick with guard on
-        "opBAN": net_cmd_opBAN,  # /ban with guard on
         "TT": net_cmd_tt,
         "CU": net_cmd_cu,
     }

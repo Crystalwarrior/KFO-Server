@@ -250,10 +250,6 @@
 * **uncm** `<id>` *(CM)*
     - Remove a case manager from the current area.
     - Leave id blank to demote yourself.
-* **setcase**
-    - Set the positions you are interested in taking for a case. (This command is used internally by the 2.6 client.)
-* **anncase** `<message> <def> <pro> <jud> <jur> <steno>`
-    - Announce that a case is currently taking place in this area, needing a certain list of positions to be filled up.
 * **blockwtce** `<id>` *(Mod)*
     - Prevent a user from using Witness Testimony/Cross Examination buttons as a judge.
 * **unblockwtce** `<id>` *(Mod)*
