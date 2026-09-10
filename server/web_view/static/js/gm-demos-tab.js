@@ -507,7 +507,12 @@ class DemosTab extends TabBase {
             this._scriptHint.textContent = this._itemName ? `Editing: ${this._itemName}` : '';
             this._renderWarnings(this._parseWarnings, this._warningsEl);
             if (this._activeSubtab === 'visual' && !opts.skipImport) {
-                this._visualEditor.importInstructions(this._loadedInstructions || []);
+                const instructions = this._loadedInstructions || [];
+                if (await this._guardVisualImport(this._scriptText, instructions)) {
+                    this._visualEditor.importInstructions(instructions);
+                } else {
+                    this._setSubtab('text', { skipSync: true });
+                }
             }
             this._renderScriptSelect();
             this._updateRunStopState();
@@ -583,10 +588,15 @@ class DemosTab extends TabBase {
                 seq !== this._openSeq || this._areaId !== areaId || this._scriptText !== text
             );
             if (stale()) return;
+            const instructions = parsed.instructions || [];
+            if (!(await this._guardVisualImport(text, instructions))) {
+                this._setSubtab('text', { skipSync: true });
+                return;
+            }
             // Give Blockly a visible, sized container before injecting.
             requestAnimationFrame(() => {
                 if (stale()) return;
-                this._visualEditor.importInstructions(parsed.instructions || []);
+                this._visualEditor.importInstructions(instructions);
             });
         } catch (e) {
             this.shell.toast('Could not switch to blocks: ' + e.message, 'error');
@@ -612,6 +622,21 @@ class DemosTab extends TabBase {
         el.innerHTML = warnings.length
             ? `<div class="gm-warnings-box">${warnings.map((w) => `⚠ ${esc(w)}`).join('<br>')}</div>`
             : '';
+    }
+
+    /**
+     * Warn before importing instructions into the visual editor when the
+     * text is non-empty but produced no instructions -- likely a plain-text
+     * evidence description, not a demo script. Returns true when the import
+     * should proceed, false when the user cancelled.
+     */
+    async _guardVisualImport(text, instructions) {
+        if (!text.trim() || (instructions && instructions.length > 0)) return true;
+        return confirm(
+            'This description does not contain any recognized demo script '
+            + 'instructions. Switching to the Visual editor will clear it. '
+            + 'Proceed?'
+        );
     }
 
     // --- dirty tracking & autosave ---------------------------------------
