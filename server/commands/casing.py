@@ -23,8 +23,6 @@ __all__ = [
     "ooc_cmd_evidence_insert",  # Not strictly casing - to be reorganized
     "ooc_cmd_cm",
     "ooc_cmd_uncm",
-    "ooc_cmd_setcase",
-    "ooc_cmd_anncase",
     "ooc_cmd_blockwtce",
     "ooc_cmd_unblockwtce",
     "ooc_cmd_judgelog",
