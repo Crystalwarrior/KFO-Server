@@ -424,6 +424,7 @@ from .area_access import *
 from .areas import *
 from .casing import *
 from .character import *
+from .evidence import *
 from .fun import *
 from .hubs import *
 from .messaging import *
