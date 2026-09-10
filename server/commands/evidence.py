@@ -16,6 +16,9 @@ __all__ = [
     "ooc_cmd_evidence_mod",
     "ooc_cmd_evidence_swap",
     "ooc_cmd_evidence_insert",
+    "ooc_cmd_evidence_prefs",
+    "ooc_cmd_evidence_pos",
+    "ooc_cmd_evidence_dark",
     "ooc_cmd_evidence_save",
     "ooc_cmd_evidence_load",
     "ooc_cmd_evidence_overlay",
@@ -261,6 +264,106 @@ def ooc_cmd_evidence_insert(client, a, b):
         client.area.broadcast_evidence_list()
     except Exception:
         raise ClientError("you must specify 2 numbers")
+
+def _find_evidence(client, target, usage):
+    """
+    Resolve an evidence name or 1-based position number to the live
+    `Evidence` object in the area's list.
+    """
+    evi_list = client.area.get_evidence_list(client)
+    for i, evi in enumerate(evi_list):
+        if (target.isnumeric() and int(target) - 1 == i) or target.lower() == evi[0].lower():
+            return client.area.evi_list.evidences[i]
+    raise AreaError(f"Target evidence not found! ({usage} {target})")
+
+
+@mod_only(area_owners=True)
+@command(
+    Arg("target_evi", default="", help="evidence name or id"),
+    Arg("pref", default="", help="preference name (can_hide_in/can_take/editable)"),
+    Arg("tog", bool, default=None, help="on/off"),
+)
+def ooc_cmd_evidence_prefs(client, target_evi, pref, tog):
+    """
+    Toggle a boolean property on/off for an evidence item.
+    Properties: can_hide_in, can_take, editable.
+    Leave pref out to see that evidence's properties.
+    Leave value out to toggle the property.
+    Usage: /evidence_prefs [evi_name/id] [pref] [on/true/off/false]
+    """
+    if not target_evi:
+        msg = "Evidence properties in this area:"
+        for evi in client.area.evi_list.evidences:
+            msg += (
+                f"\n💼 '{evi.name}'"
+                f"\n   pos={evi.pos} | show_in_dark={evi.show_in_dark}"
+                f"\n   can_hide_in={evi.can_hide_in} | can_take={evi.can_take} | editable={evi.editable}"
+            )
+        client.send_ooc(msg)
+        return
+
+    evi = _find_evidence(client, target_evi, "[evi_name/id]")
+    cmd = pref.lower()
+    if cmd not in ("can_hide_in", "can_take", "editable"):
+        client.send_ooc(
+            f"Evidence '{evi.name}' properties:\n"
+            f"* can_hide_in={evi.can_hide_in}\n"
+            f"* can_take={evi.can_take}\n"
+            f"* editable={evi.editable}"
+        )
+        return
+
+    tog = not getattr(evi, cmd) if tog is None else tog
+    setattr(evi, cmd, tog)
+    client.send_ooc(f"Setting evidence property '{cmd}' to {tog} for '{evi.name}'.")
+    database.log_area("evidence.pref", client, client.area, message=f"Setting property {cmd} to {tog}")
+    client.area.broadcast_evidence_list()
+
+
+@mod_only(area_owners=True)
+@command(
+    Arg("target_evi", help="evidence name or id"),
+    Arg("pos", default="", help="'all', 'hidden' or positions like def,pro (blank shows current)"),
+)
+def ooc_cmd_evidence_pos(client, target_evi, pos):
+    """
+    Show or set the position(s) where an evidence item is visible.
+    Use 'all' for every position, 'hidden' for none, or a comma-separated
+    list like def,pro for specific positions.
+    Usage: /evidence_pos <evi_name/id> [pos]
+    """
+    evi = _find_evidence(client, target_evi, "<evi_name/id>")
+    if not pos:
+        client.send_ooc(f"Evidence '{evi.name}' is visible at: {evi.pos}")
+        return
+    evi.pos = pos.strip() or "all"
+    client.send_ooc(f"Evidence '{evi.name}' is now visible at: {evi.pos}")
+    database.log_area("evidence.pos", client, client.area, message=evi.pos)
+    client.area.broadcast_evidence_list()
+
+
+@mod_only(area_owners=True)
+@command(
+    Arg("target_evi", help="evidence name or id"),
+    Arg("value", int, default=None, help="0/1/2 (blank shows current)"),
+)
+def ooc_cmd_evidence_dark(client, target_evi, value):
+    """
+    Show or set how an evidence item behaves in dark areas.
+    0 = hidden in dark, 1 = shown in dark, 2 = ONLY shown in dark.
+    Usage: /evidence_dark <evi_name/id> [0/1/2]
+    """
+    evi = _find_evidence(client, target_evi, "<evi_name/id>")
+    if value is None:
+        client.send_ooc(f"Evidence '{evi.name}' show_in_dark is: {evi.show_in_dark}")
+        return
+    if value < 0 or value > 2:
+        raise ArgumentError("show_in_dark must be 0, 1 or 2.")
+    evi.show_in_dark = value
+    client.send_ooc(f"Evidence '{evi.name}' show_in_dark set to {evi.show_in_dark}.")
+    database.log_area("evidence.dark", client, client.area, message=value)
+    client.area.broadcast_evidence_list()
+
 
 @mod_only(hub_owners=True)
 @command()
