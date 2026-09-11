@@ -235,9 +235,9 @@ def ooc_cmd_forcepos(client, pos, targets):
         targets = client.server.client_manager.get_targets(
             client, TargetType.CHAR_NAME, target_text, True
         )
-        if len(targets) == 0 and target_text.isdigit():
+        if len(targets) == 0 and targets[0].isdigit():
             targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(target_text), True
+                client, TargetType.ID, int(targets[0]), True
             )
         if len(targets) == 0:
             targets = client.server.client_manager.get_targets(
