@@ -1969,11 +1969,12 @@ class AOProtocol(asyncio.Protocol):
                     .replace("~", "")
                     .replace("|", "")
                     .replace("`", "")
+                    .replace("-", "")
+                    .replace("=", "")
+                    .replace("\n", "")
+                    .replace("\\n", "")
                     .strip()
                 )
-                msg = msg.replace("-", "")
-                msg = msg.replace("=", "")
-                msg = msg.strip()
                 # actual title possible lol!
                 if len(msg) > 0:
                     self.client.area.testimony.clear()
@@ -1981,8 +1982,30 @@ class AOProtocol(asyncio.Protocol):
                     self.client.area.testimony_title = msg
                     self.client.area.recording = True
                     self.client.area.broadcast_ooc(
-                        f'-- {self.client.area.testimony_title} --\nTestimony recording started! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
+                        f'- {self.client.area.testimony_title} -\nTestimony recording started! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
                     )
+
+                    statement = self.client.area.last_ic_message
+                    lst = list(statement)
+                    # See if the testimony is supposed to end here.
+
+                    # Center it and make it speedy
+                    lst[4] = f'~~}}}}\\n- {self.client.area.testimony_title} -'
+
+                    # Make it orange
+                    lst[14] = 3
+
+                    # Blank out the showname
+                    lst[15] = " "
+
+                    statement = tuple(lst)
+                    targets = self.client.area.clients
+                    for c in targets:
+                        # Blinded clients don't receive IC messages
+                        if c.blinded:
+                            continue
+                        # Ignore those losers with listenpos for testimony
+                        c.send_command("MS", *statement)
                     return
             if sign == "CE":
                 if self.client.area.recording:
@@ -1996,11 +2019,14 @@ class AOProtocol(asyncio.Protocol):
                     # See if the testimony is supposed to end here.
 
                     # Center it and make it speedy
-                    lst[4] = "~~}}-- " + \
-                        self.client.area.testimony_title + " --"
+                    lst[4] = f'~~}}}}\\n- {self.client.area.testimony_title} -'
 
                     # Make it orange
                     lst[14] = 3
+
+                    # Blank out the showname
+                    lst[15] = " "
+
                     statement = tuple(lst)
                     targets = self.client.area.clients
                     for c in targets:

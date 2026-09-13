@@ -1092,11 +1092,13 @@ class Area:
             return
 
         adding = msg.strip() != "" and self.recording and client is not None
-        if client and msg.startswith("++") and len(self.testimony) > 0:
-            if len(self.testimony) >= 30:
-                client.send_ooc("Maximum testimony statement amount reached! (30)")
-                return
-            adding = True
+        if client and len(self.testimony) > 0:
+            if msg.startswith("++") or msg.startswith("`") or color == 1:
+                if len(self.testimony) >= 30:
+                    client.send_ooc("Maximum testimony statement amount reached! (30)")
+                    return
+                client.send_ooc("❗ Don't forget to swap from GREEN color back to WHITE ❗")
+                adding = True
         elif client:
             # Shout used
             shout = str(button).split("<and>")[0]
@@ -1399,19 +1401,26 @@ class Area:
                 return
             if msg.startswith("++"):
                 msg = msg[2:]
+            idx = self.testimony_index
+            # Adjust the index
+            if idx == -1:
+                # Add one statement at the very end.
+                idx = len(self.testimony)
+            else:
+                # Add one statement ahead of the one we're currently on.
+                idx += 1
             # Remove speed modifying chars and start the statement instantly
             msg = "}}}" + msg.replace("{", "").replace("}", "")
-            # Non-int pre automatically enabled
-            nonint_pre = 1
-            # Set emote_mod to conform to nonint_pre
-            if emote_mod == 1 or emote_mod == 2:
-                emote_mod = 0
-            elif emote_mod == 6:
-                emote_mod = 5
+            if emote_mod == 1 or emote_mod == 2 or emote_mod == 6:
+                # Non-int pre automatically enabled
+                nonint_pre = 1
+                # Set emote_mod to conform to nonint_pre
+                if emote_mod == 1 or emote_mod == 2:
+                    emote_mod = 0
+                elif emote_mod == 6:
+                    emote_mod = 5
             # Make it green
             color = 1
-            idx = self.testimony_index
-
             args = (
                 msg_type,  # 0
                 pre,  # 1
@@ -1450,14 +1459,7 @@ class Area:
                 third_flip,  # 34
                 video,  # 35
             )
-            if idx == -1:
-                # Add one statement at the very end.
-                self.testimony.append(args)
-                idx = self.testimony.index(args)
-            else:
-                # Add one statement ahead of the one we're currently on.
-                idx += 1
-                self.testimony.insert(idx, args)
+            self.testimony.insert(idx, args)
             self.broadcast_ooc(f"Statement {idx+1} added.")
             if not self.recording:
                 self.testimony_send(idx)
@@ -1479,6 +1481,16 @@ class Area:
         """Send the testimony statement at index"""
         try:
             statement = self.testimony[idx]
+
+            statement = list(statement)
+
+            # Add a testimony index marker in the showname
+            if statement[15] == "":
+                # Since the char name might be subfoldered, use the foldername as the char name
+                statement[15] = f"[{idx+1}] {statement[2].rsplit("/", 1)[-1]}"
+            else:
+                statement[15] = f"[{idx+1}] {statement[15]}"
+
             self.testimony_index = idx
             targets = self.clients
             for c in targets:

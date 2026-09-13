@@ -295,14 +295,25 @@ def ooc_cmd_testimony_start(client, arg):
         raise ArgumentError(
             "You must provite a title! /testimony_start <title>."
         )
-    if len(arg) < 3:
-        raise ArgumentError("Title must contain at least 3 characters!")
+    title = (
+        arg
+        .replace("~", "")
+        .replace("|", "")
+        .replace("`", "")
+        .replace("-", "")
+        .replace("=", "")
+        .replace("\n", "")
+        .replace("\\n", "")
+        .strip()
+    )
+    if len(title) < 1:
+        raise ArgumentError(f"Title must contain at least 1 valid character! Given title was parsed into:\n{title}")
     client.area.testimony.clear()
     client.area.testimony_index = -1
-    client.area.testimony_title = arg
+    client.area.testimony_title = title
     client.area.recording = True
     client.area.broadcast_ooc(
-        f'-- {client.area.testimony_title} --\nTestimony recording started! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
+        f'- {client.area.testimony_title} -\nTestimony recording started! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
     )
 
 
@@ -317,7 +328,7 @@ def ooc_cmd_testimony_continue(client):
         raise ArgumentError("No testimony to continue!")
     client.area.recording = True
     client.area.broadcast_ooc(
-        f'-- {client.area.testimony_title} --\nTestimony recording restarted! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
+        f'- {client.area.testimony_title} -\nTestimony recording restarted! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
     )
 
 
