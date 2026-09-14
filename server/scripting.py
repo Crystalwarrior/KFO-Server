@@ -232,6 +232,8 @@ _AREA_FIELDS = {
     "blankposting_allowed": lambda a: int(a.blankposting_allowed),
     "blankposting_forced": lambda a: int(a.blankposting_forced),
     "ooc_actions_enabled": lambda a: int(a.ooc_actions_enabled),
+    "public_votes": lambda a: int(a.public_votes),
+    "can_switch_pos": lambda a: int(a.can_switch_pos),
     "present_reveals_evidence": lambda a: int(a.present_reveals_evidence),
     "passing_msg": lambda a: int(a.passing_msg),
     "can_whisper": lambda a: int(a.can_whisper),

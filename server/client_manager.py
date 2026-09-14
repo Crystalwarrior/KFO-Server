@@ -770,7 +770,10 @@ class ClientManager:
             arup = (self.char_id == -1 or char_id == -
                     1) and self.char_id != char_id
             self.char_id = char_id
-            self.pos = ""
+            # If we are not prevented from switching pos by some circumstance
+            if self.area.can_switch_pos:
+                # Reset the pos to character default
+                self.pos = ""
             self.send_command("PV", self.id, "CID", self.char_id)
             # Commented out due to potentially causing clientside lag...
             # self.area.send_command('CharsCheck',

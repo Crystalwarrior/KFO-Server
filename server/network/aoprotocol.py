@@ -1036,10 +1036,22 @@ class AOProtocol(asyncio.Protocol):
             anim = "misc/blank"
 
         if pos != "" and self.client.pos != pos:
-            try:
-                self.client.change_position(pos)
-            except ClientError:
-                pos = ""
+            if (
+                self.client.is_mod or
+                self.client in self.client.area.owners or
+                self.client.area.can_switch_pos
+            ):
+                try:
+                    self.client.change_position(pos)
+                except ClientError:
+                    pos = ""
+            else:
+                # reset the pos dropdown to the actual pos cuz we're not allowed to swap
+                pos = self.client.pos
+                self.client.send_command("SP", pos)
+                self.client.send_ooc(
+                    "You cannot manually change your pos in this area!"
+                )
         if len(self.client.area.pos_lock) > 0 and pos not in self.client.area.pos_lock:
             pos = self.client.area.pos_lock[0]
         if self.client.area.dark:

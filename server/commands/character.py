@@ -135,6 +135,13 @@ def ooc_cmd_pos(client, arg):
     if len(arg) == 0:
         client.send_ooc(f"Your current position is {client.pos}.")
     else:
+        allowed = (
+                client.is_mod or
+                client in client.area.owners or
+                client.area.can_switch_pos
+        )
+        if not allowed:
+            raise AreaError("You cannot manually change your pos in this area!")
         try:
             client.change_position(arg)
         except ClientError:

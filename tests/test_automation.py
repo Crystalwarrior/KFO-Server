@@ -2168,6 +2168,8 @@ def test_live_get_area_fields_all_readable(make_area):
         "msg_delay",
         "present_reveals_evidence",
         "ooc_actions_enabled",
+        "public_votes",
+        "can_switch_pos",
         "can_battle",
         "auto_pair",
         "auto_pair_max",

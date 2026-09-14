@@ -95,6 +95,8 @@ class Area:
         self.present_reveals_evidence = True
         # Whether IC action messages (asterisk/color-3) are mirrored to OOC
         self.ooc_actions_enabled = True
+        # If you can switch positions manually or you have to rely on links/forcepos to do so
+        self.can_switch_pos = True
         # /prefs end
 
         # DR minigames
@@ -544,6 +546,10 @@ class Area:
             self.present_reveals_evidence = area["present_reveals_evidence"]
         if "ooc_actions_enabled" in area:
             self.ooc_actions_enabled = area["ooc_actions_enabled"]
+        if "public_votes" in area:
+            self.public_votes = area["public_votes"]
+        if "can_switch_pos" in area:
+            self.can_switch_pos = area["can_switch_pos"]
 
         if "evidence" in area and len(area["evidence"]) > 0:
             self.evi_list.evidences.clear()
@@ -660,6 +666,8 @@ class Area:
         area["msg_delay"] = self.msg_delay
         area["present_reveals_evidence"] = self.present_reveals_evidence
         area["ooc_actions_enabled"] = self.ooc_actions_enabled
+        area["public_votes"] = self.public_votes
+        area["can_switch_pos"] = self.can_switch_pos
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = self.evi_list.export_evidence()
         if len(self.links) > 0:
