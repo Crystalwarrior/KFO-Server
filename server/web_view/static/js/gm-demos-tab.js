@@ -625,18 +625,24 @@ class DemosTab extends TabBase {
     }
 
     /**
-     * Warn before importing instructions into the visual editor when the
-     * text is non-empty but produced no instructions -- likely a plain-text
-     * evidence description, not a demo script. Returns true when the import
-     * should proceed, false when the user cancelled.
+     * Refuse importing instructions into the visual editor when the text is
+     * non-empty but produced no instructions -- likely a plain-text evidence
+     * description, not a demo script. Importing would replace the text with
+     * the blocks' output, silently discarding it, so this always takes the
+     * "No" branch: the switch is blocked and the GM is told why, instead of
+     * being offered a confirm() that risks one accidental Enter wiping the
+     * description.
      */
     async _guardVisualImport(text, instructions) {
         if (!text.trim() || (instructions && instructions.length > 0)) return true;
-        return confirm(
-            'This description does not contain any recognized demo script '
-            + 'instructions. Switching to the Visual editor will clear it. '
-            + 'Proceed?'
+        this.shell.toast(
+            'This demo is invalid: it contains no recognized demo script '
+            + 'instructions. The Visual editor would override its extra text '
+            + 'with generated blocks -- clear the description manually or '
+            + 'correct the errors before switching to Visual.',
+            'error'
         );
+        return false;
     }
 
     // --- dirty tracking & autosave ---------------------------------------

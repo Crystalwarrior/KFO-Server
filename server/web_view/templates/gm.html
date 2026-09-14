@@ -241,6 +241,12 @@
             </div>
 
             <div class="gm-panel-box gm-demo-editor-box">
+                <div class="gm-toolbar">
+                    <button class="btn-sm" id="evidenceSaveBtn">Save</button>
+                    <button class="btn-sm" id="evidenceEditScriptBtn"
+                        title="Open this item's script in the Demos tab (Text or Visual blocks editor)">Edit script in Demos</button>
+                    <button class="btn-sm danger" id="evidenceDeleteBtn">Delete</button>
+                </div>
                 <div class="gm-inline-form">
                     <span class="gm-icon-slot gm-icon-slot-lg" id="evidenceIconPreview"><span class="gm-icon-fallback">?</span></span>
                     <input type="text" id="evidenceNameInput" placeholder="Evidence name">
@@ -250,10 +256,10 @@
                 <div class="gm-evidence-desc">
                     <div class="gm-evidence-desc-head">
                         <span>Description</span>
-                        <span class="dim">doubles as the demo script — the Demos tab adds Text/Visual block editing</span>
+                        <span class="dim">Type out your evidence's description field here</span>
                     </div>
                     <textarea id="evidenceScriptEditor" class="gm-script-editor" spellcheck="false"
-                        placeholder="wait 500&#10;CT#narrator#Hello everyone!%"></textarea>
+                        placeholder="This is a kitchen knife. Its hilt is clean of prints and the edge is sharp."></textarea>
                 </div>
                 <div id="evidenceParseWarnings"></div>
                 <div class="gm-evidence-props">
@@ -289,12 +295,6 @@
                         <textarea id="evidenceTriggersInput" rows="2" spellcheck="false"
                             placeholder="present demo 3"></textarea>
                     </label>
-                </div>
-                <div class="gm-toolbar">
-                    <button class="btn-sm" id="evidenceSaveBtn">Save</button>
-                    <button class="btn-sm" id="evidenceEditScriptBtn"
-                        title="Open this item's script in the Demos tab (Text or Visual blocks editor)">Edit script in Demos</button>
-                    <button class="btn-sm danger" id="evidenceDeleteBtn">Delete</button>
                 </div>
             </div>
         </div>
