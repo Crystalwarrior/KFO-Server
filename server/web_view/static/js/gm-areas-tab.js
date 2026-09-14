@@ -709,10 +709,10 @@ class AreasGraphTab extends TabBase {
      * hardcoded per name, so a future editable field renders automatically:
      *   checkbox -> self-saving toggle, current state shown as on/off text
      *   select   -> self-saving dropdown (evidence_mod / music_ref)
-     *   number   -> numeric input + Save (move_delay, msg_delay, hp_*,
-     *               max_players) -- invalid non-numeric input is rejected
-     *               by the backend
-     *   text     -> text input + Save (everything else)
+     *   number   -> numeric input, committed on Enter/blur (move_delay,
+     *               msg_delay, hp_*, max_players) -- invalid non-numeric
+     *               input is rejected by the backend
+     *   text     -> text input, committed on Enter/blur (everything else)
      * Fields the backend does NOT list in `editable_fields` render as a
      * read-only value instead. */
     _fieldRowHtml(k, area, editableFields) {
@@ -759,14 +759,12 @@ class AreasGraphTab extends TabBase {
             <div class="gm-field-row" data-field="${esc(k)}">
                 <label title="${esc(k)}">${esc(k)}</label>
                 <input type="number" class="gm-field-input" ${min}${max} value="${esc(fmtValue(area[k]))}">
-                <button class="btn-sm gm-field-save">Save</button>
             </div>`;
         }
         return `
             <div class="gm-field-row" data-field="${esc(k)}">
                 <label title="${esc(k)}">${esc(k)}</label>
                 <input type="text" class="gm-field-input" value="${esc(fmtValue(area[k]))}">
-                <button class="btn-sm gm-field-save">Save</button>
             </div>`;
     }
 
@@ -782,7 +780,6 @@ class AreasGraphTab extends TabBase {
             <div class="gm-field-row" data-trigger-row="${esc(key)}">
                 <label title="Command run when a client ${esc(key)}s this area">trigger ${esc(key)}</label>
                 <input type="text" class="gm-field-input" value="${esc(triggers[key] || '')}" placeholder="command to run, e.g. lock">
-                <button class="btn-sm gm-field-save" data-trigger-save="${esc(key)}">Save</button>
             </div>
         `).join('');
     }
@@ -974,15 +971,13 @@ class AreasGraphTab extends TabBase {
                 <input type="text" id="inspectorOverlayInput" value="${esc(area.overlay || '')}" placeholder="overlay">
                 <span class="gm-field-hint">Image layered over the background, e.g. a vignette or foreground effect.</span>
             </div>
-            <button class="btn-sm" id="inspectorBgSetBtn" style="margin-top:0.35rem;width:100%">Set Background</button>
             <div style="margin-top:0.65rem">
                 <label>Position Lock</label>
                 <div class="gm-poslock-list">${posLockListHtml}</div>
                 <div class="gm-inline-form">
-                    <input type="text" id="inspectorPosLockInput" value="${esc(posLock.join(', '))}" placeholder="pos one, pos two">
+                    <input type="text" id="inspectorPosLockInput" value="${esc(posLock.join(', '))}" placeholder="pos one, pos two" title="Enter or click away to apply; empty allows all positions">
                 </div>
                 <div class="gm-inline-form" style="margin-top:0.35rem">
-                    <button class="btn-sm" id="inspectorPosLockSaveBtn" style="flex:1">Save</button>
                     <button class="btn-sm danger" id="inspectorPosLockClearBtn" style="flex:1" ${posLock.length ? '' : 'disabled'}>Clear</button>
                 </div>
             </div>`);
@@ -1066,20 +1061,25 @@ class AreasGraphTab extends TabBase {
     _wireInspector(area) {
         const p = this._popover;
         p.querySelector('#inspectorCloseBtn').addEventListener('click', () => this._closeInspector());
-        p.querySelector('#inspectorBgSetBtn').addEventListener('click', () => this._setBackground(area.id));
+
+        // Visuals (background/suffix/overlay) and pos_lock commit the same
+        // way as the generic field rows below: dirty on input, sent on
+        // Enter or blur. _setBackground reads all three inputs, so
+        // committing any one of them submits the whole visuals trio.
+        ['inspectorBgInput', 'inspectorBgSuffixInput', 'inspectorOverlayInput'].forEach((id) => {
+            const input = p.querySelector(`#${id}`);
+            if (input) this._wireCommitableInput(input, () => this._setBackground(area.id));
+        });
+        const posLockInput = p.querySelector('#inspectorPosLockInput');
+        if (posLockInput) {
+            this._wireCommitableInput(posLockInput, (value) => this._editField(area.id, 'pos_lock', value));
+        }
 
         const teleportBtn = p.querySelector('#inspectorTeleportBtn');
         if (teleportBtn && !teleportBtn.disabled) {
             teleportBtn.addEventListener('click', () => this._teleportHere(area.id));
         }
 
-        const posLockSaveBtn = p.querySelector('#inspectorPosLockSaveBtn');
-        if (posLockSaveBtn) {
-            posLockSaveBtn.addEventListener('click', () => {
-                const value = p.querySelector('#inspectorPosLockInput').value;
-                this._editField(area.id, 'pos_lock', value);
-            });
-        }
         const posLockClearBtn = p.querySelector('#inspectorPosLockClearBtn');
         if (posLockClearBtn && !posLockClearBtn.disabled) {
             posLockClearBtn.addEventListener('click', () => this._editField(area.id, 'pos_lock', ''));
@@ -1098,21 +1098,22 @@ class AreasGraphTab extends TabBase {
                 select.addEventListener('change', () => this._editField(area.id, field, select.value));
                 return;
             }
-            const saveBtn = row.querySelector('.gm-field-save');
-            if (!saveBtn) return; // read-only field row -- no command backs it
-            saveBtn.addEventListener('click', () => {
-                const value = row.querySelector('.gm-field-input').value;
-                this._editField(area.id, field, value);
-            });
+            // Text/number fields have no Save button anymore: the input
+            // itself is the commit point. Marked dirty on `input` (so the
+            // 4s-poll reconciliation can never overwrite in-progress text
+            // -- _editingPopover already defers the rebuild while focused,
+            // and dirty inputs are committed before focus ever leaves),
+            // then submitted on Enter or on blur (clicking outside the
+            // input counts as submitting it).
+            const input = row.querySelector('.gm-field-input');
+            if (!input) return; // read-only field row -- no command backs it
+            this._wireCommitableInput(input, (value) => this._editField(area.id, field, value));
         });
 
         p.querySelectorAll('.gm-field-row[data-trigger-row]').forEach((row) => {
             const key = row.dataset.triggerRow;
-            const saveBtn = row.querySelector('[data-trigger-save]');
-            saveBtn.addEventListener('click', () => {
-                const value = row.querySelector('.gm-field-input').value;
-                this._editField(area.id, 'triggers', value, { trigger: key });
-            });
+            const input = row.querySelector('.gm-field-input');
+            if (input) this._wireCommitableInput(input, (value) => this._editField(area.id, 'triggers', value, { trigger: key }));
         });
 
         p.querySelectorAll('.gm-pref-toggle input[type=checkbox]').forEach((cb) => {
@@ -1126,25 +1127,17 @@ class AreasGraphTab extends TabBase {
             });
             const posInput = row.querySelector('.gm-link-pos-input');
             if (posInput) {
-                // Commit only on Enter: the inspector is rebuilt by the 4s
-                // poll and WS events, and a `change` listener fires on blur
-                // (including when that rebuild yanks a focused input out of
-                // the DOM), silently committing half-typed text. Enter is
-                // the deliberate, visible commit point.
-                posInput.addEventListener('keydown', (e) => {
-                    if (e.key !== 'Enter') return;
-                    e.preventDefault();
-                    posInput.blur();
-                    this._setLinkProp(area.id, targetId, 'pos', posInput.value);
-                });
+                // Dirty-track + commit on Enter/blur (see _wireCommitableInput):
+                // the 4s-poll rebuild can't clobber mid-edit text, and clicking
+                // away submits it like pressing Enter would. Blank clears the pos.
+                this._wireCommitableInput(posInput, (value) => this._setLinkProp(area.id, targetId, 'pos', value));
             }
             const evidenceInput = row.querySelector('.gm-link-evidence-input');
             if (evidenceInput) {
-                evidenceInput.addEventListener('keydown', (e) => {
-                    if (e.key !== 'Enter') return;
-                    e.preventDefault();
-                    evidenceInput.blur();
-                    const ids = evidenceInput.value.split(/[,\s]+/)
+                // Same dirty-track + commit protocol; the value is parsed into
+                // an id list (comma/space separated) at commit time.
+                this._wireCommitableInput(evidenceInput, (value) => {
+                    const ids = value.split(/[,\s]+/)
                         .map((s) => s.trim())
                         .filter((s) => s !== '')
                         .map((s) => parseInt(s, 10))
@@ -1189,10 +1182,47 @@ class AreasGraphTab extends TabBase {
         if (removeBtn) removeBtn.addEventListener('click', () => this._removeArea(area.id));
     }
 
+    // --- dirty input tracking & commit ------------------------------------
+
+    /** Mark a text/number input as dirty: the GM has edited it but not yet
+     * submitted it, so it must be treated as the user's in-progress edit
+     * (the 4s-poll rebuild already defers while the input is focused; the
+     * dirty flag means the value is submitted before focus can leave). */
+    _markDirty(input) {
+        input.dataset.dirty = '1';
+        input.classList.add('gm-dirty');
+    }
+
+    /** Submit a dirty input's current value exactly once via `apply`, then
+     * clear the dirty flag. Non-dirty inputs are no-ops, so blurring an
+     * untouched field never fires a spurious server call. */
+    _commitInput(input, apply) {
+        if (input.dataset.dirty !== '1') return;
+        delete input.dataset.dirty;
+        input.classList.remove('gm-dirty');
+        apply(input.value);
+    }
+
+    /** Wire one text/number input to the dirty-track + commit-on-Enter/
+     * blur protocol (see _commitInput). Enter commits via blur, so there
+     * is exactly one commit path. */
+    _wireCommitableInput(input, apply) {
+        input.addEventListener('input', () => this._markDirty(input));
+        input.addEventListener('blur', () => this._commitInput(input, apply));
+        input.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            input.blur();
+        });
+    }
+
     async _setBackground(areaId) {
-        const bg = this._popover.querySelector('#inspectorBgInput').value.trim();
-        const overlay = this._popover.querySelector('#inspectorOverlayInput').value.trim();
-        const suffix = this._popover.querySelector('#inspectorBgSuffixInput').value.trim();
+        const bgInput = this._popover.querySelector('#inspectorBgInput');
+        const bg = bgInput ? bgInput.value.trim() : '';
+        const overlayEl = this._popover.querySelector('#inspectorOverlayInput');
+        const overlay = overlayEl ? overlayEl.value.trim() : '';
+        const suffixEl = this._popover.querySelector('#inspectorBgSuffixInput');
+        const suffix = suffixEl ? suffixEl.value.trim() : '';
         if (!bg) { this.shell.toast('Background name is required.', 'error'); return; }
         try {
             const result = await this.api.setAreaBackground(areaId, bg, overlay, suffix);
@@ -1570,6 +1600,10 @@ class AreasGraphTab extends TabBase {
             .gm-field-row .gm-field-checkbox {
                 flex: 0 0 auto; width: 16px; height: 16px; accent-color: var(--gm-accent); cursor: pointer;
             }
+            /* Dirty tracking: an input the GM has edited but not yet
+             * submitted (Enter / click-away) shows an accent border so
+             * uncommitted edits are visible at a glance. */
+            .gm-dirty { border-color: var(--gm-accent) !important; }
             /* Inline explanation next to a field (e.g. the overlay input):
              * dim, right-aligned filler that takes up the row's spare width
              * instead of leaving it blank. */
