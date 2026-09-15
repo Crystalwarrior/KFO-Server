@@ -140,6 +140,9 @@ class ClientManager:
             # client status stuff
             self._showname = ""
             self.blinded = False
+            self.deafened = False
+            self.player_muted = False
+            self.forced_blankpost = False
             self._hidden = False
             self.hidden_in = None
             self.sneaking = False
@@ -643,7 +646,7 @@ class ClientManager:
             self.send_command("HP", 2, area.hp_pro)
             # Background / pos / overlay (immediate mode)
             self.send_command(
-                "BN", area.background, self.pos, area.overlay, 1
+                "BN", self.view_background(), self.pos, area.overlay, 1
             )
             if len(area.pos_lock) > 0:
                 self.send_command("SD", "*".join(area.pos_lock))
@@ -1415,7 +1418,7 @@ class ClientManager:
             self.send_command("HP", 2, self.area.hp_pro)
 
             # Send the background information
-            self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
+            self.send_command("BN", self.view_background(), self.pos, self.area.overlay, 1)
 
             if len(self.area.pos_lock) > 0:
                 # set that juicy pos dropdown
@@ -2203,7 +2206,7 @@ class ClientManager:
 
             self.send_command("HP", 1, self.area.hp_def)
             self.send_command("HP", 2, self.area.hp_pro)
-            self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
+            self.send_command("BN", self.view_background(), self.pos, self.area.overlay, 1)
             self.update_evidence_list()
             self.send_command("MM", 1)
             if self.area.music_autoplay:
@@ -2505,19 +2508,93 @@ class ClientManager:
             if not self.sneaking:
                 self.area.broadcast_player_list()
 
+        def view_background(self):
+            """The background this client should currently see: the area's
+            darkness background while blinded (or while the area itself is
+            dark), otherwise the area's normal background."""
+            if self.blinded or self.area.dark:
+                return self.area.background_dark
+            return self.area.background
+
         def blind(self, tog=True):
+            """
+            Blind the client: they see the area's darkness background and
+            cannot use /getarea-style listings, but still receive IC messages
+            (text and shownames intact) and can edit evidence they have access
+            to. The dark-area evidence visibility rules apply to them.
+            """
             self.blinded = tog
             msg = "no longer"
             if tog:
                 msg = "now"
+            # Push the background this client should see (darkness while
+            # blinded, the area's real background otherwise; if the area is
+            # itself dark, its darkness background is shown either way).
+            self.send_command(
+                "BN", self.view_background(), self.pos,
+                self.area.overlay, 1,
+            )
             self.send_ooc(
-                f"You are {msg} blinded from the area and seeing non-broadcasted IC messages."
+                f"You are {msg} blinded: you cannot see the area around you."
             )
             self.update_evidence_list()
             if not self.hidden and not self.sneaking:
                 self.area.broadcast_player_list()
             else:
                 self.area.broadcast_player_list_to_target(self)
+
+        def deafen(self, tog=True):
+            """Deafen the client: IC messages arrive as blankposts (dots)."""
+            self.deafened = tog
+            msg = "no longer" if not tog else "now"
+            self.send_ooc(f"You are {msg} deafened: IC messages are muffled.")
+
+        def player_mute(self, tog=True):
+            """Mute the client from sending IC messages (does not affect OOC)."""
+            self.player_muted = tog
+            msg = "no longer" if not tog else "now"
+            self.send_ooc(f"You are {msg} player-muted from sending IC messages.")
+
+        def force_blankpost(self, tog=True):
+            """Force the client to only be able to send blankposts."""
+            self.forced_blankpost = tog
+            msg = "no longer" if not tog else "now"
+            self.send_ooc(f"You are {msg} forced to only blankpost in IC.")
+
+        def deafen_message(self, msg, ao_packet=True):
+            """Muffle a message: legible characters become dots, while
+            punctuation, spaces, newlines, bracketed action text (e.g.
+            ``[Leaves]``), and *emphasis-wrapped* action text are left
+            intact."""
+            if ao_packet:
+                # Decode AO packet
+                msg = msg.replace("<num>", "#") \
+                    .replace("<percent>", "%") \
+                    .replace("<dollar>", "$") \
+                    .replace("<and>", "&") \
+                    .replace("\\n", "\n")
+            # Split out bracketed/asterisk actions and literal AO newlines
+            # (\n) and leave them untouched.
+            parts = re.split(r"(\\n|\[[^\]]*\]|\*[^*]+\*)", msg)
+            out = []
+            for part in parts:
+                if (
+                    (part.startswith("[") and part.endswith("]"))
+                    or (part.startswith("*") and part.endswith("*") and len(part) > 1)
+                    or part == "\\n"
+                ):
+                    out.append(part)
+                    continue
+                out.append(re.sub(r"[\w]", "•", part))
+            result = "".join(out)
+            if ao_packet:
+                # Encode AO packet
+                result = result.replace("<num>", "#") \
+                    .replace("<percent>", "%") \
+                    .replace("<dollar>", "$") \
+                    .replace("<and>", "&") \
+                    .replace("\n", "\\n")
+            return result
 
         def freeze(self, tog=True):
             self.frozen = tog
@@ -2664,10 +2741,6 @@ class ClientManager:
         
         def update_evidence_list(self):
             evi_list = []
-            if self.blinded:
-                evi_list.insert(0, ("Blinded!", "You are blind!\n\nYou are unable to see any IC messages or edit any evidence at this time.", "BLIND\n🕶️"))
-                self.send_command("LE", *evi_list)
-                return
             if self.viewing_inventory:
                 for inv_item in self.inventory:
                     # Add a tuple of the inventory item

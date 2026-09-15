@@ -197,8 +197,14 @@ class ClientsTab extends TabBase {
         actionBtns.push(`<button class="btn-sm danger" data-action="kill" data-id="${c.id}" title="Force into spectator (death)">Kill</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="freeze" data-id="${c.id}" title="Freeze from moving between areas">Freeze</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="unfreeze" data-id="${c.id}" title="Unfreeze">Unfreeze</button>`);
-        actionBtns.push(`<button class="btn-sm" data-action="blind" data-id="${c.id}" title="Blind from seeing/talking IC">Blind</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="blind" data-id="${c.id}" title="Blind (darkness background, /getarea blocked)">Blind</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="unblind" data-id="${c.id}" title="Unblind">Unblind</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="deafen" data-id="${c.id}" title="Deafen (IC text obscured into dots)">Deafen</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="undeafen" data-id="${c.id}" title="Undeafen">Undeafen</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="player_mute" data-id="${c.id}" title="Mute from sending IC messages">Player mute</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="player_unmute" data-id="${c.id}" title="Unmute IC">Player unmute</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="force_blankpost" data-id="${c.id}" title="Force only blankposts in IC">Force blankpost</button>`);
+        actionBtns.push(`<button class="btn-sm" data-action="unforce_blankpost" data-id="${c.id}" title="Stop forcing blankposts">Unforce blankpost</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="${c.hidden ? 'unhide' : 'hide'}" data-id="${c.id}" title="${c.hidden ? 'Unhide from /getarea and playercounts' : 'Hide from /getarea and playercounts'}">${c.hidden ? 'Unhide' : 'Hide'}</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="move-delay" data-id="${c.id}" title="Set this player's move delay">Move delay…</button>`);
         actionBtns.push(`<button class="btn-sm" data-action="force-switch" data-id="${c.id}" title="Force this player to switch character">Force switch…</button>`);
@@ -338,12 +344,15 @@ class ClientsTab extends TabBase {
             } else if (action === 'ungm') {
                 if (!window.confirm(`Demote ${label} from GM?`)) return;
                 result = await this.api.demoteClient(id);
-            } else if (['kill', 'freeze', 'unfreeze', 'blind', 'unblind', 'hide', 'unhide', 'move-delay', 'force-switch'].includes(action)) {
+            } else if (['kill', 'freeze', 'unfreeze', 'blind', 'unblind', 'deafen', 'undeafen', 'player_mute', 'player_unmute', 'force_blankpost', 'unforce_blankpost', 'hide', 'unhide', 'move-delay', 'force-switch'].includes(action)) {
                 // GM moderation actions, dispatched through the shared command
                 // runner so the real command layer's mod_only gates apply.
                 const cmdMap = {
                     kill: 'kill', freeze: 'freeze', unfreeze: 'unfreeze',
                     blind: 'blind', unblind: 'unblind',
+                    deafen: 'deafen', undeafen: 'undeafen',
+                    player_mute: 'player_mute', player_unmute: 'player_unmute',
+                    force_blankpost: 'force_blankpost', unforce_blankpost: 'unforce_blankpost',
                     hide: 'player_hide', unhide: 'player_unhide',
                     'move-delay': 'player_move_delay', 'force-switch': 'force_switch',
                 };

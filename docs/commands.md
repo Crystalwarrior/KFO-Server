@@ -344,9 +344,21 @@
 * **reload**
     - Reload a character to its default position and state.
 * **blind** *(CM)*
-    - Blind the targeted player(s) from being able to see or talk IC.
+    - Blind the targeted player(s): they only see the area's darkness background (like /lights off), but still see IC messages, shownames, and can edit evidence they have access to. Cannot use /getarea. Dark-area evidence visibility rules apply to them.
 * **unblind** *(CM)*
     - Undo effects of the /blind command.
+* **deafen** `<id(s)>` *(CM)*
+    - Deafen the targeted player(s): IC text is obscured (each legible character becomes a dot). Punctuation, spaces, and bracketed action text (e.g. `[Leaves]`) remain visible; character and emote are untouched.
+* **undeafen** `<id(s)>` *(CM)*
+    - Undo effects of the /deafen command.
+* **player\_mute** `<id(s)>` *(CM)*
+    - Mute the targeted player(s) from sending IC messages (OOC unaffected). Stacks with the global mod mute.
+* **player\_unmute** `<id(s)>` *(CM)*
+    - Undo effects of the /player\_mute command.
+* **force\_blankpost** `<id(s)>` *(CM)*
+    - Force the targeted player(s) to only be able to send blankposts in IC, like the `blankposting_forced` area preference.
+* **unforce\_blankpost** `<id(s)>` *(CM)*
+    - Undo effects of the /force\_blankpost command.
 * **player\_move\_delay** `<id> [delay]` *(CM)*
     - Set the player's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.

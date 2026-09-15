@@ -280,6 +280,9 @@ The flags below come back as `1` (yes) or `0` (no):
 | `is_afk`     | They're marked AFK            |
 | `hidden`     | They're hidden                |
 | `blinded`    | They're blinded               |
+| `deafened`   | They're deafened              |
+| `player_muted` | They're muted from IC       |
+| `forced_blankpost` | They can only blankpost |
 | `sneaking`   | They're sneaking              |
 | `frozen`     | They're frozen                |
 

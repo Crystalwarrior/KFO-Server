@@ -1012,19 +1012,37 @@ class Area:
             if "ooc_system" in self.server.config["bridgebot"] and self.server.config["bridgebot"]["ooc_system"]:
                 self.server.bridgebot.queue_message(self.server.config["hostname"], msg)
 
-    def broadcast_action(self, client, msg):
+    def broadcast_action(self, client, msg, color=0):
         """
         Broadcast an Action message to all clients in the area who are listening to actions.
         :param msg: message
+        :param color: IC color of the originating message (used to detect
+            pure action messages, which are spared from deafening)
         """
         if not self.ooc_actions_enabled:
             return
         cmd = "CT"
-        msg = f"[❗] [{client.id}] {client.showname} action:\n{msg}"
+        # A message that is entirely an action (orange IC color, *emphasis*
+        # wrapped, or fully [bracketed]) is not speech, so deafened clients
+        # still "hear" it intact. Mixed messages only get their speech
+        # muffled; bracketed/piped spans are spared by deafen_message.
+        stripped = msg.strip()
+        pure_action = (
+            color == 3
+            or (stripped.startswith("*") and stripped.endswith("*") and len(stripped) > 1)
+            or (stripped.startswith("[") and stripped.endswith("]") and len(stripped) > 1)
+        )
+        action_by = f"[❗] [{client.id}] {client.showname} action:"
         for c in self.clients:
             if not c.ooc_actions:
                 continue
-            c.send_command(cmd, self.server.config["hostname"], msg, "1")
+            # The sender always hears their own action in perfect clarity.
+            if c.deafened and c != client and not pure_action:
+                msg_to_send = c.deafen_message(msg)
+            else:
+                msg_to_send = msg
+            msg_to_send = f"{action_by}\n{msg_to_send}"
+            c.send_command(cmd, self.server.config["hostname"], msg_to_send, "1")
 
         for c in self.owners:
             if c in self.clients:
@@ -1032,7 +1050,12 @@ class Area:
             if not c.ooc_actions:
                 continue
             if c.remote_listen == 3 or c.remote_listen == 2:
-                c.send_command(cmd, f"[{self.id}]" + self.server.config["hostname"], msg, "1")
+                if c.deafened and c != client and not pure_action:
+                    msg_to_send = c.deafen_message(msg)
+                else:
+                    msg_to_send = msg
+                msg_to_send = f"{action_by}\n{msg_to_send}"
+                c.send_command(cmd, f"[{self.id}]" + self.server.config["hostname"], msg_to_send, "1")
 
     def send_ic(
         self,
@@ -1267,9 +1290,8 @@ class Area:
                 if link is not None and link.get("seethrough", False):
                     targets.update(area.clients)
         for c in targets:
-            # Blinded clients don't receive IC messages
-            if c.blinded:
-                continue
+            # Blinded clients still receive IC messages (text and showname
+            # intact): their blindness is conveyed by the darkness background.
             # pos doesn't match listen_pos, we're not listening so make this an OOC message instead
             if c.area == self and c.listen_pos is not None:
                 if type(c.listen_pos) is list and not (pos in c.listen_pos) or c.listen_pos == "self" and pos != c.pos:
@@ -1287,17 +1309,27 @@ class Area:
             # Before we send the message, if our remote_listen is different...
             if c.remote_listen in [1, 3]:
                 # Make sure to reset the BG back to normal since remote_listen IC/ALL clients might be off sync
-                c.send_command("BN", c.area.background, "", c.area.overlay, 0)
+                c.send_command("BN", c.view_background(), "", c.area.overlay, 0)
             msg_to_send = msg
             if c.area != self:
                 msg_to_send = "}}}[" + str(self.id) + "] {{{" + msg
+            # Deafened clients get the text muffled into dots, but can always
+            # hear their own messages in perfect clarity. Pure action messages
+            # (orange IC text) are not speech, so they are not muffled either.
+            if c.deafened and c != client and color != 3:
+                msg_to_send = c.deafen_message(msg_to_send)
+            # Blinded clients get a blankpost: anim blank and character hidden
+            # (darkness background conveys the rest) -- but their own messages
+            # show up normally so they can see what they said.
+            anim_to_send = "" if c == client and client.firstperson else anim
+            if c.blinded and c != client:
+                anim_to_send = "misc/blank"
             c.send_command(
                 "MS",
                 msg_type,
                 pre,
                 folder,
-                # if we're in first person mode, treat our msgs as narration
-                "" if c == client and client.firstperson else anim,
+                anim_to_send,
                 msg_to_send,
                 pos,
                 sfx,
@@ -1502,9 +1534,7 @@ class Area:
             self.testimony_index = idx
             targets = self.clients
             for c in targets:
-                # Blinded clients don't receive IC messages
-                if c.blinded:
-                    continue
+                # Blinded clients still receive IC (darkness handles visuals).
                 # Ignore those losers with listenpos for testimony
                 c.send_command("MS", *statement)
         except (ValueError, IndexError):
@@ -1892,7 +1922,7 @@ class Area:
     def change_background_suffix(self, bg_suffix, mode=1):
         self.background_suffix = bg_suffix
         for client in self.clients:
-            client.send_command("BN", self.background, client.pos, self.overlay, mode)
+            client.send_command("BN", client.view_background(), client.pos, self.overlay, mode)
         bridge = getattr(self.server, "gm_panel_bridge", None)
         if bridge is not None:
             bridge.on_area_background_changed(self)
@@ -1953,7 +1983,7 @@ class Area:
         self.overlay = overlay
 
         for client in self.clients:
-            client.send_command("BN", client.area.background, client.pos, self.overlay, mode)
+            client.send_command("BN", client.view_background(), client.pos, self.overlay, mode)
 
         bridge = getattr(self.server, "gm_panel_bridge", None)
         if bridge is not None:

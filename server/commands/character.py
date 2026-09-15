@@ -25,6 +25,12 @@ __all__ = [
     "ooc_cmd_reload",
     "ooc_cmd_blind",
     "ooc_cmd_unblind",
+    "ooc_cmd_deafen",
+    "ooc_cmd_undeafen",
+    "ooc_cmd_player_mute",
+    "ooc_cmd_player_unmute",
+    "ooc_cmd_force_blankpost",
+    "ooc_cmd_unforce_blankpost",
     "ooc_cmd_player_move_delay",
     "ooc_cmd_player_hide",
     "ooc_cmd_player_unhide",
@@ -485,7 +491,9 @@ def ooc_cmd_reload(client):
 @command(Arg("ids", int, variadic=True, help="client ID(s)"))
 def ooc_cmd_blind(client, ids):
     """
-    Blind the targeted player(s) from being able to see or talk IC.
+    Blind the targeted player(s): they only see the area's darkness background
+    (like /lights off), but still see IC messages, shownames, and can edit
+    evidence they have access to. Cannot use /getarea.
     Usage: /blind <id(s)>
     """
     targets = []
@@ -503,7 +511,7 @@ def ooc_cmd_blind(client, ids):
                 continue
             c.blind(True)
             client.send_ooc(
-                f"You have blinded [{c.id}] {c.name} from using /getarea and seeing non-broadcasted IC messages."
+                f"You have blinded [{c.id}] {c.name} (darkness background, /getarea blocked)."
             )
     else:
         raise ArgumentError("No targets found.")
@@ -533,6 +541,109 @@ def ooc_cmd_unblind(client, ids):
             client.send_ooc(f"You have unblinded [{c.id}] {c.name}.")
     else:
         raise ArgumentError("No targets found.")
+
+
+def _get_flag_targets(client, ids):
+    targets = []
+    for targ_id in ids:
+        c = client.server.client_manager.get_targets(
+            client, TargetType.ID, targ_id, False
+        )
+        if c:
+            targets = targets + c
+    if not targets:
+        raise ArgumentError("No targets found.")
+    return targets
+
+
+@mod_only(hub_owners=True)
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_deafen(client, ids):
+    """
+    Deafen the targeted player(s): IC text is obscured into dots.
+    Usage: /deafen <id(s)>
+    """
+    for c in _get_flag_targets(client, ids):
+        if c.deafened:
+            client.send_ooc(f"Client [{c.id}] {c.name} already deafened! Use /undeafen {c.id} to undo.")
+            continue
+        c.deafen(True)
+        client.send_ooc(f"You have deafened [{c.id}] {c.name} (their IC text is obscured).")
+
+
+@mod_only(hub_owners=True)
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_undeafen(client, ids):
+    """
+    Undo effects of the /deafen command.
+    Usage: /undeafen <id(s)>
+    """
+    for c in _get_flag_targets(client, ids):
+        if not c.deafened:
+            client.send_ooc(f"Client [{c.id}] {c.name} already undeafened! Use /deafen {c.id} to deafen them.")
+            continue
+        c.deafen(False)
+        client.send_ooc(f"You have undeafened [{c.id}] {c.name}.")
+
+
+@mod_only(hub_owners=True)
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_player_mute(client, ids):
+    """
+    Mute the targeted player(s) from sending IC messages.
+    Usage: /player_mute <id(s)>
+    """
+    for c in _get_flag_targets(client, ids):
+        if c.player_muted:
+            client.send_ooc(f"Client [{c.id}] {c.name} already player-muted! Use /player_unmute {c.id} to undo.")
+            continue
+        c.player_mute(True)
+        client.send_ooc(f"You have player-muted [{c.id}] {c.name} (cannot send IC messages).")
+
+
+@mod_only(hub_owners=True)
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_player_unmute(client, ids):
+    """
+    Undo effects of the /player_mute command.
+    Usage: /player_unmute <id(s)>
+    """
+    for c in _get_flag_targets(client, ids):
+        if not c.player_muted:
+            client.send_ooc(f"Client [{c.id}] {c.name} already player-unmuted! Use /player_mute {c.id} to mute them.")
+            continue
+        c.player_mute(False)
+        client.send_ooc(f"You have player-unmuted [{c.id}] {c.name}.")
+
+
+@mod_only(hub_owners=True)
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_force_blankpost(client, ids):
+    """
+    Force the targeted player(s) to only be able to send blankposts in IC.
+    Usage: /force_blankpost <id(s)>
+    """
+    for c in _get_flag_targets(client, ids):
+        if c.forced_blankpost:
+            client.send_ooc(f"Client [{c.id}] {c.name} is already forced to blankpost! Use /unforce_blankpost {c.id} to undo.")
+            continue
+        c.force_blankpost(True)
+        client.send_ooc(f"You have forced [{c.id}] {c.name} to only blankpost in IC.")
+
+
+@mod_only(hub_owners=True)
+@command(Arg("ids", int, variadic=True, help="client ID(s)"))
+def ooc_cmd_unforce_blankpost(client, ids):
+    """
+    Undo effects of the /force_blankpost command.
+    Usage: /unforce_blankpost <id(s)>
+    """
+    for c in _get_flag_targets(client, ids):
+        if not c.forced_blankpost:
+            client.send_ooc(f"Client [{c.id}] {c.name} is not forced to blankpost! Use /force_blankpost {c.id} to force them.")
+            continue
+        c.force_blankpost(False)
+        client.send_ooc(f"You have unforced [{c.id}] {c.name} from blankposting-only.")
 
 
 @command(

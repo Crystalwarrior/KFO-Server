@@ -642,5 +642,10 @@ class ScriptRunner:
             area.send_command("HP", 1, area.hp_def)
             area.send_command("HP", 2, area.hp_pro)
         if "BN" in self.modified_packets:
-            area.send_command("BN", area.background)
+            area.send_command("BN", area.background, "", area.overlay, 0)
+            # Re-assert the darkness view for blinded clients, since the BN
+            # above restored the area's normal background for everyone.
+            for c in area.clients:
+                if c.blinded and not area.dark:
+                    c.send_command("BN", c.area.background_dark, c.pos, c.area.overlay, 0)
         self.modified_packets.clear()

@@ -314,9 +314,11 @@ class EvidenceList:
                 # 0 - Do not show evidence in dark areas.
                 # 1 - Show evidence in dark areas.
                 # 2 - ONLY show evidence in dark areas. Will be hidden in non-dark areas.
-                if client.area.dark and self.evidences[i].show_in_dark == 0:
+                # Blinded clients see the evidence list as if the area were dark.
+                dark_for_client = client.area.dark or client.blinded
+                if dark_for_client and self.evidences[i].show_in_dark == 0:
                     continue
-                if not client.area.dark and self.evidences[i].show_in_dark == 2:
+                if not dark_for_client and self.evidences[i].show_in_dark == 2:
                     continue
                 nums_list.append(i + 1)
                 evi_list.append(self.evidences[i].to_tuple())
@@ -468,10 +470,12 @@ class EvidenceList:
                 client.send_ooc('This evidence cannot be edited!')
                 return False
             # 0 - Do not show evidence in dark areas.
-            if client.area.dark and evi.show_in_dark == 0:
-                return False
             # 2 - ONLY show evidence in dark areas. Will be hidden in non-dark areas.
-            if not client.area.dark and evi.show_in_dark == 2:
+            # Blinded clients are treated as if the area were dark.
+            dark_for_client = client.area.dark or client.blinded
+            if dark_for_client and evi.show_in_dark == 0:
+                return False
+            if not dark_for_client and evi.show_in_dark == 2:
                 return False
             old_name = evi.name
             # If any of the args are *, keep the old entry

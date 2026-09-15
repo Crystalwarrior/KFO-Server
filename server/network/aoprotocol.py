@@ -426,6 +426,9 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
             return
+        if self.client.player_muted:
+            self.client.send_ooc("You are player-muted.")
+            return
         if self.client.ic_mute():
             self.client.send_ooc(
                 f"You are sending messages too fast. Please try again after {int(self.client.ic_mute())} seconds."
@@ -843,6 +846,12 @@ class AOProtocol(asyncio.Protocol):
                         "You can only blankpost in this area!"
                     )
                     return
+        if self.client.forced_blankpost:
+            if text.strip() != "":
+                self.client.send_ooc(
+                    "You can only blankpost!"
+                )
+                return
 
         if text.replace(" ", "").startswith("(("):
             self.client.send_ooc(
@@ -1499,7 +1508,7 @@ class AOProtocol(asyncio.Protocol):
                 # msg = "}}}[❗] {{{" + text
                 if whisper_clients is None:
                     # This also sends the message across the GM clients
-                    self.client.area.broadcast_action(self.client, text)
+                    self.client.area.broadcast_action(self.client, text, color)
 
         # Check whether or not the reserved character for Emote Tags is in the message
         if "¨" in text:
@@ -2013,9 +2022,7 @@ class AOProtocol(asyncio.Protocol):
                     statement = tuple(lst)
                     targets = self.client.area.clients
                     for c in targets:
-                        # Blinded clients don't receive IC messages
-                        if c.blinded:
-                            continue
+                        # Blinded clients still receive IC (darkness handles visuals).
                         # Ignore those losers with listenpos for testimony
                         c.send_command("MS", *statement)
                     return
@@ -2042,9 +2049,7 @@ class AOProtocol(asyncio.Protocol):
                     statement = tuple(lst)
                     targets = self.client.area.clients
                     for c in targets:
-                        # Blinded clients don't receive IC messages
-                        if c.blinded:
-                            continue
+                        # Blinded clients still receive IC (darkness handles visuals).
                         # Ignore those losers with listenpos for testimony
                         c.send_command("MS", *statement)
 

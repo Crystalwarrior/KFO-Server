@@ -935,7 +935,7 @@ def ooc_cmd_lights(client, tog):
         pos = c.pos
         if c.area.dark:
             pos = client.area.pos_dark
-        c.send_command("BN", c.area.background, pos, c.area.overlay)
+        c.send_command("BN", c.view_background(), pos, c.area.overlay)
     client.send_ooc(f"This area is {stat} dark.")
     client.area.broadcast_evidence_list()
 

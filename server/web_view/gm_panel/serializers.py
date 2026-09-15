@@ -52,6 +52,10 @@ class ClientSerializer:
             "is_area_cm": area is not None and client in area._owners,
             "is_afk": area is not None and client in area.afkers,
             "hidden": client.hidden,
+            "blinded": client.blinded,
+            "deafened": client.deafened,
+            "player_muted": client.player_muted,
+            "forced_blankpost": client.forced_blankpost,
             "software": client.software,
             "version": client.version,
         }
