@@ -150,7 +150,7 @@ class EvidenceList:
             matches -= 1
         return desc, poses, can_hide_in, show_in_dark, can_take, editable
 
-    def add_evidence(self, client, name, desc, image):
+    def add_evidence(self, client, name, desc, image, pos=""):
         """
         Add an evidence item.
         :param client: origin
@@ -175,16 +175,20 @@ class EvidenceList:
         show_in_dark = 0
         can_take = True
         editable = True
-        pos = "all"
 
         if client.area.evidence_mod == "HiddenCM":
             if client in client.area.owners or client.is_mod:
-                pos = "hidden"
+                if pos == "":
+                    pos = "hidden"
                 if self.correct_format(client, desc):
                     desc, pos, can_hide_in, show_in_dark, can_take, editable = self.parse_desc(desc)
             else:
-                if len(client.area.pos_lock) > 0 and client.pos in client.area.pos_lock:
-                    pos = client.pos
+                if pos == "":
+                    if len(client.area.pos_lock) > 0 and client.pos in client.area.pos_lock:
+                        pos = client.pos
+
+        if pos == "":
+            pos = "all"
 
         self.evidences.append(self.Evidence(
             name, desc, image, pos, can_hide_in, show_in_dark, can_take, editable))

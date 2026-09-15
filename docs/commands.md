@@ -331,8 +331,10 @@
 * **force_switch** `[id] [char]` *(CM)*
     - Enter the character select screen, or force another user to select another character.
     - Optional `[char]` forces them into that specific character folder/ID.
-* **kill** `<id>` *(CM)*
+* **kill** `<id>` `[corpse]` *(CM)*
     - Force the character into spectator mode with a message that they have died.
+    - If [corpse] is on/true/1, will drop a piece of evidence in an area with the character name and icon.
+    - Note that the evidence will be added in the position the character was in at the time of death.
 * **randomchar**
     - Select a random character.
 * **charcurse** `<id> [charids...]` *(Mod)*

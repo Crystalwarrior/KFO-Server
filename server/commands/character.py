@@ -340,22 +340,43 @@ def force_switch(client, target, char=""):
 
 
 @mod_only(area_owners=True)
-@command(Arg("ids", int, variadic=True, help="client ID(s)"))
-def ooc_cmd_kill(client, ids):
+@command(
+    Arg("target", help="target id or char name"),
+    Arg("corpse", bool, default=False, help="on to drop a corpse evidence")
+)
+def ooc_cmd_kill(client, target, corpse):
     """
     Force the character into spectator mode with a message that they have died.
-    Usage: /kill <id(s)>
+    If [corpse] is on/true/1, will drop a piece of evidence in an area with the character name and icon.
+    Note that the evidence will be added in the position the character was in at the time of death.
+    Usage: /kill <target> [corpse]
     """
-    targets = []
-    for targ_id in ids:
-        c = client.server.client_manager.get_targets(
-            client, TargetType.ID, targ_id, False
+    if target.isnumeric():
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(target), False
         )
-        if c:
-            targets = targets + c
-
+    else:
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.CHAR_NAME, target, False
+        )
     try:
         for target in targets:
+            print(corpse)
+            if corpse:
+                # Grab their showname without the folder path if char folder is used
+                name = f"Corpse of {target.showname.rsplit("/", 1)[-1]}"
+                desc = "They're dead...!"
+                image = "aai/blood.png"
+                char_folder = target.f_char_name_raw
+                if char_folder != "":
+                    image = f"../characters/{char_folder}/char_icon.png"
+                pos = target.pos
+                if pos == "":
+                    pos = "all"
+                target.area.evi_list.add_evidence(
+                    client, name, desc, image, target.pos
+                )
+                target.area.broadcast_evidence_list()
             force_switch(client, target, "-1")
             target.send_ooc(f"💀You are dead!💀")
     except Exception as ex:
