@@ -293,6 +293,10 @@ class GMLocalContent {
             folderName: this._dirHandle ? this._dirHandle.name : '',
             hasFsAccess: this._hasFsAccess(),
             permission: this._mode === 'folder' ? this._dirPermission : null,
+            // May be '' until a server-config fetch has completed (the fetch
+            // itself is triggered lazily by resolve()); the settings dialog
+            // surfaces it so the server fallback is debuggable.
+            serverAssetUrl: this._serverAssetUrl,
         };
     }
 
@@ -573,7 +577,10 @@ class GMLocalContent {
         this._serverConfigPromise = (async () => {
             try {
                 const data = await this.api.getAssetsConfig();
-                this._serverAssetUrl = (data && data.asset_url) || '';
+                // Normalize like setBaseUrl does: a trailing slash in the
+                // server's asset_url would otherwise yield double-slash
+                // candidate URLs that some CDNs reject.
+                this._serverAssetUrl = ((data && data.asset_url) || '').replace(/\/+$/, '');
                 return this._serverAssetUrl;
             } catch (e) {
                 this._serverConfigPromise = null;
@@ -801,7 +808,11 @@ class LocalContentSettingsDialog {
         } else if (info.mode === 'url') {
             statusLine = `Base URL: <strong>${esc(info.baseUrl)}</strong>`;
         } else {
-            statusLine = 'No local source configured -- falling back to the server asset URL, then plain placeholders.';
+            const serverUrl = info.serverAssetUrl || this.localContent._serverAssetUrl;
+            statusLine = 'No local source configured -- falling back to the server asset URL'
+                + (serverUrl
+                    ? ` (<strong>${esc(serverUrl)}</strong>), then plain placeholders.`
+                    : ' (not resolved yet), then plain placeholders.');
         }
         if (!info.hasFsAccess) {
             statusLine += '<br><span class="dim">This browser does not support picking a local folder; use a base URL instead.</span>';
